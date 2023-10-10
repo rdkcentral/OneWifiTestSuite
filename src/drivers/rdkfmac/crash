@@ -1,0 +1,130 @@
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.448964] cfg80211: Loading compiled-in X.509 certificates for regulatory database
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.449217] cfg80211: Loaded X.509 cert 'sforshee: 00b28ddf47aef9cea7'
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.548877] mac80211_rdkfmac: initializing netlink
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550033] ------------[ cut here ]------------
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550035] WARNING: CPU: 0 PID: 2047 at net/wireless/core.c:430 wiphy_new_nm+0x676/0x6e0 [cfg80211]
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550067] Modules linked in: rdkfmac(OE+) mac80211 cfg80211 libarc4 isofs snd_seq_dummy snd_hrtimer vboxvideo(OE) vboxsf(OE) snd_intel8x0 snd_ac97_codec ac97_bus snd_pcm snd_seq_midi snd_seq_midi_event snd_rawmidi intel_rapl_msr intel_rapl_common intel_powerclamp crct10dif_pclmul snd_seq ghash_clmulni_intel aesni_intel binfmt_misc crypto_simd cryptd snd_seq_device input_leds joydev rapl snd_timer nls_iso8859_1 serio_raw snd vboxguest(OE) mac_hid soundcore vmwgfx drm_ttm_helper ttm drm_kms_helper fb_sys_fops syscopyarea sysfillrect sysimgblt msr parport_pc ppdev lp parport ramoops pstore_blk reed_solomon pstore_zone drm efi_pstore ip_tables x_tables autofs4 hid_generic usbhid hid crc32_pclmul psmouse ahci libahci i2c_piix4 e1000 pata_acpi video
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550109] CPU: 0 PID: 2047 Comm: modprobe Tainted: G           OE     5.19.0-46-generic #47-Ubuntu
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550112] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550113] RIP: 0010:wiphy_new_nm+0x676/0x6e0 [cfg80211]
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550135] Code: 0f 0b e9 6c fb ff ff 0f 0b e9 4b fb ff ff 0f 0b e9 2a fb ff ff 0f 0b e9 09 fb ff ff 0f 0b e9 e8 fa ff ff 0f 0b e9 ce fa ff ff <0f> 0b e9 ad fa ff ff 0f 0b e9 92 fa ff ff 0f 0b e9 71 fa ff ff 0f
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550137] RSP: 0018:ffffb816c1f9bbf8 EFLAGS: 00010246
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550139] RAX: ffffffffc08d6e20 RBX: 0000000000000000 RCX: 0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550140] RDX: 0000000000000000 RSI: 0000000000002c70 RDI: ffffffffc08d92c0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550141] RBP: ffffb816c1f9bc10 R08: 0000000000000000 R09: 0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550143] R10: 0000000000000000 R11: 0000000000000000 R12: ffffffffc08d92c0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550144] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550145] FS:  00007faa567c8040(0000) GS:ffff9b68fdc00000(0000) knlGS:0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550146] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550148] CR2: 000000c000538000 CR3: 000000000c022003 CR4: 00000000000706f0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550149] Call Trace:
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550151]  <TASK>
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550153]  rdkfmac_init_module+0x11f/0x1000 [rdkfmac]
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550158]  ? 0xffffffffc08de000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550160]  do_one_initcall+0x5e/0x240
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550165]  do_init_module+0x50/0x210
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550167]  load_module+0xb7d/0xcd0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550170]  ? kernel_read_file+0x255/0x2f0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550173]  __do_sys_finit_module+0xc4/0x140
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550175]  ? __do_sys_finit_module+0xc4/0x140
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550178]  __x64_sys_finit_module+0x18/0x30
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550180]  do_syscall_64+0x5b/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550183]  ? exit_to_user_mode_prepare+0x30/0xb0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550185]  ? syscall_exit_to_user_mode+0x29/0x50
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550187]  ? do_syscall_64+0x67/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550189]  entry_SYSCALL_64_after_hwframe+0x63/0xcd
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550191] RIP: 0033:0x7faa55f16c4d
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550193] Code: 5d c3 66 2e 0f 1f 84 00 00 00 00 00 90 f3 0f 1e fa 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 8b 0d 83 f1 0d 00 f7 d8 64 89 01 48
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550194] RSP: 002b:00007ffef4ae4bd8 EFLAGS: 00000246 ORIG_RAX: 0000000000000139
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550196] RAX: ffffffffffffffda RBX: 0000560c4f122ff0 RCX: 00007faa55f16c4d
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550197] RDX: 0000000000000000 RSI: 0000560c4d962c3a RDI: 0000000000000006
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550198] RBP: 0000560c4d962c3a R08: 0000000000000000 R09: 00007ffef4ae4d00
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550200] R10: 0000000000000006 R11: 0000000000000246 R12: 0000000000040000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550201] R13: 0000560c4f122fb0 R14: 0000000000000000 R15: 0000560c4f11bc60
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550203]  </TASK>
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.550203] ---[ end trace 0000000000000000 ]---
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.551012] ieee80211 phy0: Selected rate control algorithm 'minstrel_ht'
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.574587] hwaddr 02:bc:cd:00:00:00 registered
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.574591] init_rdkfmac_cdev:72
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.574615] init_rdkfmac_cdev:89: registered successfully
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638321] mac80211_rdkfmac_start:82
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638326] push_to_char_device:118: pushing data to queue, current size:1
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638330] mac80211_rdkfmac_add_interface:114 (type=2 mac_addr=02:bc:cd:00:00:00)
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638333] push_to_char_device:118: pushing data to queue, current size:0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638334] mac80211_rdkfmac_bss_info_changed(changed=0xe vif->addr=02:bc:cd:00:00:00)
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638336] ERP_CTS_PROT: 0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638336] ERP_PREAMBLE: 0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638337] ERP_SLOT: 0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638341] mac80211_rdkfmac_conf_tx (queue=0 txop=0 cw_min=15 cw_max=1023 aifs=2)
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638343] mac80211_rdkfmac_conf_tx (queue=1 txop=0 cw_min=15 cw_max=1023 aifs=2)
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638344] mac80211_rdkfmac_conf_tx (queue=2 txop=0 cw_min=15 cw_max=1023 aifs=2)
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638345] mac80211_rdkfmac_conf_tx (queue=3 txop=0 cw_min=15 cw_max=1023 aifs=2)
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638346] mac80211_rdkfmac_bss_info_changed(changed=0x2000 vif->addr=02:bc:cd:00:00:00)
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638354] ------------[ cut here ]------------
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638355] WARNING: CPU: 0 PID: 598 at kernel/workqueue.c:1499 __queue_work+0x349/0x420
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638362] Modules linked in: rdkfmac(OE) mac80211 cfg80211 libarc4 isofs snd_seq_dummy snd_hrtimer vboxvideo(OE) vboxsf(OE) snd_intel8x0 snd_ac97_codec ac97_bus snd_pcm snd_seq_midi snd_seq_midi_event snd_rawmidi intel_rapl_msr intel_rapl_common intel_powerclamp crct10dif_pclmul snd_seq ghash_clmulni_intel aesni_intel binfmt_misc crypto_simd cryptd snd_seq_device input_leds joydev rapl snd_timer nls_iso8859_1 serio_raw snd vboxguest(OE) mac_hid soundcore vmwgfx drm_ttm_helper ttm drm_kms_helper fb_sys_fops syscopyarea sysfillrect sysimgblt msr parport_pc ppdev lp parport ramoops pstore_blk reed_solomon pstore_zone drm efi_pstore ip_tables x_tables autofs4 hid_generic usbhid hid crc32_pclmul psmouse ahci libahci i2c_piix4 e1000 pata_acpi video
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638411] CPU: 0 PID: 598 Comm: NetworkManager Tainted: G        W  OE     5.19.0-46-generic #47-Ubuntu
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638414] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638415] RIP: 0010:__queue_work+0x349/0x420
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638417] Code: 25 c0 fb 01 00 f6 47 2c 20 75 32 0f 0b 48 83 c4 08 5b 41 5c 41 5d 41 5e 41 5f 5d 31 c0 31 d2 31 c9 31 f6 31 ff c3 cc cc cc cc <0f> 0b e9 ac fe ff ff 83 c9 02 49 8d 57 68 e9 95 fe ff ff e8 bf 82
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638419] RSP: 0018:ffffb816c220b608 EFLAGS: 00010003
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638421] RAX: ffff9b6885a00f30 RBX: ffff9b6885a00f28 RCX: 0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638422] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638423] RBP: ffffb816c220b638 R08: 0000000000000000 R09: 0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638424] R10: 0000000000000000 R11: 0000000000000000 R12: ffff9b6887c82200
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638425] R13: 0000000000002000 R14: 0000000000000000 R15: ffff9b6884efe600
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638427] FS:  00007f5b29adc4c0(0000) GS:ffff9b68fdc00000(0000) knlGS:0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638428] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638430] CR2: 00007ffc7664af8c CR3: 000000000ca96005 CR4: 00000000000706f0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638431] Call Trace:
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638433]  <TASK>
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638436]  queue_work_on+0x67/0x70
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638439]  ieee80211_queue_work+0x77/0x90 [mac80211]
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638495]  ieee80211_set_multicast_list+0x8b/0xb0 [mac80211]
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638523]  __dev_set_rx_mode+0x6e/0xd0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638527]  __dev_open+0x13e/0x1d0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638530]  __dev_change_flags+0x1b5/0x230
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638533]  dev_change_flags+0x27/0x70
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638535]  do_setlink+0x37f/0xe20
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638539]  ? __nla_validate_parse+0x49/0x1c0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638544]  __rtnl_newlink+0x6b4/0x710
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638547]  rtnl_newlink+0x48/0x80
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638550]  rtnetlink_rcv_msg+0x170/0x430
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638553]  ? rtnl_calcit.isra.0+0x150/0x150
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638555]  netlink_rcv_skb+0x57/0x110
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638559]  rtnetlink_rcv+0x15/0x30
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638561]  netlink_unicast+0x247/0x390
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638564]  netlink_sendmsg+0x25e/0x4e0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638566]  sock_sendmsg+0x6d/0x70
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638570]  ____sys_sendmsg+0x277/0x2c0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638572]  ? import_iovec+0x1b/0x30
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638576]  ___sys_sendmsg+0x96/0xe0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638580]  __sys_sendmsg+0x86/0xf0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638582]  __x64_sys_sendmsg+0x1d/0x30
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638583]  do_syscall_64+0x5b/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638587]  ? exit_to_user_mode_loop+0xe0/0x130
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638590]  ? exit_to_user_mode_prepare+0x30/0xb0
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638591]  ? syscall_exit_to_user_mode+0x29/0x50
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638593]  ? do_syscall_64+0x67/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638595]  ? syscall_exit_to_user_mode+0x29/0x50
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638596]  ? do_syscall_64+0x67/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638598]  ? do_syscall_64+0x67/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638600]  ? syscall_exit_to_user_mode+0x29/0x50
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638601]  ? do_syscall_64+0x67/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638603]  ? syscall_exit_to_user_mode+0x29/0x50
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638604]  ? do_syscall_64+0x67/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638606]  ? do_syscall_64+0x67/0x90
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638608]  entry_SYSCALL_64_after_hwframe+0x63/0xcd
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638611] RIP: 0033:0x7f5b2ab2090d
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638613] Code: 28 89 54 24 1c 48 89 74 24 10 89 7c 24 08 e8 fa b8 f6 ff 8b 54 24 1c 48 8b 74 24 10 41 89 c0 8b 7c 24 08 b8 2e 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 33 44 89 c7 48 89 44 24 08 e8 4e b9 f6 ff 48
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638614] RSP: 002b:00007ffdba89e2f0 EFLAGS: 00000293 ORIG_RAX: 000000000000002e
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638617] RAX: ffffffffffffffda RBX: 0000000000000001 RCX: 00007f5b2ab2090d
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638618] RDX: 0000000000000000 RSI: 00007ffdba89e330 RDI: 000000000000000d
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638619] RBP: 000055945d711030 R08: 0000000000000000 R09: 0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638620] R10: 0000000000000000 R11: 0000000000000293 R12: 0000000000000019
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638621] R13: 00007ffdba89e490 R14: 00007ffdba89e48c R15: 0000000000000000
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638623]  </TASK>
+Sep  4 11:34:38 soumya-VirtualBox kernel: [   73.638624] ---[ end trace 0000000000000000 ]---
+
+
+

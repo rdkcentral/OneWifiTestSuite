@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config RDKFMAC
+    tristate
+    help
+      This option adds support for full mac RDK adapter filter

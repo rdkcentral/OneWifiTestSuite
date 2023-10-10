@@ -1,0 +1,463 @@
+#include <stdio.h>
+#include <sys/time.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
+#include <assert.h>
+#include "wlan_emu_msg.h"
+#include "wlan_emu_msg_hdlr.h"
+#include "wlan_emu_log.h"
+#include <pcap.h>
+#include "common/ieee802_11_defs.h"
+
+#define WLAN_PMK_LEN           32
+
+static void fill_cfg80211_crypto(wlan_emu_msg_data_t *f_data, char* f_tmp) {
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.wpa_versions, f_tmp, sizeof(u32));
+    f_tmp += sizeof(u32);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.cipher_group, f_tmp, sizeof(u32));
+    f_tmp += sizeof(u32);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.n_ciphers_pairwise, f_tmp, sizeof(int));
+    f_tmp += sizeof(int);
+
+    memcpy(f_data->u.cfg80211.u.start_ap.ap_params.crypto.ciphers_pairwise, f_tmp, (f_data->u.cfg80211.u.start_ap.ap_params.crypto.n_ciphers_pairwise)*sizeof(u32));
+    f_tmp += (f_data->u.cfg80211.u.start_ap.ap_params.crypto.n_ciphers_pairwise)*sizeof(u32);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.n_akm_suites, f_tmp, sizeof(int));
+    f_tmp += sizeof(int);
+
+    memcpy(f_data->u.cfg80211.u.start_ap.ap_params.crypto.akm_suites, f_tmp, (f_data->u.cfg80211.u.start_ap.ap_params.crypto.n_akm_suites)*sizeof(u32));
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.crypto.n_akm_suites*sizeof(u32);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.control_port, f_tmp, sizeof(bool));
+    f_tmp += sizeof(bool);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.control_port_ethertype, f_tmp, sizeof(__be16));
+    f_tmp += sizeof(__be16);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.control_port_no_encrypt, f_tmp, sizeof(bool));
+    f_tmp += sizeof(bool);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.control_port_over_nl80211, f_tmp, sizeof(bool));
+    f_tmp += sizeof(bool);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.psk, f_tmp, WLAN_PMK_LEN);
+    f_tmp += WLAN_PMK_LEN;
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.crypto.sae_pwd_len, f_tmp, sizeof(u8));
+    f_tmp += sizeof(u8);
+
+    f_data->u.cfg80211.u.start_ap.ap_params.crypto.sae_pwd = (const u8*)(malloc(f_data->u.cfg80211.u.start_ap.ap_params.crypto.sae_pwd_len));
+    memcpy((void *)f_data->u.cfg80211.u.start_ap.ap_params.crypto.sae_pwd, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.crypto.sae_pwd_len);
+
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.crypto.sae_pwd_len;
+
+    return;
+
+}
+
+static void fill_cfg80211_acl_data(wlan_emu_msg_data_t *f_data, char *f_tmp) {
+    size_t total_len = 0;
+
+    memcpy(&total_len, f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    f_data->u.cfg80211.u.start_ap.ap_params.acl = (const cfg80211_acl_data*)(malloc(total_len));
+    memset((void *)f_data->u.cfg80211.u.start_ap.ap_params.acl, 0, total_len);
+    memcpy((void *)f_data->u.cfg80211.u.start_ap.ap_params.acl, f_tmp, total_len);
+    f_tmp += total_len;
+
+    return;
+}
+
+static void handle_cfg80211_start_ap(char *f_tmp, wlan_emu_msg_data_t *f_data) {
+    struct ieee80211_mgmt *head;
+    if ((f_tmp == NULL) || (f_data == NULL)){
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return;
+    }
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ifindex), f_tmp, sizeof(int));
+    f_tmp += sizeof(int);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.phy_index), f_tmp, sizeof(int));
+    f_tmp += sizeof(int);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.chandef), f_tmp, sizeof(struct cfg80211_chan_def));
+    f_tmp += sizeof(struct cfg80211_chan_def);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.ftm_responder), f_tmp, sizeof(u8));
+    f_tmp += sizeof(u8);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.head_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.beacon_ies_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.proberesp_ies_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.assocresp_ies_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.probe_resp_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.lci_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon.civicloc_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    f_data->u.cfg80211.u.start_ap.ap_params.beacon.head = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.beacon.head_len));
+    memcpy((void*)(f_data->u.cfg80211.u.start_ap.ap_params.beacon.head), f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.beacon.head_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.beacon.head_len;
+
+    f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail_len));
+    memcpy((void*)f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail_len;
+
+    f_data->u.cfg80211.u.start_ap.ap_params.beacon.beacon_ies = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.beacon.beacon_ies_len));
+    memcpy((void*)f_data->u.cfg80211.u.start_ap.ap_params.beacon.beacon_ies, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.beacon.beacon_ies_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.beacon.beacon_ies_len;
+
+    f_data->u.cfg80211.u.start_ap.ap_params.beacon.proberesp_ies = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.beacon.proberesp_ies_len));
+    memcpy((void *)f_data->u.cfg80211.u.start_ap.ap_params.beacon.proberesp_ies, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.beacon.proberesp_ies_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.beacon.proberesp_ies_len;
+
+    f_data->u.cfg80211.u.start_ap.ap_params.beacon.assocresp_ies = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.beacon.assocresp_ies_len));
+    memcpy((void *)f_data->u.cfg80211.u.start_ap.ap_params.beacon.assocresp_ies, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.beacon.assocresp_ies_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.beacon.assocresp_ies_len;
+
+    f_data->u.cfg80211.u.start_ap.ap_params.beacon.probe_resp = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.beacon.probe_resp_len));
+    memcpy((void*)f_data->u.cfg80211.u.start_ap.ap_params.beacon.probe_resp, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.beacon.probe_resp_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.beacon.probe_resp_len;
+
+    f_data->u.cfg80211.u.start_ap.ap_params.beacon.lci = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.beacon.lci_len));
+    memcpy((void *)f_data->u.cfg80211.u.start_ap.ap_params.beacon.lci, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.beacon.lci_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.beacon.lci_len;
+
+    f_data->u.cfg80211.u.start_ap.ap_params.beacon.civicloc = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.beacon.civicloc_len));
+    memcpy((void*)f_data->u.cfg80211.u.start_ap.ap_params.beacon.civicloc, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.beacon.civicloc_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.beacon.civicloc_len;
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.beacon_interval), f_tmp, sizeof(int));
+    f_tmp += sizeof(int);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.dtim_period), f_tmp, sizeof(int));
+    f_tmp += sizeof(int);
+
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ap_params.ssid_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    f_data->u.cfg80211.u.start_ap.ap_params.ssid = static_cast<const u8*>(malloc(f_data->u.cfg80211.u.start_ap.ap_params.ssid_len));
+    memcpy((void*)f_data->u.cfg80211.u.start_ap.ap_params.ssid, f_tmp, f_data->u.cfg80211.u.start_ap.ap_params.ssid_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ap_params.ssid_len;
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.hidden_ssid, f_tmp, sizeof(enum nl80211_hidden_ssid));
+    f_tmp += sizeof(enum nl80211_hidden_ssid);
+
+    fill_cfg80211_crypto(f_data, f_tmp);
+    fill_cfg80211_acl_data(f_data, f_tmp);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.privacy, f_tmp, sizeof(bool));
+    f_tmp += sizeof(bool);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.auth_type, f_tmp, sizeof(enum nl80211_auth_type));
+    f_tmp += sizeof(enum nl80211_auth_type);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.smps_mode, f_tmp, sizeof(enum nl80211_smps_mode));
+    f_tmp += sizeof(enum nl80211_smps_mode);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.inactivity_timeout, f_tmp, sizeof(int));
+    f_tmp += sizeof(int);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.p2p_ctwindow, f_tmp, sizeof(u8));
+    f_tmp += sizeof(u8);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.p2p_opp_ps, f_tmp, sizeof(bool));
+    f_tmp += sizeof(bool);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.pbss, f_tmp, sizeof(bool));
+    f_tmp += sizeof(bool);
+
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.beacon_rate, f_tmp, sizeof(struct cfg80211_bitrate_mask));
+    f_tmp += sizeof(struct cfg80211_bitrate_mask);
+
+    f_data->u.cfg80211.u.start_ap.ap_params.ht_cap = (struct ieee80211_ht_cap*)malloc(sizeof(struct ieee80211_ht_cap));
+    memcpy((void *)f_data->u.cfg80211.u.start_ap.ap_params.ht_cap, f_tmp, sizeof(struct ieee80211_ht_cap));
+    f_tmp += sizeof(struct ieee80211_ht_cap);
+
+    f_data->u.cfg80211.u.start_ap.ap_params.vht_cap = (struct ieee80211_vht_cap*)malloc(sizeof(struct ieee80211_vht_cap));
+    memcpy((void *)f_data->u.cfg80211.u.start_ap.ap_params.vht_cap, f_tmp, sizeof(struct ieee80211_vht_cap));
+    f_tmp += sizeof(struct ieee80211_vht_cap);
+
+    f_data->u.cfg80211.u.start_ap.ap_params.he_cap = (struct ieee80211_he_cap_elem*)malloc(sizeof(struct ieee80211_he_cap_elem));
+    memcpy((void *)f_data->u.cfg80211.u.start_ap.ap_params.he_cap, f_tmp, sizeof(struct ieee80211_he_cap_elem));
+    f_tmp += sizeof(struct ieee80211_he_cap_elem);
+
+    memcpy(&f_data->u.cfg80211.u.start_ap.ap_params.ht_required, f_tmp, sizeof(bool)*2);
+
+    head = (struct ieee80211_mgmt*)f_data->u.cfg80211.u.start_ap.ap_params.beacon.head;
+    memcpy(f_data->u.cfg80211.u.start_ap.macaddr, head->bssid, sizeof(mac_address_t));
+
+
+    return;
+}
+
+
+void handle_cfg80211_msg(char *f_tmp, wlan_emu_msg_data_t *f_data) {
+    if ((f_tmp == NULL) || (f_data == NULL)){
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return;
+    }
+
+    memcpy(&(f_data->u.cfg80211.ops), f_tmp, sizeof(wlan_emu_cfg80211_ops_type_t));
+    f_tmp += sizeof(wlan_emu_cfg80211_ops_type_t);
+
+    switch (f_data->u.cfg80211.ops) {
+        case wlan_emu_cfg80211_ops_type_start_ap:
+            handle_cfg80211_start_ap(f_tmp, f_data);
+        break;
+        default:
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not handling any other messages\n", __func__, __LINE__);
+        break;
+    }
+
+    return;
+}
+
+void handle_frm80211_msg(char *f_tmp, wlan_emu_msg_data_t *f_data) {
+    if ((f_tmp == NULL) || (f_data == NULL)){
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return;
+    }
+    memcpy(&(f_data->u.frm80211.ops), f_tmp, sizeof(wlan_emu_frm80211_ops_type_t));
+    f_tmp += sizeof(wlan_emu_frm80211_ops_type_t);
+
+    memcpy(&f_data->u.frm80211.u.frame.frame_len, f_tmp, sizeof(unsigned int));
+    f_tmp += sizeof(unsigned int);
+
+    f_data->u.frm80211.u.frame.frame = (unsigned char *)malloc(f_data->u.frm80211.u.frame.frame_len);
+    memset(f_data->u.frm80211.u.frame.frame, 0, f_data->u.frm80211.u.frame.frame_len);
+    memcpy(f_data->u.frm80211.u.frame.frame, f_tmp, f_data->u.frm80211.u.frame.frame_len);
+    f_tmp += f_data->u.frm80211.u.frame.frame_len;
+
+    memcpy(f_data->u.frm80211.u.frame.macaddr, f_tmp, ETH_ALEN);
+    f_tmp += ETH_ALEN;
+
+    memcpy(f_data->u.frm80211.u.frame.client_macaddr, f_tmp, ETH_ALEN);
+    f_tmp += ETH_ALEN;
+
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ops is %d\n", __func__, __LINE__, f_data->u.frm80211.ops);
+    return;
+}
+
+static void handle_emu80211_type_msg_tctrl(char *f_tmp, wlan_emu_msg_data_t *f_data)
+{
+    if ((f_tmp == NULL) || (f_data == NULL)){
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: NULL Pointer f_tmp : %p f_data : %p\n", __func__, __LINE__, f_tmp, f_data);
+        return;
+    }
+    memcpy(&(f_data->u.emu80211.u.ctrl.ctrl), f_tmp, sizeof(wlan_emu_emu80211_ctrl_type_t));
+    f_tmp += sizeof(wlan_emu_emu80211_ctrl_type_t);
+
+    memcpy(&(f_data->u.emu80211.u.ctrl.coverage), f_tmp, sizeof(wlan_emu_test_coverage_t));
+    f_tmp += sizeof(wlan_emu_test_coverage_t);
+
+    memcpy(&(f_data->u.emu80211.u.ctrl.type), f_tmp, sizeof(wlan_emu_test_type_t));
+    f_tmp += sizeof(wlan_emu_test_type_t);
+
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ctrl : %d coverage : %d type : %d\n",
+            __func__, __LINE__, f_data->u.emu80211.u.ctrl.ctrl, f_data->u.emu80211.u.ctrl.coverage, f_data->u.emu80211.u.ctrl.type);
+
+    return;
+}
+
+
+static void handle_emu80211_type_msg_close(char *f_tmp, wlan_emu_msg_data_t *f_data)
+{
+    if ((f_tmp == NULL) || (f_data == NULL)){
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return;
+    }
+
+    memcpy(&(f_data->u.emu80211.u.close.fd), f_tmp, sizeof(int));
+    f_tmp += sizeof(int);
+
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fd : %d \n", __func__, __LINE__, f_data->u.emu80211.u.close.fd);
+
+    return;
+}
+
+void handle_emu80211_msg(char *f_tmp, wlan_emu_msg_data_t *f_data)
+{
+    if ((f_tmp == NULL) || (f_data == NULL)){
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: NULL Pointer f_tmp : %p f_data : %p\n", __func__, __LINE__, f_tmp, f_data);
+        return;
+    }
+
+    memcpy(&(f_data->u.emu80211.ops), f_tmp, sizeof(wlan_emu_emu80211_ops_type_t));
+    f_tmp += sizeof(wlan_emu_emu80211_ops_type_t);
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ops : %d\n",
+            __func__, __LINE__, f_data->u.emu80211.ops);
+
+    switch (f_data->u.emu80211.ops) {
+        case wlan_emu_emu80211_ops_type_tctrl:
+            handle_emu80211_type_msg_tctrl(f_tmp, f_data);
+        break;
+        case wlan_emu_emu80211_ops_type_close:
+            handle_emu80211_type_msg_close(f_tmp, f_data);
+        break;
+        default:
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Not handling any other messages\n", __func__, __LINE__);
+        break;
+    }
+
+    return;
+}
+
+void handle_webconfig_msg(char *f_tmp, wlan_emu_msg_data_t *f_data)
+{
+    if ((f_tmp == NULL) || (f_data == NULL)){
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: NULL Pointer f_tmp : %p f_data : %p\n", __func__, __LINE__, f_tmp, f_data);
+        return;
+    }
+
+    memcpy(&(f_data->u.ow_webconfig.subdoc_type), f_tmp, sizeof(webconfig_subdoc_type_t));
+    f_tmp += sizeof(webconfig_subdoc_type_t);
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ops : %d\n",
+            __func__, __LINE__, f_data->u.ow_webconfig.subdoc_type);
+
+}
+
+void wlan_emu_msg_hdlr_t::msg_hdlr_thread_func()
+{
+    int rc, nbytes;
+    struct pollfd pfd;
+    wlan_emu_msg_data_t f_data;
+    wlan_emu_msg_t  *msg;
+    char *f_tmp = (char *)malloc(2048);
+
+    if (f_tmp == NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: NULL Pointer Exiting hdlr thread\n", __func__, __LINE__);
+        return;
+    }
+
+    memset(&f_data, 0, sizeof(wlan_emu_msg_data_t));
+    memset(f_tmp, 0, 2048);
+
+
+    while (m_threadExit == false) {
+        if ((m_fd == -1) && ((m_fd = open("/dev/rdkfmac_dev", O_RDWR)) < 0)) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: failed to open emulator device, err:%d\n", __func__, __LINE__, errno);
+            usleep(5000);
+            continue;
+        }
+
+        pfd.fd = m_fd;
+        pfd.events = POLLIN;
+        if (poll(&pfd, 1, -1) < 0) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: emulator char device poll error: %d\n", __func__, __LINE__, errno);
+            continue;
+        }
+
+        if ((pfd.revents & POLLIN) == false) {
+            continue;
+        }
+
+        if ((nbytes = read(m_fd, f_tmp, 2048) == 0)) {
+            continue;
+        }
+
+        memcpy(&(f_data.type), f_tmp, sizeof(wlan_emu_msg_type_t));
+        f_tmp += sizeof(wlan_emu_msg_type_t);
+
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: f_data.type : %d \n", __func__, __LINE__, f_data.type);
+        switch(f_data.type) {
+            case wlan_emu_msg_type_cfg80211:
+                handle_cfg80211_msg(f_tmp, &f_data);
+            break;
+            case wlan_emu_msg_type_emu80211:
+                handle_emu80211_msg(f_tmp, &f_data);
+            break;
+            case wlan_emu_msg_type_frm80211:
+                handle_frm80211_msg(f_tmp, &f_data);
+            break;
+            case wlan_emu_msg_type_webconfig:
+                handle_webconfig_msg(f_tmp, &f_data);
+            break;
+            default:
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not handling any other messages\n", __func__, __LINE__);
+            break;
+        }
+
+        msg = new wlan_emu_msg_t;
+        msg->update_msg_data(&f_data);
+
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: received command: %s\n", __func__, __LINE__, msg->get_ops_string_by_msg_type());
+        if ((msg->get_msg_type() == wlan_emu_msg_type_emu80211) && (msg->get_emu80211_ops_type() == wlan_emu_emu80211_ops_type_close)) {
+            delete msg;
+            break;
+        }
+        queue_msg(msg);
+        delete msg;
+    }
+
+    close(m_fd);
+    m_fd = -1;
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: thread exit\n", __func__, __LINE__);
+}
+
+void *wlan_emu_msg_hdlr_t::msg_hdlr_thread_func(void *data)
+{
+    wlan_emu_msg_hdlr_t *obj = (wlan_emu_msg_hdlr_t *)data;
+
+    obj->msg_hdlr_thread_func();
+    return NULL;
+}
+
+int wlan_emu_msg_hdlr_t::start()
+{
+    if (pthread_create(&m_tid, NULL, wlan_emu_msg_hdlr_t::msg_hdlr_thread_func, this) != 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+void wlan_emu_msg_hdlr_t::stop()
+{
+    wlan_emu_msg_data_t spec;
+
+    m_threadExit = true;
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: sending close command to emulator char device\n", __func__, __LINE__);
+    spec.type = wlan_emu_msg_type_emu80211;
+    spec.u.emu80211.ops = wlan_emu_emu80211_ops_type_close;
+
+    write(m_fd, &spec, sizeof(wlan_emu_msg_data_t));
+}
+
+wlan_emu_msg_hdlr_t::wlan_emu_msg_hdlr_t()
+{
+    m_threadExit = false;
+    m_fd = -1;
+}
+
+wlan_emu_msg_hdlr_t::~wlan_emu_msg_hdlr_t()
+{
+
+}
