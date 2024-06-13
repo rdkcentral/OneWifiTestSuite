@@ -4,6 +4,7 @@
 
 extern "C" {
     webconfig_subdoc_type_t find_subdoc_type(webconfig_t *config, cJSON *json);
+    int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t vap_names[], int list_size, int num_types, ...);
 }
 
 int test_step_param_vap::step_execute()
@@ -38,8 +39,9 @@ int test_step_param_vap::step_execute()
 
         cci_webconfig = step->m_ui_mgr->get_webconfig_data();
 
-        step->subdoc_type = find_subdoc_type(&cci_webconfig->webconfig, cJSON_Parse(json_data));
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: subdoc_type : %d\n", __func__, __LINE__, step->subdoc_type);
+        step->frame_request.msg_type |= 1<<wlan_emu_msg_type_webconfig;
+        step->frame_request.subdoc_type = find_subdoc_type(&cci_webconfig->webconfig, cJSON_Parse(json_data));
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: subdoc_type : %d\n", __func__, __LINE__, step->frame_request.subdoc_type);
 
         ret = step->m_ui_mgr->rbus_send(json_data);
         if (ret != RETURN_OK) {
@@ -52,7 +54,7 @@ int test_step_param_vap::step_execute()
         free(json_data);
 
         if (step->capture_frames == true) {
-            step->test_state = wlan_emu_tests_state_cmd_wait;
+            step->test_state = wlan_emu_tests_state_cmd_continue;
         } else {
             step->test_state = wlan_emu_tests_state_cmd_results;
         }
@@ -139,6 +141,8 @@ int test_step_param_vap::step_upload_files(FILE *output_file, bool *update_to_td
             }
             res_file = (wlan_emu_pcap_captures *)queue_pop(step->test_results_queue);
         }
+        queue_destroy(step->test_results_queue);
+        step->test_results_queue = NULL;
     }
     return RETURN_OK;
 }
@@ -146,13 +150,132 @@ int test_step_param_vap::step_upload_files(FILE *output_file, bool *update_to_td
 void test_step_param_vap::step_remove()
 {
     test_step_param_vap *step = dynamic_cast<test_step_param_vap *>(this);
+    unsigned int results_count = 0;
+    wlan_emu_pcap_captures  *res_file = NULL;
     if (step == NULL) {
         return;
     }
+
+    //Below check to remove on error cases
+    if (step->capture_frames == true) {
+        if (step->test_results_queue == NULL) {
+            return;
+        }
+        results_count = queue_count(step->test_results_queue);
+        if (results_count == 0) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: No results for step to free %d \n", __func__, __LINE__, step->step_number);
+            free(step->test_results_queue);
+            step->test_results_queue = NULL;
+            return;
+        }
+
+        queue_destroy(step->test_results_queue);
+        step->test_results_queue = NULL;
+    }
+
     delete step;
     step = NULL;
 
     return;
+}
+
+char *get_subdoc_string_from_type(unsigned int type)
+{
+    switch(type) {
+        case webconfig_subdoc_type_private:
+            return VAP_PREFIX_PRIVATE;
+        case webconfig_subdoc_type_home:
+            return VAP_PREFIX_IOT;
+        case webconfig_subdoc_type_xfinity:
+            return VAP_PREFIX_HOTSPOT;
+        case webconfig_subdoc_type_mesh_backhaul:
+            return VAP_PREFIX_MESH_BACKHAUL;
+        case webconfig_subdoc_type_lnf:
+            return VAP_PREFIX_LNF;
+        default:
+            return NULL;
+    }
+    return NULL;
+}
+
+int test_step_param_vap::step_frame_filter(wlan_emu_msg_t *msg)
+{
+    test_step_params_t *step = this;
+    char *subdoc_str = NULL;
+    int num_radios = 0;
+    int num_vaps = 0;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    webconfig_cci_t *webconfig_data;
+    wifi_vap_info_t *vap_info;
+    int i = 0;
+    wlan_emu_msg_data_t *f_data = NULL;
+    mac_addr_str_t mac_str;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__, step->step_number);
+
+    if (msg == NULL) {
+        return RETURN_UNHANDLED;
+    }
+
+    //expect only wlan_emu_msg_type_cfg80211 or  wlan_emu_msg_type_webconfig
+    switch (msg->get_msg_type()) {
+        case wlan_emu_msg_type_cfg80211: //beacon
+            if ((step->capture_frames != true) || (!(step->frame_request.msg_type & (1<<msg->get_msg_type())))) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: TRK msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+                return RETURN_UNHANDLED;
+            }
+            //Check for the respective AP MAC Addresses
+            subdoc_str = get_subdoc_string_from_type(step->frame_request.subdoc_type);
+            if (subdoc_str == NULL) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: TRK msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+                return RETURN_UNHANDLED;
+            }
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d subdoc_str : %s\n", __func__, __LINE__, step->step_number, subdoc_str);
+            webconfig_data = step->m_ui_mgr->get_webconfig_data();
+            num_radios = webconfig_data->hal_cap.wifi_prop.numRadios;
+
+            num_vaps = get_list_of_vap_names(&webconfig_data->hal_cap.wifi_prop, vap_names, num_radios, 1, subdoc_str);
+            f_data = msg->get_msg();
+            mac_str_without_colon(f_data->u.cfg80211.u.start_ap.macaddr, mac_str);
+
+            for (i = 0; i < num_vaps; i++) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: %d : %s\n", __func__, __LINE__, i, vap_names[i]);
+
+                if (!(step->frame_request.cfg80211_ops & (1<<msg->get_cfg80211_ops_type()))) {
+                    return RETURN_UNHANDLED;
+                }
+
+                vap_info = step->m_ui_mgr->get_cci_vap_info(vap_names[i]);
+                if (memcmp(vap_info->u.bss_info.bssid, f_data->u.cfg80211.u.start_ap.macaddr, sizeof(mac_addr_t)) == 0) {
+                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: succesful mac address %s match with %s for step : %d\n",
+                            __func__, __LINE__, mac_str, vap_names[i], step->step_number);
+                    msg->unload_cfg80211_start_ap(step);
+                    return RETURN_HANDLED;
+                } else {
+                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not matching with mac address %s found for %s for step : %d\n",
+                            __func__, __LINE__, mac_str, vap_names[i], step->step_number);
+                }
+            }
+
+        break;
+        case wlan_emu_msg_type_webconfig://onewifi_webconfig
+            if (step->frame_request.subdoc_type != webconfig_subdoc_type_unknown) {
+                if (step->frame_request.subdoc_type == msg->get_webconfig_subdoc_type()) {
+                    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Received the webconfig update of subdoc %d for step : %d\n", 
+                            __func__, __LINE__, step->frame_request.subdoc_type, step->step_number);
+                    step->test_state = wlan_emu_tests_state_cmd_results;
+                    return RETURN_HANDLED;
+                }
+            }
+
+        break;
+        case wlan_emu_msg_type_frm80211: //mgmt
+        default:
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+        break;
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: unhandled step number : %d msg_type : %d\n", __func__, __LINE__, step->step_number, msg->get_msg_type());
+    return RETURN_UNHANDLED;
 }
 
 test_step_param_vap::test_step_param_vap()

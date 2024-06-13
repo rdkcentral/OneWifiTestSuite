@@ -158,7 +158,6 @@ void wlan_emu_msg_t::send_ctrl_msg(unsigned char *buff, unsigned int buff_len, w
     if ((sz = write(fd, &m_msg, sizeof(wlan_emu_msg_data_t))) < 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to write to char dev, err: %d\n", __func__, __LINE__, errno);
     }
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: called for the message of type cmd\n", __func__, __LINE__);
 
     close(fd);
 }
@@ -195,7 +194,7 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
     memset(fname, 0, sizeof(fname));
     to_queue = (char *)malloc(248);
     if (to_queue == NULL) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: NULL Pointer\n", __func__, __LINE__);
         return -1;
     }
     memset(to_queue, 0, 248);
@@ -237,7 +236,7 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
 
     handle = pcap_open_dead(DLT_IEEE802_11_RADIO, 4000);
     if (handle == NULL) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Error creating pcap file\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error creating pcap file\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -280,7 +279,7 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
     memcpy(to_queue, fname, 248);
     dump_handle = pcap_dump_open(handle, fname);
     if (dump_handle == NULL) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Error creating pcap file\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error creating pcap file\n", __func__, __LINE__);
         return -1;
     }
 
@@ -310,7 +309,7 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
                     __func__, __LINE__, ret, sizeof(capture->pcap_file));
             return RETURN_ERR;
         }
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: updated the file : %s type : %d at step_number : %d\n",
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: updated the file : %s type : %d at step_number : %d\n",
                     __func__, __LINE__, capture->pcap_file, capture->type, step->step_number);
         queue_push(step->test_results_queue, capture);
     }

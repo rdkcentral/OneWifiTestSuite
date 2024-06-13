@@ -24,8 +24,6 @@ class wlan_emu_tests_t {
     wlan_emu_ui_mgr_t   *m_ui_mgr;
     wlan_emu_sta_mgr_t  *m_sta_mgr;
     wlan_emu_test_case_config  *m_test_config;
-    void wlan_emu_handle_cfg80211_msg(wlan_emu_msg_t *msg);
-    void wlan_emu_handle_frm80211_msg(wlan_emu_msg_t *msg);
     void wlan_emu_handle_emu80211_msg(wlan_emu_msg_t *msg);
 
 public:
@@ -56,7 +54,7 @@ public:
 
     static void *test_function(void *arg);
 
-    void run();
+    void run(wlan_emu_msg_t *msg);
     void send_ctrl_msg(wlan_emu_emu80211_ctrl_type_t type);
     void detroy_reference_sequence();
     test_step_params_t *get_step_from_index(int index);
@@ -67,7 +65,6 @@ public:
     wlan_emu_tests_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr, wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config);
     void clear_pending_step(unsigned int step_seq_num);
     int get_next_pending_step(test_step_params_t **next_step);
-    void wlan_emu_handle_webconfig_msg(wlan_emu_msg_t *msg);
 };
 
 class wlan_emu_tests_private_vap_t : public wlan_emu_tests_t {

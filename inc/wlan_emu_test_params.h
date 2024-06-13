@@ -4,11 +4,14 @@
 #include <cstdio>
 #include "wlan_emu_common.h"
 #include "wlan_emu_ui_mgr.h"
+#include "wlan_emu_msg.h"
 #include "cci_wifi_utils.hpp"
 
 class wlan_emu_msg_mgr_t;
 class wlan_emu_ui_mgr_t;
 class wlan_emu_sta_mgr_t;
+class wlan_emu_msg_t;
+
 
 class test_step_params_t {
   public:
@@ -22,11 +25,11 @@ class test_step_params_t {
       char test_case_id[8];
       unsigned int step_number; //User input
       unsigned int step_seq_num; //step Sequence number
-      webconfig_subdoc_type_t subdoc_type;
 
       bool capture_frames; //TestCapture
       queue_t   *test_results_queue; //is output wlan_emu_pcap_captures
       queue_t   *test_reference_queue; //is of type  wlan_emu_pcap_captures
+      frame_capture_request_t frame_request;
       wlan_emu_tests_state_t test_state;
       bool fork; //true will be running in parallel else in serial
       pthread_mutex_t s_lock;//if running in parallel
@@ -50,6 +53,7 @@ class test_step_params_t {
       virtual int step_timeout() = 0;
       virtual int step_upload_files(FILE *output_file, bool *update_to_tda) = 0;
       virtual void step_remove() = 0;
+      virtual int step_frame_filter(wlan_emu_msg_t *msg) = 0;
       int rbus_send(char *data);
       inline void param_add_msg_mgr(wlan_emu_msg_mgr_t *mgr) { m_msg_mgr = mgr; }
       inline void param_add_ui_mgr(wlan_emu_ui_mgr_t *mgr) { m_ui_mgr = mgr; }
@@ -72,6 +76,7 @@ class test_step_param_vap : public test_step_params_t  {
       int step_timeout();
       int step_upload_files(FILE *output_file, bool *update_to_tda);
       void step_remove();
+      int step_frame_filter(wlan_emu_msg_t *msg);
       test_step_param_vap();
       ~test_step_param_vap();
 };
@@ -82,6 +87,7 @@ class test_step_param_radio : public test_step_params_t  {
       int step_timeout();
       int step_upload_files(FILE *output_file, bool *update_to_tda);
       void step_remove();
+      int step_frame_filter(wlan_emu_msg_t *msg);
       test_step_param_radio();
       ~test_step_param_radio();
 };
@@ -92,6 +98,7 @@ class test_step_param_sta : public test_step_params_t  {
       virtual int step_execute() = 0;
       virtual int step_timeout() = 0;
       virtual int step_upload_files(FILE *output_file, bool *update_to_tda) = 0;
+      virtual int step_frame_filter(wlan_emu_msg_t *msg) = 0;
       virtual void step_remove() = 0;
 };
 
@@ -104,6 +111,7 @@ class test_step_param_sta_management : public test_step_param_sta {
       int step_timeout();
       int step_upload_files(FILE *output_file, bool *update_to_tda);
       void step_remove();
+      int step_frame_filter(wlan_emu_msg_t *msg);
       test_step_param_sta_management();
       ~test_step_param_sta_management();
 };
@@ -115,6 +123,7 @@ class test_step_param_command : public test_step_params_t  {
       int step_timeout();
       int step_upload_files(FILE *output_file, bool *update_to_tda);
       void step_remove();
+      int step_frame_filter(wlan_emu_msg_t *msg);
       test_step_param_command();
       ~test_step_param_command();
 };
@@ -126,6 +135,7 @@ class test_step_param_dmlsubdoc : public test_step_params_t  {
       int step_timeout();
       int step_upload_files(FILE* output_file, bool *update_to_tda);
       void step_remove();
+      int step_frame_filter(wlan_emu_msg_t *msg);
       test_step_param_dmlsubdoc();
       ~test_step_param_dmlsubdoc();
 };
@@ -136,7 +146,7 @@ class test_step_param_logredirect : public test_step_params_t  {
       int step_timeout();
       int step_upload_files(FILE* output_file, bool *update_to_tda);
       void step_remove();
-      //      test_step_params_t *get_step_from_step_number(int step_number);
+      int step_frame_filter(wlan_emu_msg_t *msg);
       test_step_param_logredirect();
       ~test_step_param_logredirect();
       static void *log_thread_function(void *arg);
@@ -148,27 +158,29 @@ class test_step_param_dml_reset : public test_step_params_t  {
       int step_timeout();
       int step_upload_files(FILE* output_file, bool *update_to_tda);
       void step_remove();
+      int step_frame_filter(wlan_emu_msg_t *msg);
       test_step_param_dml_reset();
       ~test_step_param_dml_reset();
 };
 
 class test_step_param_get_stats_t : public test_step_params_t  {
-public:
-    int step_execute();
-    int step_timeout();
-    int step_upload_files(FILE* output_file, bool *update_to_tda);
-    void step_remove();
-    int start_subscription();
-    int stop_subscription(test_step_params_t *step);
-    char* getStatsClass();
-    char* get_scanmode();
-    int get_subscription_string(char *str, int str_len);
-    static void stats_get_event_handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
+  public:
+      int step_execute();
+      int step_timeout();
+      int step_upload_files(FILE* output_file, bool *update_to_tda);
+      void step_remove();
+      int start_subscription();
+      int stop_subscription(test_step_params_t *step);
+      char* getStatsClass();
+      char* get_scanmode();
+      int get_subscription_string(char *str, int str_len);
+      static void stats_get_event_handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
+      int step_frame_filter(wlan_emu_msg_t *msg);
 };
 class test_step_param_get_radio_channel_stats : public test_step_param_get_stats_t {
-public:
-    test_step_param_get_radio_channel_stats();
-    ~test_step_param_get_radio_channel_stats();
+  public:
+      test_step_param_get_radio_channel_stats();
+      ~test_step_param_get_radio_channel_stats();
 };
 class test_step_param_get_neighbor_stats : public test_step_param_get_stats_t  {
   public:

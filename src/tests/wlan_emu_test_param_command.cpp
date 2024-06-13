@@ -14,7 +14,6 @@ int test_step_param_command::step_execute()
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n",
                              __func__, __LINE__, step->step_number);
-    step->subdoc_type = webconfig_subdoc_type_unknown;
 
     fp = popen(step->u.cmd->test_cmd, "r");
     if (fp == NULL) {
@@ -127,6 +126,24 @@ void test_step_param_command::step_remove()
     step = NULL;
 
     return;
+}
+
+int test_step_param_command::step_frame_filter(wlan_emu_msg_t *msg)
+{
+    test_step_params_t *step = this;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__, step->step_number);
+    if (msg == NULL) {
+        return RETURN_UNHANDLED;
+    }
+    switch (msg->get_msg_type()) {
+        case wlan_emu_msg_type_webconfig://onewifi_webconfig
+        case wlan_emu_msg_type_cfg80211: //beacon
+        case wlan_emu_msg_type_frm80211: //mgmt
+        default:
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+        break;
+    }
+    return RETURN_UNHANDLED;
 }
 
 test_step_param_command::test_step_param_command()

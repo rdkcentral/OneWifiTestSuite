@@ -100,7 +100,7 @@ class wlan_emu_ui_mgr_t {
     int decode_step_command_config(cJSON *step, test_step_params_t *step_config);
     int decode_step_log_redirect(cJSON *step, test_step_params_t *step_config);
     int decode_step_dmlsubdoc_config(cJSON *step, test_step_params_t *step_config);
-    int decode_stats_get_common_params(cJSON *step, wifi_stats_get_t *wifi_stats_get, test_step_params_t *step_config);
+    int decode_stats_get_common_params(cJSON *step, test_step_params_t *step_config);
     int decode_step_radio_channel_stats_get(cJSON *step, test_step_params_t *step_config);
     int decode_step_neighbor_stats_get(cJSON *step, test_step_params_t *step_config);
     int decode_step_assoc_client_stats_get(cJSON *step, test_step_params_t *step_config);
@@ -131,7 +131,7 @@ class wlan_emu_ui_mgr_t {
     int cci_report_complete_to_tda(void);
     inline queue_t *get_test_cov_cases_queue(void) { return test_cov_cases_q; }
     inline rbusHandle_t get_rbus_handle(void) { return  m_webconfig_data->rbus_handle; }
-    int decode_pcap_frame_type(char *frame_type_str, wlan_emu_pcap_captures *capture_frame_info);
+    int decode_pcap_frame_type(char *frame_type_str, frame_capture_request_t *frame_capture_req);
     int rbus_send(char *data);
     inline webconfig_cci_t *get_webconfig_data() { return m_webconfig_data; }
     inline void update_webconfig_data(webconfig_cci_t *cci_webconfig) { m_webconfig_data = cci_webconfig; }

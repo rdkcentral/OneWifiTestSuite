@@ -36,8 +36,10 @@ int test_step_param_radio::step_execute()
          }
 
          cci_webconfig = step->m_ui_mgr->get_webconfig_data();
-         step->subdoc_type = find_subdoc_type(&cci_webconfig->webconfig, cJSON_Parse(json_data));
-         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: subdoc_type : %d\n", __func__, __LINE__, step->subdoc_type);
+         step->frame_request.msg_type |= 1<<wlan_emu_msg_type_webconfig;
+         step->frame_request.subdoc_type = find_subdoc_type(&cci_webconfig->webconfig, cJSON_Parse(json_data));
+
+         //wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: subdoc_type : %d\n", __func__, __LINE__, step->subdoc_type);
 
          ret = step->m_ui_mgr->rbus_send(json_data);
          if (ret != RETURN_OK) {
@@ -50,7 +52,7 @@ int test_step_param_radio::step_execute()
          free(json_data);
 
          if (step->capture_frames == true) {
-             step->test_state = wlan_emu_tests_state_cmd_wait;
+             step->test_state = wlan_emu_tests_state_cmd_continue;
          } else {
              step->test_state = wlan_emu_tests_state_cmd_results;
          }
@@ -137,6 +139,8 @@ int test_step_param_radio::step_upload_files(FILE *output_file, bool *update_to_
             }
             res_file = (wlan_emu_pcap_captures *)queue_pop(step->test_results_queue);
         }
+        queue_destroy(step->test_results_queue);
+        step->test_results_queue = NULL;
     }
     return RETURN_OK;
 }
@@ -144,13 +148,61 @@ int test_step_param_radio::step_upload_files(FILE *output_file, bool *update_to_
 void test_step_param_radio::step_remove()
 {
     test_step_param_radio *step = dynamic_cast<test_step_param_radio *>(this);
+    unsigned int results_count = 0;
+    wlan_emu_pcap_captures  *res_file = NULL;
     if (step == NULL) {
         return;
+    }
+//Below check to remove on error cases
+    if (step->capture_frames == true) {
+        if (step->test_results_queue == NULL) {
+            return;
+        }
+        results_count = queue_count(step->test_results_queue);
+        if (results_count == 0) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: No results for step to free %d \n", __func__, __LINE__, step->step_number);
+            free(step->test_results_queue);
+            step->test_results_queue = NULL;
+            return;
+        }
+        queue_destroy(step->test_results_queue);
+        step->test_results_queue = NULL;
     }
     delete step;
     step = NULL;
 
     return;
+}
+
+int test_step_param_radio::step_frame_filter(wlan_emu_msg_t *msg)
+{
+    test_step_params_t *step = this;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__, step->step_number);
+
+    if (msg == NULL) {
+        return RETURN_UNHANDLED;
+    }
+
+    switch (msg->get_msg_type()) {
+        case wlan_emu_msg_type_webconfig://onewifi_webconfig
+            if (step->frame_request.subdoc_type != webconfig_subdoc_type_unknown) {
+                if (step->frame_request.subdoc_type == msg->get_webconfig_subdoc_type()) {
+                    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Received the webconfig update for %d for step : %d\n",
+                            __func__, __LINE__, step->frame_request.subdoc_type, step->step_number);
+                    step->test_state = wlan_emu_tests_state_cmd_results;
+                    return RETURN_HANDLED;
+                }
+            }
+
+        break;
+        case wlan_emu_msg_type_cfg80211: //beacon
+        case wlan_emu_msg_type_frm80211: //mgmt
+        default:
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+        break;
+    }
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: unhandled step number : %d msg_type : %d\n", __func__, __LINE__, step->step_number, msg->get_msg_type());
+    return RETURN_UNHANDLED;
 }
 
 

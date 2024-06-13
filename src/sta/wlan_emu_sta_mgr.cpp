@@ -14,17 +14,17 @@ extern "C" {
     INT wifi_hal_getRadioVapInfoMap(wifi_radio_index_t index, wifi_vap_info_map_t *map);
 }
 
-static void ovs_fdb_flush(char *bridge)
+static void ovs_fdb_flush(char *bridge_name)
 {
     FILE *fp;
-    char ovs_cmd[BUFSIZ];
+    char ovs_cmd[64] = {0};
 
-    snprintf(ovs_cmd, BUFSIZ, "ovs-appctl fdb/flush %s", bridge);
+    snprintf(ovs_cmd, sizeof(ovs_cmd), "ovs-appctl fdb/flush %s", bridge_name);
 
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ovs_cmd : %s\n", __func__, __LINE__, ovs_cmd);
     fp = popen(ovs_cmd, "r");
-
     if (fp == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to flush ovs fdb\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to flush ovs fdb cmd : %s\n", __func__, __LINE__, ovs_cmd);
         return;
     }
 
@@ -75,6 +75,10 @@ void wlan_emu_sta_mgr_t::send_heart_beat(char *key, heart_beat_data_t *heart_bea
     sta_info_t *sta_info = NULL;
 
     sta_info = get_devid_sta_info(get_dev_id_from_key(key));
+    if (sta_info == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
+        return;
+    }
 
     sta = (wlan_emu_sta_t *)hash_map_get(m_sta_map, key);
     if (sta != NULL) {
@@ -177,6 +181,10 @@ void wlan_emu_sta_mgr_t::remove_all_sta(unsigned int test_id)
             wifi_hal_disconnect(sta_vap_info->vap_index);
 
             sta_info = get_devid_sta_info(sta->get_dev_id());
+            if (sta_info == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
+                return;
+            }
             remove_from_bridge(sta_info->interface_name, sta_vap_info->bridge_name);
             ovs_fdb_flush(sta_vap_info->bridge_name);
 
@@ -217,6 +225,10 @@ void wlan_emu_sta_mgr_t::remove_sta(sta_test_t *sta_test)
     wifi_hal_disconnect(sta_test->sta_vap_config->vap_index);
 
     sta_info = get_devid_sta_info(sta->get_dev_id());
+    if (sta_info == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
+        return;
+    }
     remove_from_bridge(sta_info->interface_name, sta_test->sta_vap_config->bridge_name);
     ovs_fdb_flush(sta_test->sta_vap_config->bridge_name);
 
@@ -247,6 +259,10 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     create_key(sta_test_config->key, dev_id, sta_test_config->test_id);
 
     sta_info = get_devid_sta_info(dev_id);
+    if (sta_info == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
+        return -1;
+    }
     sta_test_config->sta_vap_config->vap_index =  sta_info->index;
     sta_test_config->phy_index = sta_info->phy_index;
 

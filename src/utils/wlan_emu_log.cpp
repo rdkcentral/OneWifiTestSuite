@@ -24,11 +24,11 @@ char *get_formatted_time(char *time)
 
 void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
 {
-    char buff[1024] = {0};
     va_list list;
     FILE *log_fp = NULL;
     char *dbg_file = "/nvram/cciDbg";
     char *log_file = "/tmp/cciLog";
+    char buff[256] = {0};
 
 
     log_fp = fopen(log_file, "a+");
@@ -38,22 +38,33 @@ void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
 
     switch (level) {
         case wlan_emu_log_level_dbg:
-            if ((access(dbg_file, R_OK)) == 0) {
-                va_start(list, format);
-                vfprintf(log_fp, format, list);
-                va_end(list);
+            if ((access(dbg_file, R_OK)) != 0) {
+                return;
             }
         break;
 
         case wlan_emu_log_level_info:
         case wlan_emu_log_level_err:
-            va_start(list, format);
-            vfprintf(log_fp, format, list);
-            va_end(list);
         break;
         default:
             return;
     }
+    get_formatted_time(&buff[strlen(buff)]);
+
+    static const char *level_marker[wlan_emu_log_level_max] =
+    {
+        [wlan_emu_log_level_dbg]  = "<D>",
+        [wlan_emu_log_level_info] = "<I>",
+        [wlan_emu_log_level_err]  = "<E>",
+    };
+    if (level < wlan_emu_log_level_max)
+        snprintf(&buff[strlen(buff)], sizeof(buff) - strlen(buff), "%s ", level_marker[level]);
+
+    fprintf(log_fp, "%s", buff);
+
+    va_start(list, format);
+    vfprintf(log_fp, format, list);
+    va_end(list);
 
     fflush(log_fp);
     fclose(log_fp);

@@ -97,6 +97,11 @@ int test_step_param_logredirect::step_execute()
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return RETURN_ERR;
             }
+
+            if (pthread_detach(step->u.log_capture->thread_id)) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: thread detach failed\n", __func__, __LINE__);
+                return -1;
+            }
         }
     } else {
         test_step_params_t *log_step = NULL;
@@ -186,6 +191,25 @@ void test_step_param_logredirect::step_remove()
 
     return;
 }
+
+int test_step_param_logredirect::step_frame_filter(wlan_emu_msg_t *msg)
+{
+    test_step_params_t *step = this;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__, step->step_number);
+    if (msg == NULL) {
+        return RETURN_UNHANDLED;
+    }
+    switch (msg->get_msg_type()) {
+        case wlan_emu_msg_type_webconfig://onewifi_webconfig
+        case wlan_emu_msg_type_cfg80211: //beacon
+        case wlan_emu_msg_type_frm80211: //mgmt
+        default:
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+        break;
+    }
+    return RETURN_UNHANDLED;
+}
+
 
 test_step_param_logredirect::test_step_param_logredirect()
 {

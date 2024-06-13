@@ -28,7 +28,7 @@ void StationDisconnectHandler(int signal) {
 
 void wlan_emu_t::update_state_io_wait_done(wlan_emu_sig_type_t val)
 {
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Received signal: %d m_state : %d\n", __func__, __LINE__, val, m_state);
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Received signal: %d m_state : %d\n", __func__, __LINE__, val, m_state);
     //    assert(m_state != wlan_emu_tests_state_cmd_wait);
 
     switch (val) {
@@ -112,6 +112,8 @@ int wlan_emu_t::run()
             case wlan_emu_tests_state_cmd_abort:
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d:\n", __func__, __LINE__);
                 abort_test();
+                m_state = wlan_emu_tests_state_cmd_wait;
+                dml_state = wlan_emu_dml_tests_state_complete_failure;
                 //exit = true; //cci needs to run all the time even upon failure
                 break;
             default:
@@ -210,7 +212,6 @@ int wlan_emu_t::start_test()
             default:
             break;
         }
-
     }
 
     // store the test somewhere
@@ -306,7 +307,13 @@ rbusError_t wlan_emu_t::get_cci_handler(rbusHandle_t handle, rbusProperty_t prop
     char const* name = rbusProperty_GetName(property);
     rbusValue_t value;
     char null_string[3] = {0};
+
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: Rbus property=%s\n",__FUNCTION__,name);
+
+    if (get_dml_state()  == wlan_emu_dml_tests_state_running) {
+        wlan_emu_print(wlan_emu_log_level_info, "%s: Rbus property=%s execution not allowed as test case is in running state\n",__FUNCTION__);
+        return RBUS_ERROR_SUCCESS;
+    }
 
     char extension[64] = {0};
     sscanf(name, "Device.WiFi.Tests.%s", extension);

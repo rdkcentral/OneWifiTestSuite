@@ -10,6 +10,24 @@
 #include <string>
 #include <sstream>
 
+int test_step_param_get_stats_t::step_frame_filter(wlan_emu_msg_t *msg)
+{
+    test_step_params_t *step = this;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__, step->step_number);
+    if (msg == NULL) {
+        return RETURN_UNHANDLED;
+    }
+    switch (msg->get_msg_type()) {
+        case wlan_emu_msg_type_webconfig://onewifi_webconfig
+        case wlan_emu_msg_type_cfg80211: //beacon
+        case wlan_emu_msg_type_frm80211: //mgmt
+        default:
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+        break;
+    }
+    return RETURN_UNHANDLED;
+}
+
 char* test_step_param_get_stats_t::getStatsClass()
 {
     test_step_params_t* step = this;
@@ -154,7 +172,7 @@ int test_step_param_get_stats_t::start_subscription()
 
     rc = rbusEvent_Subscribe(cci_webconfig->rbus_handle, subscription, test_step_param_get_stats_t::stats_get_event_handler, this, 0);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Subscription failed for string : %s for step : %d\n", __func__, __LINE__, subscription, step->step_number);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Subscription failed for string : %s for step : %d rc : %d\n", __func__, __LINE__, subscription, step->step_number, rc);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     } else {
@@ -170,14 +188,14 @@ int test_step_param_get_stats_t::stop_subscription(test_step_params_t *step)
     int rc = RBUS_ERROR_SUCCESS;
     webconfig_cci_t  *cci_webconfig;
     cci_webconfig = step->m_ui_mgr->get_webconfig_data();
-  
+
     if (get_subscription_string(subscription, sizeof(subscription)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Get UnSubscription string failed for step : %d \n",
                 __func__, __LINE__, step->step_number);
         return RETURN_ERR;
     }
     wlan_emu_print(wlan_emu_log_level_dbg, " UnSubscription string : %s\n", subscription);
-  
+
     rc = rbusEvent_Unsubscribe(cci_webconfig->rbus_handle, subscription);
     if (rc != RBUS_ERROR_SUCCESS) {
         wlan_emu_print(wlan_emu_log_level_err, "Failed to UnSubscribe to %s: %d\n", subscription, rc);
@@ -197,7 +215,7 @@ int test_step_param_get_stats_t::step_execute()
     test_step_params_t *step = this;
     test_step_params_t *step_to_be_stopped = NULL;
     int timeout = 0;
-  
+
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: %s\n", __func__, __LINE__, getStatsClass());
 
     if (step == NULL) {
@@ -252,7 +270,7 @@ int test_step_param_get_stats_t::step_execute()
 int test_step_param_get_stats_t::step_timeout()
 {
     test_step_params_t *step = this;
-    
+
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: %s\n", __func__, __LINE__, getStatsClass());
 
     if ((step->test_state != wlan_emu_tests_state_cmd_results) && (step->u.wifi_stats_get->log_operation == log_operation_type_timer))  {
@@ -285,7 +303,7 @@ int test_step_param_get_stats_t::step_upload_files(FILE* output_file, bool *upda
     char *remote_test_results_loc = NULL;
     char *res_file_name;
     char *temp_res_file;
-    
+
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: %s\n", __func__, __LINE__, getStatsClass());
 
     if (step->u.wifi_stats_get == NULL) {
@@ -337,6 +355,8 @@ int test_step_param_get_stats_t::step_upload_files(FILE* output_file, bool *upda
         res_file_name = (char *)queue_pop(step->u.wifi_stats_get->get_stats_queue);
     }
     pthread_mutex_unlock(&step->s_lock);
+    queue_destroy(step->u.wifi_stats_get->get_stats_queue);
+    step->u.wifi_stats_get->get_stats_queue = NULL;
     return RETURN_OK;
 }
 
@@ -344,6 +364,7 @@ void test_step_param_get_stats_t::step_remove()
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: %s\n", __func__, __LINE__, getStatsClass());
     test_step_params_t *step = dynamic_cast<test_step_params_t *>(this);
+    delete  step->u.wifi_stats_get;
     pthread_mutex_destroy(&step->s_lock);
     if (step == NULL) {
         return;

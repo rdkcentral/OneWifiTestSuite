@@ -37,7 +37,7 @@ void wlan_emu_tests_t::clear_pending_step(unsigned int step_seq_num)
 
     mask = ~(1<<step_seq_num);
     test_config->pending_steps &= mask;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: cleared the step_seq_num : %d pending steps : 0x%x\n", __func__, __LINE__, step_seq_num, test_config->pending_steps);
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: cleared the step_seq_num : %d pending steps : 0x%x\n", __func__, __LINE__, step_seq_num, test_config->pending_steps);
 }
 
 int wlan_emu_tests_t::get_next_pending_step(test_step_params_t **next_step)
@@ -56,7 +56,7 @@ int wlan_emu_tests_t::get_next_pending_step(test_step_params_t **next_step)
     }
 
     if (test_config->pending_steps == 0) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: All steps executed\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: All steps executed\n", __func__, __LINE__);
         *next_step = NULL;
         return RETURN_OK;
     }
@@ -97,7 +97,7 @@ int wlan_emu_tests_t::get_next_pending_step(test_step_params_t **next_step)
                 return RETURN_ERR;
             }
             if (temp_step->test_state != wlan_emu_tests_state_cmd_results) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Found step %d in wait state from pending_steps : %d \n",
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Found step %d in wait state from pending_steps : %d \n",
                         __func__, __LINE__, temp_step->step_number, test_config->pending_steps);
                 *next_step = temp_step;
                 return RETURN_OK;
@@ -151,6 +151,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
     step = test->get_step_from_index(step_count);
     if (step == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: \n", __func__, __LINE__);
+        pthread_exit(NULL);
         return NULL;
     }
 
@@ -167,7 +168,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
             snprintf(step->test_case_name, sizeof(step->test_case_name), "%s", test_config->test_case_name);
             snprintf(step->test_case_id, sizeof(step->test_case_id), "%s", test_config->test_case_id);
             test->send_ctrl_msg(wlan_emu_emu80211_ctrl_tstart);
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Triggering step_number : %d test_state  : %d step_count : %d \n",
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Triggering step_number : %d test_state  : %d step_count : %d \n",
                     __func__, __LINE__, step->step_number, step->test_state, test_config->current_test_step );
             step->test_state = wlan_emu_tests_state_cmd_start;
         }
@@ -181,13 +182,17 @@ void *wlan_emu_tests_t::test_function(void *arg)
                 case wlan_emu_tests_state_cmd_wait:
                     //case wlan_emu_tests_state_cmd_results:
                 case wlan_emu_tests_state_cmd_continue:
-                    test->run();
+                    wlan_emu_msg_t *msg;
+                    while ((msg = test->pop_msg()) != NULL) {
+                        test->run(msg);
+                        delete msg;
+                    }
                     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step_number : %d test_state  : %d step_count : %d \n",
                             __func__, __LINE__, step->step_number, step->test_state, test_config->current_test_step );
                     continue;
                 case wlan_emu_tests_state_cmd_results:
                     test->clear_pending_step(step->step_seq_num);
-                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Results for step_number : %d test_state  : %d step_count : %d \n",
+                    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Results for step_number : %d test_state  : %d step_count : %d \n",
                             __func__, __LINE__, step->step_number, step->test_state, test_config->current_test_step );
                     ret = test->get_next_pending_step(&step);
                     if (ret == RETURN_ERR) {
@@ -195,15 +200,17 @@ void *wlan_emu_tests_t::test_function(void *arg)
                         step->test_state =  wlan_emu_tests_state_cmd_abort;
                         test_config->test_state =  wlan_emu_tests_state_cmd_abort;
                         pthread_mutex_unlock(&test->m_lock);
+                        pthread_exit(NULL);
                         return NULL;
                     }
                     if (step == NULL) {
                         test_config->test_state =  wlan_emu_tests_state_cmd_results;
-                        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Tests Done\n",
+                        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Tests Done\n",
                                 __func__, __LINE__);
                         test->stop();
                         test->test_done();
                         pthread_mutex_unlock(&test->m_lock);
+                        pthread_exit(NULL);
                         return NULL;
                     }
                     test_config->current_test_step = (step_total-(step->step_seq_num)-1);
@@ -211,14 +218,29 @@ void *wlan_emu_tests_t::test_function(void *arg)
 
                 case wlan_emu_tests_state_cmd_abort:
                 default:
-                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: abort for step_number : %d test_state  : %d step_count : %d \n",
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: abort for step_number : %d test_state  : %d step_count : %d \n",
                             __func__, __LINE__, step->step_number, step->test_state, test_config->current_test_step );
                     test->stop();
                     test->test_fail();
                 break;
             }
         } else if (rc == ETIMEDOUT) {
+             //First check if the step state is abort ?
+            if (step->test_state == wlan_emu_tests_state_cmd_abort) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Fail for step_number : %d test_state  : %d step_count : %d \n",
+                        __func__, __LINE__, step->step_number, step->test_state, test_config->current_test_step );
+                test->stop();
+                test->test_fail();
+                step->test_state =  wlan_emu_tests_state_cmd_abort;
+                test_config->test_state =  wlan_emu_tests_state_cmd_abort;
+                pthread_mutex_unlock(&test->m_lock);
+                pthread_exit(NULL);
+                return NULL;
+            }
+
+            //perform respective step timeout function
             step->step_timeout();
+
             if (step->test_state == wlan_emu_tests_state_cmd_results) {
                 test->clear_pending_step(step->step_seq_num);
                 ret = test->get_next_pending_step(&step);
@@ -227,16 +249,18 @@ void *wlan_emu_tests_t::test_function(void *arg)
                     step->test_state =  wlan_emu_tests_state_cmd_abort;
                     test_config->test_state =  wlan_emu_tests_state_cmd_abort;
                     pthread_mutex_unlock(&test->m_lock);
+                    pthread_exit(NULL);
                     return NULL;
                 }
                 //All the tests are done
                 if (step == NULL) {
                     test_config->test_state =  wlan_emu_tests_state_cmd_results;
-                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Tests Done\n",
-                            __func__, __LINE__);
                     test->stop();
                     test->test_done();
+                    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Tests Done\n",
+                            __func__, __LINE__);
                     pthread_mutex_unlock(&test->m_lock);
+                    pthread_exit(NULL);
                     return NULL;
                 }
                 test_config->current_test_step = (step_total-(step->step_seq_num)-1);
@@ -254,6 +278,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
                         step->test_state =  wlan_emu_tests_state_cmd_abort;
                         test_config->test_state =  wlan_emu_tests_state_cmd_abort;
                         pthread_mutex_unlock(&test->m_lock);
+                        pthread_exit(NULL);
                         return NULL;
                     }
                     //here temp_step cant be null
@@ -262,6 +287,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
                         step->test_state =  wlan_emu_tests_state_cmd_abort;
                         test_config->test_state =  wlan_emu_tests_state_cmd_abort;
                         pthread_mutex_unlock(&test->m_lock);
+                        pthread_exit(NULL);
                         return NULL;
                     }
 
@@ -275,13 +301,14 @@ void *wlan_emu_tests_t::test_function(void *arg)
                         __func__, __LINE__, step->step_number, step->test_state, test_config->current_test_step );
                 continue;
             } else {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Fail for step_number : %d test_state  : %d step_count : %d \n",
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Fail for step_number : %d test_state  : %d step_count : %d \n",
                         __func__, __LINE__, step->step_number, step->test_state, test_config->current_test_step );
                 test->stop();
                 test->test_fail();
                 step->test_state =  wlan_emu_tests_state_cmd_abort;
                 test_config->test_state =  wlan_emu_tests_state_cmd_abort;
                 pthread_mutex_unlock(&test->m_lock);
+                pthread_exit(NULL);
                 return NULL;
             }
         }
@@ -291,6 +318,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
 
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: thread exit\n", __func__, __LINE__);
+    pthread_exit(NULL);
 
     return NULL;
 }
@@ -315,13 +343,14 @@ void wlan_emu_tests_t::wlan_emu_handle_emu80211_msg(wlan_emu_msg_t *msg)
                 return;
             }
 
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: triggering update for step : %d\n", __func__, __LINE__, curr_step->step_number);
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: triggering update for step : %d\n", __func__, __LINE__, curr_step->step_number);
             // received control message for test coverage 1 and VAP tests
             if (ctrl->ctrl == wlan_emu_emu80211_ctrl_tstart) {
                 if (curr_step->step_execute() != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: execute step failed for %d\n", __func__, __LINE__, curr_step->step_number);
+                    curr_step->test_state = wlan_emu_tests_state_cmd_abort;
                 } else {
-                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: execute step successful for %d\n", __func__, __LINE__, curr_step->step_number);
+                    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: execute step successful for %d\n", __func__, __LINE__, curr_step->step_number);
                 }
             } else if (ctrl->ctrl == wlan_emu_emu80211_ctrl_tstop) {
             }
@@ -331,94 +360,64 @@ void wlan_emu_tests_t::wlan_emu_handle_emu80211_msg(wlan_emu_msg_t *msg)
     }
 }
 
-void wlan_emu_tests_t::wlan_emu_handle_cfg80211_msg(wlan_emu_msg_t *msg)
+void wlan_emu_tests_t::run(wlan_emu_msg_t *msg)
 {
-    wlan_emu_test_case_config *test_config;
-    test_step_params_t *step = get_current_step();
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: received cfg80211 command: %s\n", __func__, __LINE__,
-            msg->cfg80211_ops_type_to_string());
-    test_config = get_test_config();
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: \n", __func__, __LINE__);
+    wlan_emu_test_case_config * test_config = get_test_config();
+    unsigned int pending_steps = test_config->pending_steps;
+    unsigned int step_index_number = 0;
+    unsigned int step_seq_number = 0;
+    int step_total = queue_count(test_config->test_steps_q);
+    test_step_params_t *step;
+    int ret;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step_total : %d\n", __func__, __LINE__, step_total);
 
-    switch(msg->get_cfg80211_ops_type()) {
-        case wlan_emu_cfg80211_ops_type_start_ap:
-            if (step->capture_frames == true) {
-                msg->unload_cfg80211_start_ap(step);
-                //                step->test_state = wlan_emu_tests_state_cmd_results;
+    if (msg == NULL) {
+        return;
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: msg_type : %d \n", __func__, __LINE__, msg->get_msg_type());
+    if (msg->get_msg_type() == wlan_emu_msg_type_emu80211) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: \n", __func__, __LINE__);
+        wlan_emu_handle_emu80211_msg(msg);
+    } else {
+        step_seq_number = 0;
+        //Process the msg for all the pending steps
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: pending_steps : %d\n", __func__, __LINE__, pending_steps);
+        while (pending_steps) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: \n", __func__, __LINE__);
+            if (!(pending_steps & 1)) {
+                step_seq_number++;
+                pending_steps >>= 1;
+                continue;
             }
-        break;
-        default:
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not handling \n", __func__, __LINE__);
-        break;
-    }
-
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Download of Beacon command completed\n", __func__, __LINE__);
-    return;
-}
-
-void wlan_emu_tests_t::wlan_emu_handle_frm80211_msg(wlan_emu_msg_t *msg)
-{
-    wlan_emu_test_case_config *test_config;
-    test_step_params_t *step = get_current_step();
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: received frm80211\n", __func__, __LINE__);
-    test_config = get_test_config();
-
-    if (step->capture_frames == true) {
-        msg->unload_frm80211_msg(step);
-        //        step->test_state = wlan_emu_tests_state_cmd_results;
-    }
-
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Download of Command completed\n", __func__, __LINE__);
-    return;
-}
-
-
-void wlan_emu_tests_t::wlan_emu_handle_webconfig_msg(wlan_emu_msg_t *msg)
-{
-    wlan_emu_test_case_config *test_config;
-    test_step_params_t *step = get_current_step();
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Received webconfig msg of subdoc_type : %d\n", __func__, __LINE__,  msg->get_webconfig_subdoc_type());
-    test_config = get_test_config();
-
-    if (step->subdoc_type != webconfig_subdoc_type_unknown) {
-        if (step->subdoc_type == msg->get_webconfig_subdoc_type()) {
-            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Received the webconfig update for %d for step : %d\n", __func__, __LINE__, step->subdoc_type, step->step_number);
-            if (step->param_type != step_param_type_dml_reset) {
-                step->test_state = wlan_emu_tests_state_cmd_results;
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: \n", __func__, __LINE__);
+            step_index_number = step_total-step_seq_number-1;
+            step = get_step_from_index(step_index_number);
+            if (step == NULL) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step NULL at index %d\n", __func__, __LINE__, step_index_number);
+                return;
             }
+
+            ret = step->step_frame_filter(msg);
+            if (ret == RETURN_UNHANDLED) {
+                //frame is not handled
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Frame unhandled by step_index_number : %d step_number : %d step_seq_num : %d pending_steps : %d step_seq_number : %d\n",
+                        __func__, __LINE__, step_index_number, step->step_number, step->step_seq_num, pending_steps, step_seq_number);
+                pending_steps >>= 1;
+                continue;
+            } else if (ret == RETURN_HANDLED) {
+                //frame is handled
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Frame handled by step_index_number : %d step_number : %d step_seq_num : %d\n",
+                        __func__, __LINE__, step_index_number, step->step_number, step->step_seq_num);
+                return;
+            }
+
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step_index_number : %d step_number : %d step_seq_num : %d pending_steps : %d step_seq_number : %d\n",
+                    __func__, __LINE__, step_index_number, step->step_number, step->step_seq_num, pending_steps, step_seq_number);
+//            step_seq_number++; //This might not be required
+//            pending_steps >>= 1; //This might not be required
         }
-    }
-
-    return;
-}
-
-
-void wlan_emu_tests_t::run()
-{
-    wlan_emu_msg_t *msg;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: \n", __func__, __LINE__);
-
-    while ((msg = pop_msg()) != NULL) {
-        switch (msg->get_msg_type()) {
-            case wlan_emu_msg_type_emu80211:
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: \n", __func__, __LINE__);
-                wlan_emu_handle_emu80211_msg(msg);
-            break;
-            case wlan_emu_msg_type_cfg80211: //beacon
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: \n", __func__, __LINE__);
-                wlan_emu_handle_cfg80211_msg(msg);
-            break;
-            case wlan_emu_msg_type_frm80211: //mgmt
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: \n", __func__, __LINE__);
-                wlan_emu_handle_frm80211_msg(msg);
-            break;
-            case wlan_emu_msg_type_webconfig://onewifi_webconfig
-                wlan_emu_handle_webconfig_msg(msg);
-            default:
-            break;
-        }
-
-        delete msg;
     }
 }
 
@@ -465,6 +464,11 @@ int wlan_emu_tests_t::start()
     }
 
     m_msg_mgr->subscribe(this);
+    if (pthread_join(m_tid, NULL)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pthread detach failed\n", __func__, __LINE__);
+        return -1;
+    }
+
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test start control command send\n", __func__, __LINE__);
     //send_ctrl_msg(wlan_emu_emu80211_ctrl_tstart);
 

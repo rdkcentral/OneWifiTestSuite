@@ -257,7 +257,7 @@ void handle_frm80211_msg(char *f_tmp, wlan_emu_msg_data_t *f_data) {
     memcpy(f_data->u.frm80211.u.frame.client_macaddr, f_tmp, ETH_ALEN);
     f_tmp += ETH_ALEN;
 
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ops is %d\n", __func__, __LINE__, f_data->u.frm80211.ops);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ops is %d\n", __func__, __LINE__, f_data->u.frm80211.ops);
     return;
 }
 

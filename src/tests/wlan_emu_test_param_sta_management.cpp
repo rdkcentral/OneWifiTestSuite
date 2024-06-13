@@ -76,7 +76,6 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     cJSON *pattern = NULL;
     cJSON *ap_json_config= NULL;
     cJSON *sta_root_json = NULL;
-    char *str = NULL;
     char *json_data;
     int rc;
 
@@ -118,8 +117,6 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     ap_vap_info = step_config->m_ui_mgr->get_cci_vap_info(step_config->u.sta_test.u.sta_management.ap_vap_name);
 
     decode_user_ap_config(sta_root_json, ap_vap_info);
-
-    str = cJSON_Print(ap_json_config);
 
     step_config->u.sta_test.sta_test_type = sta_test_type_management;
     step_config->u.sta_test.profile.mob  = sta_mobility_profile_type_static;
@@ -180,7 +177,8 @@ int test_step_param_sta_management::step_execute()
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n",
                              __func__, __LINE__, step->step_number);
 
-    step->subdoc_type = webconfig_subdoc_type_unknown;
+    //    step->frame_capture.msg_type |= 1<<wlan_emu_msg_type_webconfig;
+    //    step->frame_capture.subdoc_type = webconfig_subdoc_type_associated_clients;
     if (step->u.sta_test.is_decoded == false) {
         if (decode_step_sta_management_config() == RETURN_ERR) {
             return RETURN_ERR;
@@ -343,6 +341,8 @@ int test_step_param_sta_management::step_upload_files(FILE *output_file, bool *u
             }
             res_file = (wlan_emu_pcap_captures *)queue_pop(step->test_results_queue);
         }
+        queue_destroy(step->test_results_queue);
+        step->test_results_queue = NULL;
     }
     return RETURN_OK;
 }
@@ -350,6 +350,8 @@ int test_step_param_sta_management::step_upload_files(FILE *output_file, bool *u
 void test_step_param_sta_management::step_remove()
 {
     test_step_param_sta_management *step = dynamic_cast<test_step_param_sta_management *>(this);
+    unsigned int results_count = 0;
+    wlan_emu_pcap_captures  *res_file = NULL;
 
     if (step == NULL) {
         return;
@@ -359,17 +361,83 @@ void test_step_param_sta_management::step_remove()
         delete step;
         return;
     }
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Disconnecting the client at vap index : %d\n",
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Disconnecting the client at vap index : %d\n",
                 __func__, __LINE__, step->u.sta_test.sta_vap_config->vap_index);
 
     step->m_sta_mgr->remove_sta(&step->u.sta_test);
 
     delete step->u.sta_test.sta_vap_config;
+
+    //Below check to remove on error cases
+    if (step->capture_frames == true) {
+        if (step->test_results_queue == NULL) {
+            return;
+        }
+        results_count = queue_count(step->test_results_queue);
+        if (results_count == 0) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: No results for step to free %d \n", __func__, __LINE__, step->step_number);
+            free(step->test_results_queue);
+            step->test_results_queue = NULL;
+            return;
+        }
+        queue_destroy(step->test_results_queue);
+        step->test_results_queue = NULL;
+    }
+
     delete step;
     step = NULL;
 
     return;
 }
+
+
+int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
+{
+    test_step_params_t *step = this;
+    wlan_emu_msg_data_t *f_data = NULL;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__, step->step_number);
+
+    if (msg == NULL) {
+        return RETURN_UNHANDLED;
+    }
+
+    //expect only wlan_emu_msg_type_cfg80211 or  wlan_emu_msg_type_webconfig
+    switch (msg->get_msg_type()) {
+        case wlan_emu_msg_type_frm80211: //mgmt
+            if ((step->capture_frames != true) || (!(step->frame_request.msg_type & (1<<msg->get_msg_type())))) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: TRK msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+                return RETURN_UNHANDLED;
+            }
+
+            f_data = msg->get_msg();
+
+            if (memcmp(step->u.sta_test.sta_vap_config->u.sta_info.mac, f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: succesful matching with sta mac address\n",
+                        __func__, __LINE__);
+
+                if (!(step->frame_request.frm80211_ops & (1<<msg->get_frm80211_ops_type()))) {
+                    return RETURN_UNHANDLED;
+                }
+                msg->unload_frm80211_msg(step);
+                return RETURN_HANDLED;
+            } else {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not matching with sta mac address\n",
+                        __func__, __LINE__);
+            }
+        break;
+        case wlan_emu_msg_type_cfg80211: //beacon
+        case wlan_emu_msg_type_webconfig://onewifi_webconfig
+        default:
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+        break;
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: unhandled step number : %d msg_type : %d\n", __func__, __LINE__, step->step_number, msg->get_msg_type());
+    return RETURN_UNHANDLED;
+}
+
+
+
 
 test_step_param_sta_management::test_step_param_sta_management()
 {

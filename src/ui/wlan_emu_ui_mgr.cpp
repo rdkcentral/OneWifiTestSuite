@@ -380,43 +380,43 @@ void wlan_emu_ui_mgr_t::copy_string(char* destination, char* source, int len)
     }
 }
 
-int wlan_emu_ui_mgr_t::decode_pcap_frame_type(char *frame_type_str, wlan_emu_pcap_captures *capture_frame_info)
+int wlan_emu_ui_mgr_t::decode_pcap_frame_type(char *frame_type_str, frame_capture_request_t *frame_capture_req)
 {
     if (strcmp(frame_type_str, "Beacon") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_cfg80211;
-        capture_frame_info->u.cfg80211_ops = wlan_emu_cfg80211_ops_type_start_ap;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_cfg80211;
+        frame_capture_req->cfg80211_ops |= 1<<wlan_emu_cfg80211_ops_type_start_ap;
         return RETURN_OK;
     } else if (strcmp(frame_type_str, "ProbeResponse") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_frm80211;
-        capture_frame_info->u.frm80211_ops = wlan_emu_frm80211_ops_type_prb_resp;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_prb_resp;
         return RETURN_OK;
     } else if (strcmp(frame_type_str, "ProbeRequest") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_frm80211;
-        capture_frame_info->u.frm80211_ops = wlan_emu_frm80211_ops_type_prb_req;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_prb_req;
         return RETURN_OK;
     } else if (strcmp(frame_type_str, "AssociationResponse") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_frm80211;
-        capture_frame_info->u.frm80211_ops = wlan_emu_frm80211_ops_type_assoc_resp;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_assoc_resp;
         return RETURN_OK;
     } else if (strcmp(frame_type_str, "AssociationRequest") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_frm80211;
-        capture_frame_info->u.frm80211_ops = wlan_emu_frm80211_ops_type_assoc_req;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_assoc_req;
         return RETURN_OK;
     } else if (strcmp(frame_type_str, "Authentication") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_frm80211;
-        capture_frame_info->u.frm80211_ops = wlan_emu_frm80211_ops_type_auth;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_auth;
         return RETURN_OK;
     } else if (strcmp(frame_type_str, "Deauthentication") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_frm80211;
-        capture_frame_info->u.frm80211_ops = wlan_emu_frm80211_ops_type_deauth;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_deauth;
         return RETURN_OK;
     } else if (strcmp(frame_type_str, "Disassociation") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_frm80211;
-        capture_frame_info->u.frm80211_ops = wlan_emu_frm80211_ops_type_disassoc;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_disassoc;
         return RETURN_OK;
     } else if (strcmp(frame_type_str, "Eapol") == 0) {
-        capture_frame_info->type = wlan_emu_msg_type_frm80211;
-        capture_frame_info->u.frm80211_ops = wlan_emu_frm80211_ops_type_eapol;
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_eapol;
         return RETURN_OK;
     }
 
@@ -425,9 +425,10 @@ int wlan_emu_ui_mgr_t::decode_pcap_frame_type(char *frame_type_str, wlan_emu_pca
 
 int wlan_emu_ui_mgr_t::decode_step_common_config(cJSON *step, test_step_params_t *step_config)
 {
-    cJSON *param = NULL, *test_ref = NULL, *ref_list = NULL;
-    //    BOOL capture = false;
-    char *str = NULL;
+    cJSON *param = NULL;
+    cJSON *frame_type_list = NULL;
+    cJSON *frame_type = NULL;
+    cJSON *frame = NULL;
 
     decode_param_string(step, "StepNumber", param);
     step_config->step_number = atoi(param->valuestring);
@@ -442,41 +443,26 @@ int wlan_emu_ui_mgr_t::decode_step_common_config(cJSON *step, test_step_params_t
     }
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: fork value : %d\n", __func__, __LINE__, step_config->fork);
 
+    memset(&step_config->frame_request, 0, sizeof(step_config->frame_request));
     param = cJSON_GetObjectItem(step, "TestCapture");
 
     if (param != NULL && cJSON_IsBool(param)) {
         step_config->capture_frames = (param->type & cJSON_True) ? true:false;
         if (step_config->capture_frames == true) {
-            step_config->test_reference_queue = queue_create();
-            if (step_config->test_reference_queue == NULL) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue creation failed\n", __func__, __LINE__);
-                return RETURN_ERR;
-            }
-            step_config->test_results_queue = NULL;
-
-            //parse the test reference
-            if ((ref_list = cJSON_GetObjectItem(step, "TestReference")) != NULL) {
-                cJSON_ArrayForEach(test_ref, ref_list) {
-                    str = cJSON_Print(test_ref);
-                    wlan_emu_pcap_captures *reference = new wlan_emu_pcap_captures;
-                    if (reference == NULL) {
-                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: reference allocation failed\n", __func__, __LINE__);
-                        return RETURN_ERR;
-                    }
-                    param = cJSON_GetObjectItem(test_ref, "FrameType");
-                    if (decode_pcap_frame_type(param->valuestring, reference) != RETURN_OK) {
+            if ((frame_type_list = cJSON_GetObjectItem(step, "TestCaptureFrame")) != NULL) {
+                cJSON_ArrayForEach(frame_type, frame_type_list) {
+                    frame = cJSON_GetObjectItem(frame_type, "FrameType");
+                    if (decode_pcap_frame_type(frame->valuestring, &step_config->frame_request) != RETURN_OK) {
                         wlan_emu_print(wlan_emu_log_level_err, "%s:%d Unable to decode the pcap frametype : %s\n",
                                 __func__, __LINE__, param->valuestring);
                         return RETURN_ERR;
                     }
-
-                    param = cJSON_GetObjectItem(test_ref, "ReferenceName");
-                    //Note : we are not using reference as of now
-                    queue_push(step_config->test_reference_queue, reference);
                 }
             }
         }
     }
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: msg_type : 0x%x frm80211_ops : 0x%x cfg80211_ops : 0x%x\n", __func__, __LINE__,
+            step_config->frame_request.msg_type, step_config->frame_request.frm80211_ops, step_config->frame_request.cfg80211_ops);
     return RETURN_OK;
 }
 
@@ -567,7 +553,7 @@ int wlan_emu_ui_mgr_t::decode_step_dmlsubdoc_config(cJSON *step, test_step_param
     snprintf(cmd->cmd_exec_log_filename, sizeof(cmd->cmd_exec_log_filename), "%s/%s_dml.json", test_results_dir_path, cmac_str);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: DMCLI Log File name : %s\n", __func__, __LINE__, cmd->cmd_exec_log_filename);
     step_config->u.cmd = cmd;
-    step_config->subdoc_type = webconfig_subdoc_type_dml;
+//    step_config->subdoc_type = webconfig_subdoc_type_dml;
     return RETURN_OK;
 }
 
@@ -634,12 +620,14 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
     return RETURN_OK;
 }
 
-int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, wifi_stats_get_t *wifi_stats_get, test_step_params_t *step_config) 
+int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, test_step_params_t *step_config)
 {
     cJSON *config;
     int stop_step_number = 0;
     char output_file_name[128] = {0};
     char operation[32] = {0};
+
+    wifi_stats_get_t *wifi_stats_get = step_config->u.wifi_stats_get;
 
     config = cJSON_GetObjectItem(step, "Operation");
     if (config != NULL) {
@@ -732,7 +720,9 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_get(cJSON *step, test_ste
         return RETURN_ERR;
     }
 
-    if (decode_stats_get_common_params(step, wifi_stats_get, step_config) != RETURN_OK) {
+
+    step_config->u.wifi_stats_get = wifi_stats_get;
+    if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
         delete wifi_stats_get;
         return RETURN_ERR;
     } else {
@@ -762,7 +752,6 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_get(cJSON *step, test_ste
     }
 
     wifi_stats_get->data_type = mon_stats_type_radio_channel_stats;
-    step_config->u.wifi_stats_get = wifi_stats_get;
 
     return RETURN_OK;
 }
@@ -801,7 +790,8 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_get(cJSON *step, test_step_par
         return RETURN_ERR;
     }
 
-    if (decode_stats_get_common_params(step, wifi_stats_get, step_config) != RETURN_OK) {
+    step_config->u.wifi_stats_get = wifi_stats_get;
+    if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
         delete wifi_stats_get;
         return RETURN_ERR;
     } else {
@@ -831,7 +821,6 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_get(cJSON *step, test_step_par
     }
 
     wifi_stats_get->data_type = mon_stats_type_neighbor_stats;
-    step_config->u.wifi_stats_get = wifi_stats_get;
 
     return RETURN_OK;
 }
@@ -870,7 +859,8 @@ int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_get(cJSON *step, test_step
         return RETURN_ERR;
     }
 
-    if (decode_stats_get_common_params(step, wifi_stats_get, step_config) != RETURN_OK) {
+    step_config->u.wifi_stats_get = wifi_stats_get;
+    if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
         delete wifi_stats_get;
         return RETURN_ERR;
     } else {
@@ -878,7 +868,6 @@ int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_get(cJSON *step, test_step
     }
 
     wifi_stats_get->data_type = mon_stats_type_associated_device_stats;
-    step_config->u.wifi_stats_get = wifi_stats_get;
 
     return RETURN_OK;
 }
@@ -918,7 +907,8 @@ int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_get(cJSON *step, test_step_p
         return RETURN_ERR;
     }
 
-    if (decode_stats_get_common_params(step, wifi_stats_get, step_config) != RETURN_OK) {
+    step_config->u.wifi_stats_get = wifi_stats_get;
+    if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
         delete wifi_stats_get;
         return RETURN_ERR;
     } else {
@@ -926,7 +916,6 @@ int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_get(cJSON *step, test_step_p
     }
 
     wifi_stats_get->data_type = mon_stats_type_radio_diagnostic_stats;
-    step_config->u.wifi_stats_get = wifi_stats_get;
 
     return RETURN_OK;
 }
@@ -966,7 +955,8 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_get(cJSON *step, test
         return RETURN_ERR;
     }
 
-    if (decode_stats_get_common_params(step, wifi_stats_get, step_config) != RETURN_OK) {
+    step_config->u.wifi_stats_get = wifi_stats_get;
+    if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
         delete wifi_stats_get;
         return RETURN_ERR;
     } else {
@@ -974,7 +964,6 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_get(cJSON *step, test
     }
 
     wifi_stats_get->data_type = mon_stats_type_radio_temperature;
-    step_config->u.wifi_stats_get = wifi_stats_get;
 
     return RETURN_OK;
 }
@@ -1179,6 +1168,7 @@ void wlan_emu_ui_mgr_t::dump_json(cJSON *json_buff, const char *func, int line)
     char *str = NULL;
     str = cJSON_Print(json_buff);
     wlan_emu_print(wlan_emu_log_level_err, "%s %d : cjson str : \n %s\n", func, line, str);
+    cJSON_free(str);
 }
 
 int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry, wlan_emu_test_case_config *configuration)
@@ -1435,7 +1425,7 @@ int wlan_emu_ui_mgr_t::decode_json_config(char *raw_data)
     }
 
 
-    wlan_emu_print(wlan_emu_log_level_err,"%s:%d: server_address : %s\n", __func__, __LINE__, server_address);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: server_address : %s\n", __func__, __LINE__, server_address);
     decode_param_string(root_json, "ResultsLocation", param);
     copy_string(remote_test_results_loc, param->valuestring, sizeof(remote_test_results_loc) - 1);
 
@@ -1811,7 +1801,7 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
         return RETURN_ERR;
     }
 
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d:====== TestCoverage count : %d ========= \n", __func__, __LINE__, count);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d:====== TestCoverage count : %d ========= \n", __func__, __LINE__, count);
     test = (wlan_emu_test_case_config *)queue_pop(test_cov_cases_q);
     if (test == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Test cases are not present for :%s\n", __func__, __LINE__, res_output_file);
@@ -1837,6 +1827,7 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
                 step->step_remove();
                 step = (test_step_params_t *)queue_pop(test->test_steps_q);
             }
+            queue_destroy(test->test_steps_q);
         }
         delete test;
         test = (wlan_emu_test_case_config *)queue_pop(test_cov_cases_q);
@@ -1851,7 +1842,7 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__, __LINE__, res_output_file);
         } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: uploaded filelist %s\n", __func__, __LINE__, res_output_file);
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded filelist %s\n", __func__, __LINE__, res_output_file);
         }
     }
 
@@ -1912,7 +1903,7 @@ wlan_emu_sig_type_t wlan_emu_ui_mgr_t::io_wait()
     if ((ret = select(m_nfds + 1, &m_set, NULL, NULL, NULL)) > 0) {
         for (i = 0; i < wlan_emu_sig_type_max; i++) {
             if (FD_ISSET(m_pollables[i].fd, &m_set)) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Descriptor: %s signalled\n", __func__, __LINE__,
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Descriptor: %s signalled\n", __func__, __LINE__,
                         m_pollables[i].name);
                 type = (wlan_emu_sig_type_t)i;
                 bytes_read = read(m_pollables[i].fd, (unsigned char *)buff, sizeof(buff));
@@ -2006,12 +1997,12 @@ int wlan_emu_ui_mgr_t::init()
 
 
     if (rbus_init() != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: rbus_init failed\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: rbus_init failed\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
     if (get_mlts_configuration() != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: get_mlts_configuration failed\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_mlts_configuration failed\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -2065,6 +2056,7 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
     char url[128] = {0};
     unsigned int count = 0, i = 0;
     wlan_emu_test_case_config *test;
+    unsigned int steps_count = 0;
 
     if (is_local_host_enabled == false) {
         if (cci_post_result_to_tda(false) != RETURN_OK) {
@@ -2073,15 +2065,47 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
         }
     }
 
+    if (test_cov_cases_q == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_cov_cases_q is NULL\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+
     //Free the queue elements here
     count = queue_count(test_cov_cases_q);
     if (count == 0) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: queue count is 0\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: queue count is 0\n", __func__, __LINE__);
         return RETURN_OK;
     }
 
     for (i = 0; i < count; i++) {
-        test = (wlan_emu_test_case_config *)queue_remove(test_cov_cases_q, i);
+    //    test = (wlan_emu_test_case_config *)queue_remove(test_cov_cases_q, i);
+        test = (wlan_emu_test_case_config *)queue_pop(test_cov_cases_q);
+        if (test == NULL) {
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Test is NULL at %d of %d\n", __func__, __LINE__, i, count);
+            //return RETURN_ERR;
+            continue;
+        }
+
+        while(test != NULL) {
+            if (test->test_steps_q == NULL) {
+                break;
+            }
+            steps_count = queue_count(test->test_steps_q);
+            if (steps_count = 0) {
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: No test steps are present for %s \n", __func__, __LINE__, test->test_json);
+                break;
+            } else {
+                test_step_params_t *step = (test_step_params_t *)queue_pop(test->test_steps_q);
+                while (step != NULL) {
+                    step->step_remove();
+                    step = (test_step_params_t *)queue_pop(test->test_steps_q);
+                }
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: No test steps are present\n", __func__, __LINE__);
+                free(test->test_steps_q);
+                test->test_steps_q = NULL;
+            }
+        }
+
         delete test;
     }
 
@@ -2119,10 +2143,10 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(bool result)
 
     if (result == true) { //pass
         cJSON_AddStringToObject(json, "result_file", cci_out_file_list);
-        snprintf(result_url, sizeof(result_url), "https://primary.vbautobot.comcast.com:7916/complete");
+        snprintf(result_url, sizeof(result_url), "%s/complete", server_address);
     } else {
         cJSON_AddStringToObject(json, "result_file", "FAIL");
-        snprintf(result_url, sizeof(result_url), "https://primary.vbautobot.comcast.com:7916/fail");
+        snprintf(result_url, sizeof(result_url), "%s/fail", server_address);
     }
 
     str = cJSON_Print(json);
@@ -2909,7 +2933,7 @@ int wlan_emu_ui_mgr_t::rbus_init()
             wlan_emu_print(wlan_emu_log_level_err,"%s:%d Unable to subscribe to event  with rbus error code : %d for %s\n", __FUNCTION__,__LINE__, rc, rbus_events[i]);
             return RETURN_ERR;
         } else {
-            wlan_emu_print(wlan_emu_log_level_err,"%s:%d Subscription succesful for %s\n", __FUNCTION__,__LINE__, rbus_events[i]);
+            wlan_emu_print(wlan_emu_log_level_info,"%s:%d Subscription succesful for %s\n", __FUNCTION__,__LINE__, rbus_events[i]);
         }
     }
 

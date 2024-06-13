@@ -20,6 +20,8 @@ extern "C"
 #define HEART_BEAT_TIME 5
 #define RETURN_OK   0
 #define RETURN_ERR -1
+#define RETURN_UNHANDLED RETURN_ERR
+#define RETURN_HANDLED  RETURN_OK
 #define CURRENT_CONFIGURATION "PRESENT"
 #define ARRAY_SIZE(x)       ((unsigned int)(sizeof(x) / sizeof(x[0])))
 
@@ -274,6 +276,13 @@ typedef struct {
     mac_address_t new_mac;
     char bridge_name[32];
 } mac_update_t;
+
+typedef struct {
+    unsigned int msg_type; //wlan_emu_msg_type_t
+    unsigned int frm80211_ops;//wlan_emu_frm80211_ops_type_t
+    unsigned int cfg80211_ops;//wlan_emu_cfg80211_ops_type_t
+    webconfig_subdoc_type_t subdoc_type;//webconfig_subdoc_type_t
+} frame_capture_request_t;
 
 #ifdef __cplusplus
 }
