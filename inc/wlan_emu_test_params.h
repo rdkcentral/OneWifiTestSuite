@@ -43,11 +43,11 @@ class test_step_params_t {
           char test_webconfig_json[128]; //location
 
           sta_test_t sta_test;
-
           timed_wait_t *timed_wait;
           log_redirect_t *log_capture;
           command *cmd;
           wifi_stats_get_t *wifi_stats_get;
+          wifi_stats_set_t *wifi_stats_set;
       } u;
       virtual int step_execute() = 0;
       virtual int step_timeout() = 0;
@@ -201,5 +201,51 @@ class test_step_param_get_radio_temperature_stats : public test_step_param_get_s
   public:
       test_step_param_get_radio_temperature_stats();
       ~test_step_param_get_radio_temperature_stats();
+};
+
+class test_step_param_set_stats_t : public test_step_params_t  {
+  public:
+      int step_execute();
+      int step_timeout();
+      int step_upload_files(FILE* output_file, bool *update_to_tda);
+      void step_remove();
+      int webconfig_stats_set_instance();
+      int step_frame_filter(wlan_emu_msg_t *msg);
+      virtual int webconfig_stats_set_execute() = 0;
+};
+
+class test_step_param_set_radio_channel_stats : public test_step_param_set_stats_t  {
+  public:
+      int webconfig_stats_set_execute() override;
+      test_step_param_set_radio_channel_stats();
+      ~test_step_param_set_radio_channel_stats();
+};
+
+class test_step_param_set_neighbor_stats : public test_step_param_set_stats_t  {
+  public:
+      int webconfig_stats_set_execute() override;
+      test_step_param_set_neighbor_stats();
+      ~test_step_param_set_neighbor_stats();
+};
+
+class test_step_param_set_assoc_clients_stats : public test_step_param_set_stats_t  {
+  public:
+      int webconfig_stats_set_execute() override;
+      test_step_param_set_assoc_clients_stats();
+      ~test_step_param_set_assoc_clients_stats();
+};
+
+class test_step_param_set_radio_diag_stats : public test_step_param_set_stats_t  {
+  public:
+      int webconfig_stats_set_execute() override;
+      test_step_param_set_radio_diag_stats();
+      ~test_step_param_set_radio_diag_stats();
+};
+
+class test_step_param_set_radio_temperature_stats : public test_step_param_set_stats_t  {
+  public:
+      int webconfig_stats_set_execute() override;
+      test_step_param_set_radio_temperature_stats();
+      ~test_step_param_set_radio_temperature_stats();
 };
 #endif

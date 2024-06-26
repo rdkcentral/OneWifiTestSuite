@@ -7,7 +7,6 @@
 #include "wifi_webconfig.h"
 #include "wifi_base.h"
 
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -195,6 +194,22 @@ typedef struct {
     int stop_log_step_number;
     queue_t   *get_stats_queue;
 }wifi_stats_get_t;
+
+typedef struct {
+  int stats_duration; //Duration of the particular instance/list of a step
+  char input_file_json[128];
+} stat_set_config_t;
+
+typedef struct {
+    wifi_mon_stats_type_t  data_type;
+    wifi_neighborScanMode_t scan_mode;
+    queue_t *stats_set_q; //stat_set_config_t;
+    int current_stats_set_count; //number of instances/lists of a step
+    int total_duration; //Total duration of a particular step
+    int radio_index;
+    int vap_index;
+    int set_exec_duration;
+} wifi_stats_set_t;
 
 typedef struct {
     char test_cmd[128];

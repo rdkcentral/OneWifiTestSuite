@@ -968,6 +968,276 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_get(cJSON *step, test
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::decode_stats_set_common_params(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *param;
+    cJSON *stats_set_config;
+    cJSON *stats_set_list;
+    char *str = NULL;
+
+    stats_set_list = cJSON_GetObjectItem(step, "StatsConfiguration");
+    if (stats_set_list != NULL) {
+        step_config->u.wifi_stats_set->stats_set_q = queue_create();
+        if (step_config->u.wifi_stats_set->stats_set_q == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        cJSON_ArrayForEach(stats_set_config, stats_set_list) {
+            str = cJSON_Print(stats_set_config);
+            stat_set_config_t *reference = new stat_set_config_t;
+            if (reference == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: reference allocation failed\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            param = cJSON_GetObjectItem(stats_set_config, "StatsDuration");
+            if (param != NULL) {
+                reference->stats_duration = atoi(param->valuestring);
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: StatsDuration value : %d\n", __func__, __LINE__, reference->stats_duration);
+                step_config->u.wifi_stats_set->total_duration += reference->stats_duration;
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: StatsDuration total_duration : %d\n", __func__, __LINE__, step_config->u.wifi_stats_set->total_duration);
+            } else {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: StatsDuration is not present\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            decode_param_string(stats_set_config, "InputFile", param);
+            snprintf(reference->input_file_json, sizeof(reference->input_file_json), "%s", param->valuestring);
+            queue_push(step_config->u.wifi_stats_set->stats_set_q, reference);
+        }
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: StatsConfiguration total queue count : %d\n", __func__, __LINE__, queue_count(step_config->u.wifi_stats_set->stats_set_q));
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: StatsConfiguration is not present\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_set(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *param;
+    cJSON *config;
+    int radioindex = 0;
+    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+
+    step_config->param_type = step_param_type_stats_set;
+
+    if (wifi_stats_set == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+    step_config->u.wifi_stats_set = wifi_stats_set;
+
+    config = cJSON_GetObjectItem(step, "RadioIndex");
+    if (config != NULL) {
+        wifi_stats_set->radio_index = atoi(config->valuestring);
+        if ((wifi_stats_set->radio_index > 0) && (wifi_stats_set->radio_index <= MAX_NUM_RADIOS)) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
+            delete wifi_stats_set;
+            return RETURN_ERR;
+        }
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    }
+
+    if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
+    }
+
+    wifi_stats_set->data_type = mon_stats_type_radio_channel_stats;
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_set(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *param;
+    cJSON *config;
+    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+
+    step_config->param_type = step_param_type_stats_set;
+
+    if (wifi_stats_set == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+    step_config->u.wifi_stats_set = wifi_stats_set;
+
+    config = cJSON_GetObjectItem(step, "VapIndex");
+    if (config != NULL) {
+        wifi_stats_set->vap_index = atoi(config->valuestring);
+        if ((wifi_stats_set->vap_index > 0) && (wifi_stats_set->vap_index <= MAX_NUM_VAP_PER_RADIO)) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success VapIndex value : %d\n", __func__, __LINE__, wifi_stats_set->vap_index);
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid VapIndex\n", __func__, __LINE__);
+            delete wifi_stats_set;
+            return RETURN_ERR;
+        }
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: VapIndex is not present\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    }
+
+    if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
+    }
+
+    wifi_stats_set->data_type = mon_stats_type_neighbor_stats;
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_set(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *param;
+    cJSON *config;
+    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+
+    step_config->param_type = step_param_type_stats_set;
+
+    if (wifi_stats_set == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+    step_config->u.wifi_stats_set = wifi_stats_set;
+
+    config = cJSON_GetObjectItem(step, "VapIndex");
+    if (config != NULL) {
+        wifi_stats_set->vap_index = atoi(config->valuestring);
+        if ((wifi_stats_set->vap_index > 0) && (wifi_stats_set->vap_index <= MAX_NUM_VAP_PER_RADIO)) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success VapIndex value : %d\n", __func__, __LINE__, wifi_stats_set->vap_index);
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid VapIndex\n", __func__, __LINE__);
+            delete wifi_stats_set;
+            return RETURN_ERR;
+        }
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: VapIndex is not present\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    }
+
+    if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
+    }
+
+    wifi_stats_set->data_type = mon_stats_type_associated_device_stats;
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_set(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *param;
+    cJSON *config;
+    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+
+    step_config->param_type = step_param_type_stats_set;
+
+    if (wifi_stats_set == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+    step_config->u.wifi_stats_set = wifi_stats_set;
+
+    config = cJSON_GetObjectItem(step, "RadioIndex");
+    if (config != NULL) {
+        wifi_stats_set->radio_index = atoi(config->valuestring);
+        if ((wifi_stats_set->radio_index > 0) && (wifi_stats_set->radio_index <= MAX_NUM_RADIOS)) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
+            delete wifi_stats_set;
+            return RETURN_ERR;
+        }
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    }
+
+    if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
+    }
+
+    wifi_stats_set->data_type = mon_stats_type_radio_diagnostic_stats;
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_set(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *param;
+    cJSON *config;
+    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+
+    step_config->param_type = step_param_type_stats_set;
+
+    if (wifi_stats_set == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+    step_config->u.wifi_stats_set = wifi_stats_set;
+
+    config = cJSON_GetObjectItem(step, "RadioIndex");
+    if (config != NULL) {
+        wifi_stats_set->radio_index = atoi(config->valuestring);
+        if ((wifi_stats_set->radio_index > 0) && (wifi_stats_set->radio_index <= MAX_NUM_RADIOS)) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
+            delete wifi_stats_set;
+            return RETURN_ERR;
+        }
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    }
+
+    if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
+        delete wifi_stats_set;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
+    }
+
+    wifi_stats_set->data_type = mon_stats_type_radio_temperature;
+
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t **step_config)
 {
     cJSON *config = NULL;
@@ -1157,6 +1427,79 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_radio_temperature_stats_get success\n", __func__, __LINE__);
+            }
+        }
+    }
+
+    config = cJSON_GetObjectItem(step, "SetStatsType");
+    if (config != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decoding SetStatsType Params\n", __func__, __LINE__);
+        decode_param_string(step, "SetStatsType", param);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode SetStatsType : %s\n", __func__, __LINE__, param->valuestring);
+
+        if (strcmp(param->valuestring, "RadioChannelStats") == 0) {
+            *step_config = new test_step_param_set_radio_channel_stats;
+            if (*step_config == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio channel stats set step\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            if (decode_step_radio_channel_stats_set(step, *step_config) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_stats_set_params failed for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_ERR;
+            } else {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+            }
+        }
+        if (strcmp(param->valuestring, "NeighborStats") == 0) {
+            *step_config = new test_step_param_set_neighbor_stats;
+            if (*step_config == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for neighbor stats set step\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            if (decode_step_neighbor_stats_set(step, *step_config) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_stats_set_params failed for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_ERR;
+            } else {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+            }
+        }
+        if (strcmp(param->valuestring, "AssocClientStats") == 0) {
+            *step_config = new test_step_param_set_assoc_clients_stats;
+            if (*step_config == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for assoc client stats set step\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            if (decode_step_assoc_client_stats_set(step, *step_config) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_stats_set_params failed for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_ERR;
+            } else {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+            }
+        }
+        if (strcmp(param->valuestring, "RadioDiagStats") == 0) {
+            *step_config = new test_step_param_set_radio_diag_stats;
+            if (*step_config == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio diag stats set step\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            if (decode_step_radio_diag_stats_set(step, *step_config) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_stats_set_params failed for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_ERR;
+            } else {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+            }
+        }
+        if (strcmp(param->valuestring, "RadioTemperatureStats") == 0) {
+            *step_config = new test_step_param_set_radio_temperature_stats;
+            if (*step_config == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio temperature stats set step\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            if (decode_step_radio_temperature_stats_set(step, *step_config) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_stats_set_params failed for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_ERR;
+            } else {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
             }
         }
     }
@@ -1600,6 +1943,28 @@ int wlan_emu_ui_mgr_t::download_step_param_config(test_step_params_t *step)
         if ((download_file(step->u.sta_test.test_station_config, sizeof(step->u.sta_test.test_station_config))) != RETURN_OK)  {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n",
                     __func__, __LINE__, step->u.sta_test.test_station_config);
+            return RETURN_ERR;
+        }
+    } else if (step->param_type == step_param_type_stats_set) {
+        if (step->u.wifi_stats_set && step->u.wifi_stats_set->stats_set_q) {
+            queue_t *stats_set_q = step->u.wifi_stats_set->stats_set_q;
+            element_t *current = stats_set_q->head;
+
+            while (current != NULL) {
+                stat_set_config_t *stat_config = (stat_set_config_t *)current->data;
+
+                if (stat_config != NULL) {
+                    if ((download_file(stat_config->input_file_json, sizeof(stat_config->input_file_json))) != RETURN_OK) {
+                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n",
+                                       __func__, __LINE__, stat_config->input_file_json);
+                        return RETURN_ERR;
+                    }
+                }
+
+                current = current->next;
+            }
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q is NULL or empty\n", __func__, __LINE__);
             return RETURN_ERR;
         }
     }

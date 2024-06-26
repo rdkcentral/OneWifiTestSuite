@@ -46,6 +46,12 @@ class test_step_param_get_neighbor_stats;
 class test_step_param_get_assoc_clients_stats;
 class test_step_param_get_radio_diag_stats;
 class test_step_param_get_radio_temperature_stats;
+class test_step_param_set_stats_t;
+class test_step_param_set_radio_channel_stats;
+class test_step_param_set_neighbor_stats;
+class test_step_param_set_assoc_clients_stats;
+class test_step_param_set_radio_diag_stats;
+class test_step_param_set_radio_temperature_stats;
 
 class wlan_emu_ui_mgr_t {
     static unsigned int m_token;
@@ -106,6 +112,12 @@ class wlan_emu_ui_mgr_t {
     int decode_step_assoc_client_stats_get(cJSON *step, test_step_params_t *step_config);
     int decode_step_radio_diag_stats_get(cJSON *step, test_step_params_t *step_config);
     int decode_step_radio_temperature_stats_get(cJSON *step, test_step_params_t *step_config);
+    int decode_step_radio_channel_stats_set(cJSON *step, test_step_params_t *step_config);
+    int decode_step_neighbor_stats_set(cJSON *step, test_step_params_t *step_config);
+    int decode_step_assoc_client_stats_set(cJSON *step, test_step_params_t *step_config);
+    int decode_step_radio_diag_stats_set(cJSON *step, test_step_params_t *step_config);
+    int decode_step_radio_temperature_stats_set(cJSON *step, test_step_params_t *step_config);
+    int decode_stats_set_common_params(cJSON *step, test_step_params_t *step_config);
     int download_file(char *input_file_name, unsigned int input_file_name_len);
     int download_step_param_config(test_step_params_t *step);
     int download_step_common_config(test_step_params_t *step);
