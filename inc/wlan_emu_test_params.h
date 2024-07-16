@@ -211,40 +211,46 @@ class test_step_param_set_stats_t : public test_step_params_t  {
       void step_remove();
       int webconfig_stats_set_instance();
       int step_frame_filter(wlan_emu_msg_t *msg);
-      virtual int webconfig_stats_set_execute() = 0;
+      virtual int webconfig_stats_set_execute_stop() = 0;
+      virtual int webconfig_stats_set_execute_start() = 0;
 };
 
 class test_step_param_set_radio_channel_stats : public test_step_param_set_stats_t  {
   public:
-      int webconfig_stats_set_execute() override;
+      int webconfig_stats_set_execute_stop() override;
+      int webconfig_stats_set_execute_start() override;
       test_step_param_set_radio_channel_stats();
       ~test_step_param_set_radio_channel_stats();
 };
 
 class test_step_param_set_neighbor_stats : public test_step_param_set_stats_t  {
   public:
-      int webconfig_stats_set_execute() override;
+      int webconfig_stats_set_execute_stop() override;
+      int webconfig_stats_set_execute_start() override;
       test_step_param_set_neighbor_stats();
       ~test_step_param_set_neighbor_stats();
 };
 
 class test_step_param_set_assoc_clients_stats : public test_step_param_set_stats_t  {
   public:
-      int webconfig_stats_set_execute() override;
+      int webconfig_stats_set_execute_stop() override;
+      int webconfig_stats_set_execute_start() override;
       test_step_param_set_assoc_clients_stats();
       ~test_step_param_set_assoc_clients_stats();
 };
 
 class test_step_param_set_radio_diag_stats : public test_step_param_set_stats_t  {
   public:
-      int webconfig_stats_set_execute() override;
+      int webconfig_stats_set_execute_stop() override;
+      int webconfig_stats_set_execute_start() override;
       test_step_param_set_radio_diag_stats();
       ~test_step_param_set_radio_diag_stats();
 };
 
 class test_step_param_set_radio_temperature_stats : public test_step_param_set_stats_t  {
   public:
-      int webconfig_stats_set_execute() override;
+      int webconfig_stats_set_execute_stop() override;
+      int webconfig_stats_set_execute_start() override;
       test_step_param_set_radio_temperature_stats();
       ~test_step_param_set_radio_temperature_stats();
 };

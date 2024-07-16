@@ -10,6 +10,11 @@
 #include <string>
 #include <sstream>
 
+extern "C" {
+    int    wifi_hal_emu_set_radio_channel_stats(unsigned int radio_index, bool emu_state, wifi_channelStats_t *chan_stat, unsigned int count, unsigned int phy_index, unsigned int interface_index);
+    void copy_chanstats_to_chandata(radio_chan_data_t *chan_data, wifi_channelStats_t *chan_stats);
+}
+
 int test_step_param_set_stats_t::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
@@ -28,15 +33,29 @@ int test_step_param_set_stats_t::step_frame_filter(wlan_emu_msg_t *msg)
     return RETURN_UNHANDLED;
 }
 
-int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute()
+int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_stop()
 {
     test_step_params_t *step = this;
-    
+    bool emu_state;
+    webconfig_cci_t *webconfig_data = step->m_ui_mgr->get_webconfig_data();
+
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_radio_channel_stats\n", __func__, __LINE__);
+
+    int radio_index = step->u.wifi_stats_set->radio_index;
+    int phy_index = webconfig_data->hal_cap.wifi_prop.interface_map[radio_index].phy_index;
+    int interface_index = if_nametoindex(webconfig_data->hal_cap.wifi_prop.interface_map[radio_index].interface_name);
+    emu_state = false;
+
+    if (wifi_hal_emu_set_radio_channel_stats(radio_index, emu_state, NULL, 0, phy_index, interface_index) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_radio_channel_stats failed. Radio index : %d, Step number : %d\n", __func__, __LINE__, radio_index, step->step_number);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
     return RETURN_OK;
 }
 
-int test_step_param_set_neighbor_stats::webconfig_stats_set_execute()
+int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_stop()
 {
     test_step_params_t *step = this;
     
@@ -44,7 +63,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute()
     return RETURN_OK;
 }
 
-int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute()
+int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_stop()
 {
     test_step_params_t *step = this;
     
@@ -52,7 +71,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute()
     return RETURN_OK;
 }
 
-int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute()
+int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_stop()
 {
     test_step_params_t *step = this;
     
@@ -60,7 +79,141 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute()
     return RETURN_OK;
 }
 
-int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute()
+int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_stop()
+{
+    test_step_params_t *step = this;
+    
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_radio_temperature_stats\n", __func__, __LINE__);
+    return RETURN_OK;
+}
+
+int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
+{
+    test_step_params_t *step = this;
+    char *json_data;
+    int ret = 0;
+    char file_to_read[128] = {0};
+    webconfig_cci_t *webconfig_data = NULL;
+    int radio_index;
+    bool emu_state;
+    int phy_index;
+    int interface_index;
+    wifi_provider_response_t *response;
+    radio_chan_data_t *chan_data;
+    wifi_channelStats_t *chan_stat;
+    unsigned int chan_count = 0;
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_radio_channel_stats\n", __func__, __LINE__);
+
+    stat_set_config_t *reference = (stat_set_config_t *)queue_peek(step->u.wifi_stats_set->stats_set_q, step->u.wifi_stats_set->current_stats_set_count);
+    if (reference == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_peek failed\n", __func__, __LINE__);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+    ret = snprintf(file_to_read, sizeof(file_to_read), "%s", reference->input_file_json);
+    if ((ret < 0) || (ret >= sizeof(file_to_read))) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: snprintf failed returned : %d, file_length : %d for input_file_json : %s\n", __func__, __LINE__, ret, sizeof(file_to_read), reference->input_file_json);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    ret = step->m_ui_mgr->read_config_file(file_to_read, &json_data);
+    if (ret != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: read_config_file failed for file : %s\n", __func__, __LINE__, file_to_read);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    webconfig_data = step->m_ui_mgr->get_webconfig_data();
+    webconfig_subdoc_data_t subdoc_data;
+
+    if (webconfig_decode(&webconfig_data->webconfig, &subdoc_data, json_data) == webconfig_error_none) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_decode success\n", __func__, __LINE__);
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed\n", __func__, __LINE__);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    radio_index = step->u.wifi_stats_set->radio_index;
+    emu_state = true;
+    phy_index = webconfig_data->hal_cap.wifi_prop.interface_map[radio_index].phy_index;
+    interface_index = if_nametoindex(webconfig_data->hal_cap.wifi_prop.interface_map[radio_index].interface_name);
+    response = static_cast<wifi_provider_response_t *> ((subdoc_data.u.decoded.collect_stats.stats));
+    chan_data = static_cast<radio_chan_data_t *> (response->stat_pointer);
+
+    chan_stat = new (std::nothrow) wifi_channelStats_t[response->stat_array_size];
+    if (chan_stat == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
+                __func__, __LINE__, step->step_number);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    for (chan_count = 0; chan_count < (unsigned int)response->stat_array_size; chan_count++) {
+        //        copy_chanstats_to_chandata(&chan_data[chan_count], &chan_stat[chan_count]);
+        chan_stat[chan_count].ch_in_pool = chan_data[chan_count].ch_in_pool;
+        chan_stat[chan_count].ch_radar_noise = chan_data[chan_count].ch_radar_noise;
+        chan_stat[chan_count].ch_number = chan_data[chan_count].ch_number;
+        chan_stat[chan_count].ch_noise = chan_data[chan_count].ch_noise;
+        chan_stat[chan_count].ch_max_80211_rssi = chan_data[chan_count].ch_max_80211_rssi;
+        chan_stat[chan_count].ch_non_80211_noise = chan_data[chan_count].ch_non_80211_noise;
+        chan_stat[chan_count].ch_utilization = chan_data[chan_count].ch_utilization;
+        chan_stat[chan_count].ch_utilization_busy_tx = chan_data[chan_count].ch_utilization_busy_tx;
+        chan_stat[chan_count].ch_utilization_busy_self = chan_data[chan_count].ch_utilization_busy_self;
+        chan_stat[chan_count].ch_utilization_total = chan_data[chan_count].ch_utilization_total;
+        chan_stat[chan_count].ch_utilization_busy = chan_data[chan_count].ch_utilization_busy;
+        chan_stat[chan_count].ch_utilization_busy_rx = chan_data[chan_count].ch_utilization_busy_rx;
+        chan_stat[chan_count].ch_utilization_busy_ext = chan_data[chan_count].ch_utilization_busy_ext;
+    }
+
+    for (unsigned int i = 0; i < response->stat_array_size; i++) {
+        wlan_emu_print( wlan_emu_log_level_dbg, "%s:%d: Channel %u: Noise %d, Radar Noise %d, Max RSSI %d, Non-80211 Noise %d, Utilization %u, Utilization Total %llu, Utilization Busy %llu, Utilization Busy TX %llu, Utilization Busy RX %llu, Utilization Busy Self %llu, Utilization Busy Ext %llu\n",
+                __func__, __LINE__, chan_stat[i].ch_number, chan_stat[i].ch_noise, chan_stat[i].ch_radar_noise, chan_stat[i].ch_max_80211_rssi,
+                chan_stat[i].ch_non_80211_noise, chan_stat[i].ch_utilization, chan_stat[i].ch_utilization_total, chan_stat[i].ch_utilization_busy,
+                chan_stat[i].ch_utilization_busy_tx, chan_stat[i].ch_utilization_busy_rx,
+                chan_stat[i].ch_utilization_busy_self, chan_stat[i].ch_utilization_busy_ext);
+    }
+
+    if (wifi_hal_emu_set_radio_channel_stats(radio_index, emu_state, chan_stat, response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_radio_channel_stats failed\n", __func__, __LINE__);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    delete[] chan_stat;
+    free(response->stat_pointer);
+    free(response);
+
+    return RETURN_OK;
+}
+
+int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
+{
+    test_step_params_t *step = this;
+    
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_neighbor_stats\n", __func__, __LINE__);
+    return RETURN_OK;
+}
+
+int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
+{
+    test_step_params_t *step = this;
+    
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_assoc_clients_stats\n", __func__, __LINE__);
+    return RETURN_OK;
+}
+
+int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
+{
+    test_step_params_t *step = this;
+    
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_radio_diag_stats\n", __func__, __LINE__);
+    return RETURN_OK;
+}
+
+int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_start()
 {
     test_step_params_t *step = this;
     
@@ -85,13 +238,13 @@ int test_step_param_set_stats_t::webconfig_stats_set_instance()
             }
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File name : %s\n", __func__, __LINE__, reference->input_file_json);
 
-            ret = webconfig_stats_set_execute();
+            ret = webconfig_stats_set_execute_start();
             if (ret != RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_stats_set_execute failed\n", __func__, __LINE__);
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_stats_set_execute_start failed\n", __func__, __LINE__);
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return RETURN_ERR;
             } else {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_stats_set_execute success\n", __func__, __LINE__);
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_stats_set_execute_start success\n", __func__, __LINE__);
             }
 
             if (step->u.wifi_stats_set->set_exec_duration == reference->stats_duration) {
@@ -190,19 +343,20 @@ int test_step_param_set_stats_t::step_timeout()
                     return RETURN_OK;
                 }
             }
+
             if (step->u.wifi_stats_set->set_exec_duration == reference->stats_duration) {
-                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Timeout reached stats duration of -> %d for current instance\n", __func__, __LINE__, reference->stats_duration); 
-                    ret = webconfig_stats_set_instance();
-                    if (ret != RETURN_OK) {
-                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_stats_set_instance failed\n", __func__, __LINE__);
-                        step->test_state = wlan_emu_tests_state_cmd_abort;
-                        return RETURN_ERR;
-                    } else {
-                        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_stats_set_instance success\n", __func__, __LINE__);
-                    }
-                    step->u.wifi_stats_set->set_exec_duration++;
-                    step->test_state = wlan_emu_tests_state_cmd_continue;
-                    return RETURN_OK;
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Timeout reached stats duration of -> %d for current instance\n", __func__, __LINE__, reference->stats_duration); 
+                ret = webconfig_stats_set_instance();
+                if (ret != RETURN_OK) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_stats_set_instance failed\n", __func__, __LINE__);
+                    step->test_state = wlan_emu_tests_state_cmd_abort;
+                    return RETURN_ERR;
+                } else {
+                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_stats_set_instance success\n", __func__, __LINE__);
+                }
+                step->u.wifi_stats_set->set_exec_duration++;
+                step->test_state = wlan_emu_tests_state_cmd_continue;
+                return RETURN_OK;
             }
         }
     } else {
@@ -211,12 +365,29 @@ int test_step_param_set_stats_t::step_timeout()
 
     if (step->timeout_count == step->execution_time) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Timeout for step number : %d is reached - %d\n", __func__, __LINE__, step->step_number, step->timeout_count);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop the api execution for the instance\n", __func__, __LINE__);
+        ret = webconfig_stats_set_execute_stop();
+        if (ret != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_stats_set_execute_stop failed\n", __func__, __LINE__);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_stats_set_execute_stop success\n", __func__, __LINE__);
+        }
         step->test_state = wlan_emu_tests_state_cmd_results;
         return RETURN_OK;
     }
 
     if (step->timeout_count > step->execution_time) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Timeout for step number : %d Exceeded - %d\n", __func__, __LINE__, step->step_number, step->timeout_count);
+        ret = webconfig_stats_set_execute_stop();
+        if (ret != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_stats_set_execute_stop failed\n", __func__, __LINE__);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_stats_set_execute_stop success\n", __func__, __LINE__);
+        }
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -233,8 +404,8 @@ int test_step_param_set_stats_t::step_upload_files(FILE* output_file, bool *upda
 
 void test_step_param_set_stats_t::step_remove()
 {
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
-    test_step_param_set_radio_channel_stats *step = dynamic_cast<test_step_param_set_radio_channel_stats *>(this);
+    test_step_param_set_stats_t *step = dynamic_cast<test_step_param_set_stats_t *>(this);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d : %d\n", __func__, __LINE__, step->u.wifi_stats_set->data_type);
 
     if (step != NULL) {
         if (step->u.wifi_stats_set->stats_set_q != NULL) {
@@ -243,6 +414,7 @@ void test_step_param_set_stats_t::step_remove()
         }
     }
 
+    delete step->u.wifi_stats_set;
     delete step;
     step = NULL;
     return;
