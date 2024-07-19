@@ -142,6 +142,7 @@ int test_step_param_dml_reset::step_frame_filter(wlan_emu_msg_t *msg)
 test_step_param_dml_reset::test_step_param_dml_reset()
 {
     test_step_params_t *step = this;
+    step->is_step_initialized = true;
     step->execution_time = 5;
     step->timeout_count = 0;
     step->capture_frames = false;

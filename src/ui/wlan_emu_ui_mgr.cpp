@@ -41,7 +41,7 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream)
 }
 
 
-int copy_file(const char *source_path, const char *destination_path)
+int wlan_emu_ui_mgr_t::copy_file(const char *source_path, const char *destination_path)
 {
     if ((source_path == NULL) || (destination_path == NULL)) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: input arguements are NULL source_path : %p destination_path : %p\n",
@@ -189,7 +189,7 @@ int wlan_emu_ui_mgr_t::http_get(const char *url, const char *output_file)
             curl_easy_cleanup(curl);
             curl_global_cleanup();
             curl = NULL;
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ==> Downloaded file : %s\n", __func__, __LINE__, output_file);
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: ==> Downloaded file : %s\n", __func__, __LINE__, output_file);
             ret = RETURN_OK;
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to initialize libcurl.\n", __func__, __LINE__);
@@ -222,7 +222,7 @@ int wlan_emu_ui_mgr_t::http_post(const char *post_url, const char *input_file)
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to copy from %s to %s\n", __func__, __LINE__, post_url, input_file);
             ret = RETURN_ERR;
         } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: file copied from %s to %s\n", __func__, __LINE__, post_url, input_file);
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: file copied from %s to %s\n", __func__, __LINE__, post_url, input_file);
             ret = RETURN_OK;
         }
     } else  {
@@ -276,7 +276,7 @@ int wlan_emu_ui_mgr_t::http_post(const char *post_url, const char *input_file)
                         __func__, __LINE__, res, curl_easy_strerror(res), test_config_URL, input_file);
                 ret = RETURN_ERR;
             } else {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: curl_easy_perform() success for url : %s for %s\n", __func__, __LINE__, test_config_URL, input_file);
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: curl_easy_perform() success for url : %s for %s\n", __func__, __LINE__, test_config_URL, input_file);
                 ret = RETURN_OK;
             }
             // Clean up
@@ -490,7 +490,7 @@ int wlan_emu_ui_mgr_t::decode_step_station_management_config(cJSON *step, test_s
     cJSON *param = NULL;
     step_config->param_type = step_param_type_station_management;
     decode_param_string(step, "StationManagement", param);
-    snprintf(step_config->u.sta_test.test_station_config, sizeof(step_config->u.sta_test.test_station_config), "%s", param->valuestring);
+    snprintf(step_config->u.sta_test->test_station_config, sizeof(step_config->u.sta_test->test_station_config), "%s", param->valuestring);
     return RETURN_OK;
 }
 
@@ -502,17 +502,12 @@ int wlan_emu_ui_mgr_t::decode_step_time_config(cJSON *step, test_step_params_t *
 
 int wlan_emu_ui_mgr_t::decode_step_command_config(cJSON *step, test_step_params_t *step_config)
 {
-    command *cmd;
+    command_t *cmd;
     cJSON *param;
     step_config->param_type = step_param_type_command;
 
     decode_param_string(step, "Command", param);
-    cmd = new command;
-    if (cmd == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for command\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    memset(cmd, 0, sizeof(command));
+    cmd = step_config->u.cmd;
     snprintf(cmd->test_cmd, sizeof(cmd->test_cmd), "%s", param->valuestring);
 
     param = cJSON_GetObjectItem(step, "CmdResultFileName");
@@ -522,26 +517,19 @@ int wlan_emu_ui_mgr_t::decode_step_command_config(cJSON *step, test_step_params_
         memset(cmd->cmd_exec_log_filename, 0, sizeof(cmd->cmd_exec_log_filename));
     }
 
-    step_config->u.cmd = cmd;
 
     return RETURN_OK;
 }
 
 int wlan_emu_ui_mgr_t::decode_step_dmlsubdoc_config(cJSON *step, test_step_params_t *step_config)
 {
-    command *cmd;
+    command_t *cmd;
     cJSON *param;
     step_config->param_type = step_param_type_dml_subdoc;
     mac_addr_str_t cmac_str;
     mac_addr_t bmac;
 
-    cmd = new command;
-    if (cmd == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for DML command\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(cmd, 0, sizeof(command));
+    cmd = step_config->u.cmd;
     snprintf(cmd->test_cmd, sizeof(cmd->test_cmd), "%s", "rbuscli getvalues Device.WiFi.WebConfig.Data.Init_dml");
     memset(bmac, 0, sizeof(bmac));
     memset(cmac_str, 0, sizeof(cmac_str));
@@ -552,8 +540,7 @@ int wlan_emu_ui_mgr_t::decode_step_dmlsubdoc_config(cJSON *step, test_step_param
 
     snprintf(cmd->cmd_exec_log_filename, sizeof(cmd->cmd_exec_log_filename), "%s/%s_dml.json", test_results_dir_path, cmac_str);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: DMCLI Log File name : %s\n", __func__, __LINE__, cmd->cmd_exec_log_filename);
-    step_config->u.cmd = cmd;
-//    step_config->subdoc_type = webconfig_subdoc_type_dml;
+    //    step_config->subdoc_type = webconfig_subdoc_type_dml;
     return RETURN_OK;
 }
 
@@ -577,13 +564,7 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
 
     step_config->param_type = step_param_type_log_redirection;
 
-    log_redirect = new log_redirect_t;
-    if (log_redirect == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for log_redirect\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    memset(log_redirect, 0, sizeof(log_redirect_t));
-
+    log_redirect = step_config->u.log_capture;
     config = cJSON_GetObjectItem(step, "LogOperation");
 
     log_redirect->log_operation = log_operation_type_invalid;
@@ -614,11 +595,39 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
         return RETURN_ERR;
     }
 
-    step_config->u.log_capture = log_redirect;
     wlan_emu_print(wlan_emu_log_level_dbg,"%s:%d: log operation type : %d\n", __func__, __LINE__, log_redirect->log_operation);
 
     return RETURN_OK;
 }
+
+
+int wlan_emu_ui_mgr_t::decode_step_get_file(cJSON *step, test_step_params_t *step_config)
+{
+    get_file_t *get_file;
+    cJSON *config;
+    cJSON *param;
+    char temp_result_file[128] = {0};
+
+    step_config->param_type = step_param_type_get_file;
+
+    get_file = step_config->u.get_file;
+    config = cJSON_GetObjectItem(step, "GetFile");
+
+    decode_param_string(config, "SourceFilename", param);
+    snprintf(step_config->u.get_file->source_file, sizeof(step_config->u.get_file->source_file), "%s", param->valuestring);
+
+    decode_param_string(config, "ToDestinationFilename", param);
+    snprintf(step_config->u.get_file->dest_filename, sizeof(step_config->u.get_file->dest_filename), "%s/%s/%s", m_path, cci_test_dir, param->valuestring);
+
+    decode_param_bool(config, "DeleteSourceFile", param);
+    step_config->u.get_file->delete_source_file = (param->type & cJSON_True) ? true:false;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Source File : %s Destination File : %s delete_source_file : %d\n",
+            __func__, __LINE__, step_config->u.get_file->source_file,  step_config->u.get_file->dest_filename, step_config->u.get_file->delete_source_file);
+
+    return RETURN_OK;
+}
+
+
 
 int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, test_step_params_t *step_config)
 {
@@ -692,16 +701,10 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_get(cJSON *step, test_ste
     cJSON *param;
     cJSON *config;
     int radioindex = 0;
-    wifi_stats_get_t *wifi_stats_get = new (std::nothrow) wifi_stats_get_t;
+    wifi_stats_get_t *wifi_stats_get;
 
     step_config->param_type = step_param_type_stats_get;
-
-    if (wifi_stats_get == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_get\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_get, 0, sizeof(wifi_stats_get_t));
+    wifi_stats_get = step_config->u.wifi_stats_get;
 
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
@@ -711,19 +714,14 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_get(cJSON *step, test_ste
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
-            delete wifi_stats_get;
             return RETURN_ERR;
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_get;
         return RETURN_ERR;
     }
 
-
-    step_config->u.wifi_stats_get = wifi_stats_get;
     if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
-        delete wifi_stats_get;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -741,13 +739,11 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_get(cJSON *step, test_ste
             wifi_stats_get->scan_mode = WIFI_RADIO_SCAN_MODE_SURVEY;
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid scan mode : %s\n", __func__, __LINE__, config->valuestring);
-            delete wifi_stats_get;
             return RETURN_ERR;
         }
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ScanMode value : %s\n", __func__, __LINE__, config->valuestring);
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ScanMode is not present\n", __func__, __LINE__);
-        delete wifi_stats_get;
         return RETURN_ERR;
     }
 
@@ -761,16 +757,10 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_get(cJSON *step, test_step_par
     cJSON *param;
     cJSON *config;
     int radioindex = 0;
-    wifi_stats_get_t *wifi_stats_get = new (std::nothrow) wifi_stats_get_t;
+    wifi_stats_get_t *wifi_stats_get;
 
     step_config->param_type = step_param_type_stats_get;
-
-    if (wifi_stats_get == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_get\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_get, 0, sizeof(wifi_stats_get_t));
+    wifi_stats_get = step_config->u.wifi_stats_get;
 
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
@@ -780,23 +770,20 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_get(cJSON *step, test_step_par
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
-            delete wifi_stats_get;
             return RETURN_ERR;
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_get;
         return RETURN_ERR;
     }
 
     step_config->u.wifi_stats_get = wifi_stats_get;
     if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
-        delete wifi_stats_get;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
     }
-  
+
     config = cJSON_GetObjectItem(step, "ScanMode");
     if (config != NULL) {
         if (strcmp(config->valuestring, "OnChannel") == 0) {
@@ -809,13 +796,11 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_get(cJSON *step, test_step_par
             wifi_stats_get->scan_mode = WIFI_RADIO_SCAN_MODE_SURVEY;
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid scan mode : %s\n", __func__, __LINE__, config->valuestring);
-            delete wifi_stats_get;
             return RETURN_ERR;
         }
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ScanMode value : %s\n", __func__, __LINE__, config->valuestring);
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ScanMode is not present\n", __func__, __LINE__);
-        delete wifi_stats_get;
         return RETURN_ERR;
     }
 
@@ -829,16 +814,10 @@ int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_get(cJSON *step, test_step
     cJSON *param;
     cJSON *config;
     int vapindex = 0;
-    wifi_stats_get_t *wifi_stats_get = new (std::nothrow) wifi_stats_get_t;
+    wifi_stats_get_t *wifi_stats_get;
 
     step_config->param_type = step_param_type_stats_get;
-
-    if (wifi_stats_get == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_get\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_get, 0, sizeof(wifi_stats_get_t));
+    wifi_stats_get = step_config->u.wifi_stats_get;
 
     config = cJSON_GetObjectItem(step, "VapIndex");
     if (config != NULL) {
@@ -848,19 +827,15 @@ int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_get(cJSON *step, test_step
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success VapIndex value : %d\n", __func__, __LINE__, wifi_stats_get->vap_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid VapIndex\n", __func__, __LINE__);
-            delete wifi_stats_get;
             return RETURN_ERR;
         }
 
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: VapIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_get;
         return RETURN_ERR;
     }
 
-    step_config->u.wifi_stats_get = wifi_stats_get;
     if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
-        delete wifi_stats_get;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -877,16 +852,11 @@ int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_get(cJSON *step, test_step_p
     cJSON *config;
     int radioindex = 0;
     wifi_platform_property_t *wifi_prop;
-    wifi_stats_get_t *wifi_stats_get = new (std::nothrow) wifi_stats_get_t;
+    wifi_stats_get_t *wifi_stats_get;
 
     step_config->param_type = step_param_type_stats_get;
 
-    if (wifi_stats_get == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_get\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_get, 0, sizeof(wifi_stats_get_t));
+    wifi_stats_get = step_config->u.wifi_stats_get;
 
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
@@ -896,19 +866,15 @@ int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_get(cJSON *step, test_step_p
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
-            delete wifi_stats_get;
             return RETURN_ERR;
         }
 
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_get;
         return RETURN_ERR;
     }
 
-    step_config->u.wifi_stats_get = wifi_stats_get;
     if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
-        delete wifi_stats_get;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -925,16 +891,11 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_get(cJSON *step, test
     cJSON *config;
     int radioindex = 0;
     wifi_platform_property_t *wifi_prop;
-    wifi_stats_get_t *wifi_stats_get = new (std::nothrow) wifi_stats_get_t;
+    wifi_stats_get_t *wifi_stats_get;
 
     step_config->param_type = step_param_type_stats_get;
 
-    if (wifi_stats_get == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_get\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_get, 0, sizeof(wifi_stats_get_t));
+    wifi_stats_get = step_config->u.wifi_stats_get;
 
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
@@ -944,19 +905,15 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_get(cJSON *step, test
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
-            delete wifi_stats_get;
             return RETURN_ERR;
         }
 
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_get;
         return RETURN_ERR;
     }
 
-    step_config->u.wifi_stats_get = wifi_stats_get;
     if (decode_stats_get_common_params(step, step_config) != RETURN_OK) {
-        delete wifi_stats_get;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -976,11 +933,6 @@ int wlan_emu_ui_mgr_t::decode_stats_set_common_params(cJSON *step, test_step_par
 
     stats_set_list = cJSON_GetObjectItem(step, "StatsConfiguration");
     if (stats_set_list != NULL) {
-        step_config->u.wifi_stats_set->stats_set_q = queue_create();
-        if (step_config->u.wifi_stats_set->stats_set_q == NULL) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
         cJSON_ArrayForEach(stats_set_config, stats_set_list) {
             str = cJSON_Print(stats_set_config);
             stat_set_config_t *reference = new stat_set_config_t;
@@ -1016,17 +968,9 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_set(cJSON *step, test_ste
     cJSON *param;
     cJSON *config;
     int radioindex = 0;
-    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    wifi_stats_set_t *wifi_stats_set = step_config->u.wifi_stats_set;
 
     step_config->param_type = step_param_type_stats_set;
-
-    if (wifi_stats_set == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
-    step_config->u.wifi_stats_set = wifi_stats_set;
 
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
@@ -1035,18 +979,15 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_set(cJSON *step, test_ste
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
-            delete wifi_stats_set;
             return RETURN_ERR;
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     }
 
     if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -1061,17 +1002,9 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_set(cJSON *step, test_step_par
 {
     cJSON *param;
     cJSON *config;
-    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    wifi_stats_set_t *wifi_stats_set = step_config->u.wifi_stats_set;
 
     step_config->param_type = step_param_type_stats_set;
-
-    if (wifi_stats_set == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
-    step_config->u.wifi_stats_set = wifi_stats_set;
 
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
@@ -1080,18 +1013,15 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_set(cJSON *step, test_step_par
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
-            delete wifi_stats_set;
             return RETURN_ERR;
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     }
 
     if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -1106,17 +1036,9 @@ int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_set(cJSON *step, test_step
 {
     cJSON *param;
     cJSON *config;
-    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    wifi_stats_set_t *wifi_stats_set = step_config->u.wifi_stats_set;
 
     step_config->param_type = step_param_type_stats_set;
-
-    if (wifi_stats_set == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
-    step_config->u.wifi_stats_set = wifi_stats_set;
 
     config = cJSON_GetObjectItem(step, "VapIndex");
     if (config != NULL) {
@@ -1125,18 +1047,15 @@ int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_set(cJSON *step, test_step
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success VapIndex value : %d\n", __func__, __LINE__, wifi_stats_set->vap_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid VapIndex\n", __func__, __LINE__);
-            delete wifi_stats_set;
             return RETURN_ERR;
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: VapIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     }
 
     if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -1151,17 +1070,9 @@ int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_set(cJSON *step, test_step_p
 {
     cJSON *param;
     cJSON *config;
-    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    wifi_stats_set_t *wifi_stats_set = step_config->u.wifi_stats_set;
 
     step_config->param_type = step_param_type_stats_set;
-
-    if (wifi_stats_set == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
-    step_config->u.wifi_stats_set = wifi_stats_set;
 
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
@@ -1170,18 +1081,15 @@ int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_set(cJSON *step, test_step_p
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
-            delete wifi_stats_set;
             return RETURN_ERR;
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     }
 
     if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -1196,17 +1104,9 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_set(cJSON *step, test
 {
     cJSON *param;
     cJSON *config;
-    wifi_stats_set_t *wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    wifi_stats_set_t *wifi_stats_set = step_config->u.wifi_stats_set;
 
     step_config->param_type = step_param_type_stats_set;
-
-    if (wifi_stats_set == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed allocating memory for wifi_stats_set\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
-    step_config->u.wifi_stats_set = wifi_stats_set;
 
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
@@ -1215,18 +1115,15 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_set(cJSON *step, test
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
-            delete wifi_stats_set;
             return RETURN_ERR;
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     }
 
     if (decode_stats_set_common_params(step, step_config) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed decoding stats set common params\n", __func__, __LINE__);
-        delete wifi_stats_set;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success\n", __func__, __LINE__);
@@ -1245,8 +1142,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
 
     config = cJSON_GetObjectItem(step, "RadioConfiguration");
     if (config != NULL) {
-        *step_config = new test_step_param_radio;
-        if (*step_config == NULL) {
+        *step_config = new(std::nothrow) test_step_param_radio;
+        if ((*step_config)->is_step_initialized == false) {
             wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio step\n", __func__, __LINE__);
             return RETURN_ERR;
         }
@@ -1260,8 +1157,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
 
     config = cJSON_GetObjectItem(step, "VapConfiguration");
     if (config != NULL) {
-        *step_config = new test_step_param_vap;
-        if (*step_config == NULL) {
+        *step_config = new(std::nothrow) test_step_param_vap;
+        if ((*step_config)->is_step_initialized == false) {
             wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for vap step\n", __func__, __LINE__);
             return RETURN_ERR;
         }
@@ -1274,8 +1171,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
 
     config = cJSON_GetObjectItem(step, "StationManagement");
     if (config != NULL) {
-        *step_config = new test_step_param_sta_management;
-        if (*step_config == NULL) {
+        *step_config = new(std::nothrow) test_step_param_sta_management;
+        if ((*step_config)->is_step_initialized == false) {
             wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for station management step\n", __func__, __LINE__);
             return RETURN_ERR;
         }
@@ -1288,8 +1185,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
 
     config = cJSON_GetObjectItem(step, "Command");
     if (config != NULL) {
-        *step_config = new test_step_param_command;
-        if (*step_config == NULL) {
+        *step_config = new(std::nothrow) test_step_param_command;
+        if ((*step_config)->is_step_initialized == false) {
             wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for command step\n", __func__, __LINE__);
             return RETURN_ERR;
         }
@@ -1302,8 +1199,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
 
     config = cJSON_GetObjectItem(step, "DmlSubDoc");
     if (config != NULL) {
-        *step_config = new test_step_param_dmlsubdoc;
-        if (*step_config == NULL) {
+        *step_config = new(std::nothrow) test_step_param_dmlsubdoc;
+        if ((*step_config)->is_step_initialized == false) {
             wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for dml step\n", __func__, __LINE__);
             return RETURN_ERR;
         }
@@ -1316,8 +1213,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
 
     config = cJSON_GetObjectItem(step, "DmlResetConfiguration");
     if (config != NULL) {
-        *step_config = new test_step_param_dml_reset;
-        if (*step_config == NULL) {
+        *step_config = new(std::nothrow) test_step_param_dml_reset;
+        if ((*step_config)->is_step_initialized == false) {
             wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for dml reset step\n", __func__, __LINE__);
             return RETURN_ERR;
         }
@@ -1345,8 +1242,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
      */
     config = cJSON_GetObjectItem(step, "LogOperation");
     if (config != NULL) {
-        *step_config = new test_step_param_logredirect;
-        if (*step_config == NULL) {
+        *step_config = new(std::nothrow) test_step_param_logredirect;
+        if ((*step_config)->is_step_initialized == false) {
             wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for log_redirection step\n", __func__, __LINE__);
             return RETURN_ERR;
         }
@@ -1364,8 +1261,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode GetStatsType : %s\n", __func__, __LINE__, param->valuestring);
 
         if (strcmp(param->valuestring, "RadioChannelStats") == 0) {
-            *step_config = new test_step_param_get_radio_channel_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_get_radio_channel_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio channel stats step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1377,8 +1274,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
             }
         }
         if (strcmp(param->valuestring, "NeighborStats") == 0) {
-            *step_config = new test_step_param_get_neighbor_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_get_neighbor_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for neighbor stats get step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1390,8 +1287,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
             }
         }
         if (strcmp(param->valuestring, "AssocClientStats") == 0) {
-            *step_config = new test_step_param_get_assoc_clients_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_get_assoc_clients_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for assoc client stats get step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1403,8 +1300,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
             }
         }
         if (strcmp(param->valuestring, "RadioDiagStats") == 0) {
-            *step_config = new test_step_param_get_radio_diag_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_get_radio_diag_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio diag stats get step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1416,8 +1313,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
             }
         }
         if (strcmp(param->valuestring, "RadioTemparatureStats") == 0) {
-            *step_config = new test_step_param_get_radio_temperature_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_get_radio_temperature_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio temperature stats get step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1437,8 +1334,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode SetStatsType : %s\n", __func__, __LINE__, param->valuestring);
 
         if (strcmp(param->valuestring, "RadioChannelStats") == 0) {
-            *step_config = new test_step_param_set_radio_channel_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_set_radio_channel_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio channel stats set step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1450,8 +1347,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
             }
         }
         if (strcmp(param->valuestring, "NeighborStats") == 0) {
-            *step_config = new test_step_param_set_neighbor_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_set_neighbor_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for neighbor stats set step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1463,8 +1360,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
             }
         }
         if (strcmp(param->valuestring, "AssocClientStats") == 0) {
-            *step_config = new test_step_param_set_assoc_clients_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_set_assoc_clients_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for assoc client stats set step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1476,8 +1373,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
             }
         }
         if (strcmp(param->valuestring, "RadioDiagStats") == 0) {
-            *step_config = new test_step_param_set_radio_diag_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_set_radio_diag_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio diag stats set step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1489,8 +1386,8 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
             }
         }
         if (strcmp(param->valuestring, "RadioTemperatureStats") == 0) {
-            *step_config = new test_step_param_set_radio_temperature_stats;
-            if (*step_config == NULL) {
+            *step_config = new(std::nothrow) test_step_param_set_radio_temperature_stats;
+            if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio temperature stats set step\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -1501,6 +1398,20 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
             }
         }
+    }
+
+    config = cJSON_GetObjectItem(step, "GetFile");
+    if (config != NULL) {
+        *step_config = new(std::nothrow) test_step_param_get_file;
+        if ((*step_config)->is_step_initialized == false) {
+            wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for get file step\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        if (decode_step_get_file(step, *step_config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_get_file failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        return RETURN_OK;
     }
     return RETURN_OK;
 }
@@ -1559,8 +1470,8 @@ int wlan_emu_ui_mgr_t::decode_coverage_config(cJSON *config_entry, wlan_emu_test
     test_step_params_t *step_config = NULL;
     *config = NULL;
 
-    configuration = new wlan_emu_test_case_config;
-    if (configuration == NULL) {
+    configuration = new(std::nothrow) wlan_emu_test_case_config;
+    if (configuration == nullptr) {
         wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for wlan_emu_coverage_configuration_t\n", __func__, __LINE__);
         return RETURN_ERR;
     }
@@ -1668,7 +1579,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_1_config(cJSON *test_coverage_entry)
     } else if ((test = cJSON_GetObjectItem(conf, "ClientConnection")) != NULL) {
         if ((list = cJSON_GetObjectItem(test, "Authentication")) != NULL) {
             if (decode_coverage_config(list, wlan_emu_test_coverage_1, wlan_emu_test_1_subtype_cc_authentication, &config) != RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: decode_coverage_config failed for wpa2personal\n", __func__, __LINE__);
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: decode_coverage_config failed for Authentication\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
         }
@@ -1939,9 +1850,9 @@ int wlan_emu_ui_mgr_t::download_step_param_config(test_step_params_t *step)
             return RETURN_ERR;
         }
     } else if (step->param_type == step_param_type_station_management) {
-        if ((download_file(step->u.sta_test.test_station_config, sizeof(step->u.sta_test.test_station_config))) != RETURN_OK)  {
+        if ((download_file(step->u.sta_test->test_station_config, sizeof(step->u.sta_test->test_station_config))) != RETURN_OK)  {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n",
-                    __func__, __LINE__, step->u.sta_test.test_station_config);
+                    __func__, __LINE__, step->u.sta_test->test_station_config);
             return RETURN_ERR;
         }
     } else if (step->param_type == step_param_type_stats_set) {
@@ -1955,7 +1866,7 @@ int wlan_emu_ui_mgr_t::download_step_param_config(test_step_params_t *step)
                 if (stat_config != NULL) {
                     if ((download_file(stat_config->input_file_json, sizeof(stat_config->input_file_json))) != RETURN_OK) {
                         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n",
-                                       __func__, __LINE__, stat_config->input_file_json);
+                                __func__, __LINE__, stat_config->input_file_json);
                         return RETURN_ERR;
                     }
                 }
@@ -2442,7 +2353,7 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
     }
 
     for (i = 0; i < count; i++) {
-    //    test = (wlan_emu_test_case_config *)queue_remove(test_cov_cases_q, i);
+        //    test = (wlan_emu_test_case_config *)queue_remove(test_cov_cases_q, i);
         test = (wlan_emu_test_case_config *)queue_pop(test_cov_cases_q);
         if (test == NULL) {
             wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Test is NULL at %d of %d\n", __func__, __LINE__, i, count);

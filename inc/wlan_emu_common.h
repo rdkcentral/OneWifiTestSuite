@@ -3,6 +3,7 @@
 
 #include "collection.h"
 #include <pthread.h>
+#include <new> // For std::nothrow
 #include <rbus.h>
 #include "wifi_webconfig.h"
 #include "wifi_base.h"
@@ -161,6 +162,7 @@ typedef enum {
     step_param_type_dml_reset,
     step_param_type_stats_get,
     step_param_type_stats_set,
+    step_param_type_get_file
 } step_param_type_t;
 
 typedef struct {
@@ -214,7 +216,13 @@ typedef struct {
 typedef struct {
     char test_cmd[128];
     char cmd_exec_log_filename[128];
-} command;
+} command_t;
+
+typedef struct {
+    char source_file[256];
+    char dest_filename[256];
+    bool delete_source_file;
+} get_file_t;
 
 typedef enum {
     test_state_pending = 0,

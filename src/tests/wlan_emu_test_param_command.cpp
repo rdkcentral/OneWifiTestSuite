@@ -88,12 +88,12 @@ int test_step_param_command::step_upload_files(FILE *output_file, bool *update_t
 
         remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
 
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: File: %s\n", __func__, __LINE__, step->u.cmd->cmd_exec_log_filename);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__, step->u.cmd->cmd_exec_log_filename);
         if (step->m_ui_mgr->upload_file_to_server(step->u.cmd->cmd_exec_log_filename, remote_test_results_loc) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__, __LINE__, step->u.cmd->cmd_exec_log_filename);
             return RETURN_ERR;
         } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: uploaded %s\n", __func__, __LINE__, step->u.cmd->cmd_exec_log_filename);
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__, step->u.cmd->cmd_exec_log_filename);
             *update_to_tda = true;
             temp_res_file = strdup(step->u.cmd->cmd_exec_log_filename);
             if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name, sizeof(res_file_name)) != RETURN_OK) {
@@ -115,14 +115,15 @@ int test_step_param_command::step_upload_files(FILE *output_file, bool *update_t
 void test_step_param_command::step_remove()
 {
     test_step_param_command *step = dynamic_cast<test_step_param_command *>(this);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Destructor for command called\n", __func__, __LINE__);
 
     if (step == NULL) {
         return;
     }
-
-    delete step->u.cmd;
+    if (step->is_step_initialized == true) {
+        delete step->u.cmd;
+    }
     delete step;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Destructor for command called\n", __func__, __LINE__);
     step = NULL;
 
     return;
@@ -149,6 +150,14 @@ int test_step_param_command::step_frame_filter(wlan_emu_msg_t *msg)
 test_step_param_command::test_step_param_command()
 {
     test_step_params_t *step = this;
+    step->is_step_initialized = true;
+    step->u.cmd = new(std::nothrow) command_t;
+    if (step->u.cmd == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory for cmd failed for %d\n",
+                __func__, __LINE__, step->step_number);
+        step->is_step_initialized = false;
+    }
+    memset(step->u.cmd, 0, sizeof(command_t));
     step->execution_time = 5;
     step->timeout_count = 0;
     step->capture_frames = false;

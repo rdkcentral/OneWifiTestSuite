@@ -164,6 +164,14 @@ void *wlan_emu_tests_t::test_function(void *arg)
             test_config->current_test_step = (step_total-(step->step_seq_num)-1);
             if (step->capture_frames == true) {
                 step->test_results_queue = queue_create();
+                if (step->test_results_queue == nullptr) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_results_queue allocation failed\n", __func__, __LINE__);
+                    step->test_state =  wlan_emu_tests_state_cmd_abort;
+                    test_config->test_state =  wlan_emu_tests_state_cmd_abort;
+                    pthread_mutex_unlock(&test->m_lock);
+                    pthread_exit(NULL);
+                    return NULL;
+                }
             }
             snprintf(step->test_case_name, sizeof(step->test_case_name), "%s", test_config->test_case_name);
             snprintf(step->test_case_id, sizeof(step->test_case_id), "%s", test_config->test_case_id);

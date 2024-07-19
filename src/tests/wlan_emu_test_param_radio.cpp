@@ -118,12 +118,12 @@ int test_step_param_radio::step_upload_files(FILE *output_file, bool *update_to_
 
         while(res_file != NULL) {
             if (res_file != NULL) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: File: %s\n", __func__, __LINE__, res_file->pcap_file);
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__, res_file->pcap_file);
                 if (step->m_ui_mgr->upload_file_to_server(res_file->pcap_file, remote_test_results_loc) != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__, __LINE__, res_file->pcap_file);
                     return RETURN_ERR;
                 } else {
-                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: uploaded %s\n", __func__, __LINE__, res_file->pcap_file);
+                    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__, res_file->pcap_file);
                     *update_to_tda = true;
                     temp_res_file = strdup(res_file->pcap_file);
                     if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name, sizeof(res_file_name)) != RETURN_OK) {
@@ -153,20 +153,14 @@ void test_step_param_radio::step_remove()
     if (step == NULL) {
         return;
     }
-//Below check to remove on error cases
-    if (step->capture_frames == true) {
-        if (step->test_results_queue == NULL) {
-            return;
+    //Below check to remove on error cases
+    if (step->is_step_initialized == true) {
+        if (step->capture_frames == true) {
+            if (step->test_results_queue != nullptr) {
+                queue_destroy(step->test_results_queue);
+                step->test_results_queue = nullptr;
+            }
         }
-        results_count = queue_count(step->test_results_queue);
-        if (results_count == 0) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: No results for step to free %d \n", __func__, __LINE__, step->step_number);
-            free(step->test_results_queue);
-            step->test_results_queue = NULL;
-            return;
-        }
-        queue_destroy(step->test_results_queue);
-        step->test_results_queue = NULL;
     }
     delete step;
     step = NULL;
@@ -209,6 +203,7 @@ int test_step_param_radio::step_frame_filter(wlan_emu_msg_t *msg)
 test_step_param_radio::test_step_param_radio()
 {
     test_step_params_t *step = this;
+    step->is_step_initialized = true;
     step->execution_time = 10;
     step->timeout_count = 0;
     step->test_results_queue = NULL;

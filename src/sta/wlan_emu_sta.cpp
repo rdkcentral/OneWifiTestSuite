@@ -95,10 +95,11 @@ void wlan_emu_sta_t::send_mac_update(mac_update_t *mac_update)
 
     memcpy(&char_buf[byte_count], &mac_update->bridge_name, sizeof(mac_update->bridge_name));
     byte_count += sizeof(mac_update->bridge_name);
-
+/*
     for (count = 0; count < byte_count; count++) {
         wlan_emu_print(wlan_emu_log_level_info, " %02X", char_buf[count]);
     }
+*/
 
     msg.send_ctrl_msg(char_buf, byte_count, wlan_emu_emu80211_cmd_mac_update);
 

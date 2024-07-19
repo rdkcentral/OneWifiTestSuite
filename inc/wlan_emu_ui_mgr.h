@@ -52,6 +52,7 @@ class test_step_param_set_neighbor_stats;
 class test_step_param_set_assoc_clients_stats;
 class test_step_param_set_radio_diag_stats;
 class test_step_param_set_radio_temperature_stats;
+class test_step_param_get_file;
 
 class wlan_emu_ui_mgr_t {
     static unsigned int m_token;
@@ -123,6 +124,7 @@ class wlan_emu_ui_mgr_t {
     int download_step_common_config(test_step_params_t *step);
     int cci_post_result_to_tda(bool result);
     int get_mlts_configuration();
+    int decode_step_get_file(cJSON *step, test_step_params_t *step_config);
 
   public:
     int init(void);
@@ -181,6 +183,7 @@ class wlan_emu_ui_mgr_t {
     inline char *get_tda_output_file() { return cci_out_file_list; }
     inline int  *get_simulated_client_count() { return &simulated_clients; }
     void send_webconfig_ctrl_msg(webconfig_subdoc_type_t subdoc_type);
+    int copy_file(const char *source_path, const char *destination_path);
 
     wlan_emu_ui_mgr_t();
     ~wlan_emu_ui_mgr_t();

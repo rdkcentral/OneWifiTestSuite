@@ -25,6 +25,7 @@ class test_step_params_t {
       char test_case_id[8];
       unsigned int step_number; //User input
       unsigned int step_seq_num; //step Sequence number
+      bool is_step_initialized; //To check errors in constructor
 
       bool capture_frames; //TestCapture
       queue_t   *test_results_queue; //is output wlan_emu_pcap_captures
@@ -42,12 +43,13 @@ class test_step_params_t {
           //test_json will be applicable for  test_param_type_radio, test_param_type_vap,
           char test_webconfig_json[128]; //location
 
-          sta_test_t sta_test;
+          sta_test_t *sta_test;
           timed_wait_t *timed_wait;
           log_redirect_t *log_capture;
-          command *cmd;
+          command_t *cmd;
           wifi_stats_get_t *wifi_stats_get;
           wifi_stats_set_t *wifi_stats_set;
+          get_file_t *get_file;
       } u;
       virtual int step_execute() = 0;
       virtual int step_timeout() = 0;
@@ -253,5 +255,16 @@ class test_step_param_set_radio_temperature_stats : public test_step_param_set_s
       int webconfig_stats_set_execute_start() override;
       test_step_param_set_radio_temperature_stats();
       ~test_step_param_set_radio_temperature_stats();
+};
+
+class test_step_param_get_file : public test_step_params_t  {
+  public:
+      int step_execute();
+      int step_timeout();
+      int step_upload_files(FILE* output_file, bool *update_to_tda);
+      void step_remove();
+      int step_frame_filter(wlan_emu_msg_t *msg);
+      test_step_param_get_file();
+      ~test_step_param_get_file();
 };
 #endif

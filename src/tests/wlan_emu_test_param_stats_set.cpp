@@ -535,14 +535,18 @@ void test_step_param_set_stats_t::step_remove()
     test_step_param_set_stats_t *step = dynamic_cast<test_step_param_set_stats_t *>(this);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d : %d\n", __func__, __LINE__, step->u.wifi_stats_set->data_type);
 
-    if (step != NULL) {
+    if (step == NULL) {
+        return;
+    }
+
+    if (step->is_step_initialized == true) {
         if (step->u.wifi_stats_set->stats_set_q != NULL) {
             queue_destroy(step->u.wifi_stats_set->stats_set_q);
             step->u.wifi_stats_set->stats_set_q = NULL;
         }
+        delete step->u.wifi_stats_set;
     }
 
-    delete step->u.wifi_stats_set;
     delete step;
     step = NULL;
     return;
@@ -552,6 +556,20 @@ test_step_param_set_radio_channel_stats::test_step_param_set_radio_channel_stats
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
     test_step_params_t *step = this;
+    step->is_step_initialized = true;
+    step->u.wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    if (step->u.wifi_stats_set == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
+                __func__, __LINE__, step->step_number);
+        step->is_step_initialized = false;
+    }
+    memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+    step->u.wifi_stats_set->stats_set_q = queue_create();
+    if (step->u.wifi_stats_set->stats_set_q == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed for %d\n", __func__, __LINE__, step->step_number);
+        delete step->u.wifi_stats_set;
+        step->is_step_initialized = false;
+    }
     step->execution_time = 0;
     step->timeout_count = 0;
     step->test_results_queue = NULL;
@@ -567,6 +585,19 @@ test_step_param_set_neighbor_stats::test_step_param_set_neighbor_stats()
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
     test_step_params_t *step = this;
+    step->is_step_initialized = true;
+    step->u.wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    if (step->u.wifi_stats_set == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
+                __func__, __LINE__, step->step_number);
+        step->is_step_initialized = false;
+    }
+    memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+    step->u.wifi_stats_set->stats_set_q = queue_create();
+    if (step->u.wifi_stats_set->stats_set_q == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed for %d\n", __func__, __LINE__, step->step_number);
+        step->is_step_initialized = false;
+    }
     step->execution_time = 0;
     step->timeout_count = 0;
     step->test_results_queue = NULL;
@@ -582,6 +613,19 @@ test_step_param_set_assoc_clients_stats::test_step_param_set_assoc_clients_stats
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
     test_step_params_t *step = this;
+    step->is_step_initialized = true;
+    step->u.wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    if (step->u.wifi_stats_set == nullptr) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
+                                __func__, __LINE__, step->step_number);
+                step->is_step_initialized = false;
+    }
+    memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+    step->u.wifi_stats_set->stats_set_q = queue_create();
+    if (step->u.wifi_stats_set->stats_set_q == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed for %d\n", __func__, __LINE__, step->step_number);
+        step->is_step_initialized = false;
+    }
     step->execution_time = 0;
     step->timeout_count = 0;
     step->test_results_queue = NULL;
@@ -597,6 +641,21 @@ test_step_param_set_radio_diag_stats::test_step_param_set_radio_diag_stats()
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
     test_step_params_t *step = this;
+    step->is_step_initialized = true;
+    step->u.wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    if (step->u.wifi_stats_set == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
+                __func__, __LINE__, step->step_number);
+        step->is_step_initialized = false;
+    }
+    memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
+
+    step->u.wifi_stats_set->stats_set_q = queue_create();
+    if (step->u.wifi_stats_set->stats_set_q == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed for %d\n", __func__, __LINE__, step->step_number);
+        step->is_step_initialized = false;
+    }
+
     step->execution_time = 0;
     step->timeout_count = 0;
     step->test_results_queue = NULL;
@@ -612,6 +671,14 @@ test_step_param_set_radio_temperature_stats::test_step_param_set_radio_temperatu
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
     test_step_params_t *step = this;
+    step->is_step_initialized = true;
+    step->u.wifi_stats_set = new (std::nothrow) wifi_stats_set_t;
+    if (step->u.wifi_stats_set == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
+                __func__, __LINE__, step->step_number);
+        step->is_step_initialized = false;
+    }
+    memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
     step->execution_time = 0;
     step->timeout_count = 0;
     step->test_results_queue = NULL;
