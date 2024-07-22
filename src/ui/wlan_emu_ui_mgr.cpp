@@ -760,7 +760,7 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_get(cJSON *step, test_step_par
 {
     cJSON *param;
     cJSON *config;
-    int vapindex = 0;
+    int radioindex = 0;
     wifi_stats_get_t *wifi_stats_get = new (std::nothrow) wifi_stats_get_t;
 
     step_config->param_type = step_param_type_stats_get;
@@ -772,20 +772,19 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_get(cJSON *step, test_step_par
 
     memset(wifi_stats_get, 0, sizeof(wifi_stats_get_t));
 
-    config = cJSON_GetObjectItem(step, "VapIndex");
+    config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
-        vapindex = atoi(config->valuestring);
-        if ((vapindex > 0) && (vapindex <= MAX_NUM_VAP_PER_RADIO)) {
-            wifi_stats_get->vap_index = vapindex;
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success VapIndex value : %d\n", __func__, __LINE__, wifi_stats_get->vap_index);
+        radioindex = atoi(config->valuestring);
+        if ((radioindex > 0) && (radioindex <= MAX_NUM_RADIOS)) {
+            wifi_stats_get->radio_index = radioindex;
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid VapIndex\n", __func__, __LINE__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
             delete wifi_stats_get;
             return RETURN_ERR;
         }
-
     } else {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: VapIndex is not present\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
         delete wifi_stats_get;
         return RETURN_ERR;
     }
@@ -1074,18 +1073,18 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_set(cJSON *step, test_step_par
     memset(wifi_stats_set, 0, sizeof(wifi_stats_set_t));
     step_config->u.wifi_stats_set = wifi_stats_set;
 
-    config = cJSON_GetObjectItem(step, "VapIndex");
+    config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
-        wifi_stats_set->vap_index = atoi(config->valuestring);
-        if ((wifi_stats_set->vap_index > 0) && (wifi_stats_set->vap_index <= MAX_NUM_VAP_PER_RADIO)) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success VapIndex value : %d\n", __func__, __LINE__, wifi_stats_set->vap_index);
+        wifi_stats_set->radio_index = atoi(config->valuestring);
+        if ((wifi_stats_set->radio_index > 0) && (wifi_stats_set->radio_index <= MAX_NUM_RADIOS)) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid VapIndex\n", __func__, __LINE__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
             delete wifi_stats_set;
             return RETURN_ERR;
         }
     } else {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: VapIndex is not present\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: RadioIndex is not present\n", __func__, __LINE__);
         delete wifi_stats_set;
         return RETURN_ERR;
     }

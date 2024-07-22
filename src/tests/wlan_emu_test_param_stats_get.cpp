@@ -85,7 +85,7 @@ int test_step_param_get_stats_t::get_subscription_string(char *str, int str_len)
             break;
         case wifi_mon_stats_type_t::mon_stats_type_neighbor_stats:
             if (get_scanmode() != nullptr) {
-                snprintf(str, str_len, "Device.WiFi.CollectStats.AccessPoint.%d.ScanMode.%s.NeighborStats", step->u.wifi_stats_get->vap_index, scan_mode);
+                snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.ScanMode.%s.NeighborStats", step->u.wifi_stats_get->radio_index, scan_mode);
                 return RETURN_OK;
             }
             break;

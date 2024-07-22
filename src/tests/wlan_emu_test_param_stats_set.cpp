@@ -189,11 +189,139 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
     return RETURN_OK;
 }
 
-int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
+int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start() 
 {
     test_step_params_t *step = this;
-    
+    char *json_data;
+    int ret = 0;
+    char file_to_read[128] = {0};
+    webconfig_cci_t *webconfig_data = NULL;
+    int radio_index;
+    bool emu_state;
+    int phy_index;
+    int interface_index;
+    wifi_provider_response_t *response;
+    wifi_neighbor_ap2_t *neighbor_data;
+    unsigned int neighbor_count = 0;
+
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_neighbor_stats\n", __func__, __LINE__);
+
+    stat_set_config_t *reference = (stat_set_config_t *)queue_peek(step->u.wifi_stats_set->stats_set_q, step->u.wifi_stats_set->current_stats_set_count);
+    if (reference == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_peek failed for current_stats_set_count : %d\n", __func__, __LINE__, step->u.wifi_stats_set->current_stats_set_count);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+    ret = snprintf(file_to_read, sizeof(file_to_read), "%s", reference->input_file_json);
+    if ((ret < 0) || (ret >= sizeof(file_to_read))) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: snprintf failed returned : %d, file_length : %d for input_file_json : %s\n", __func__, __LINE__, ret, sizeof(file_to_read), reference->input_file_json);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    ret = step->m_ui_mgr->read_config_file(file_to_read, &json_data);
+    if (ret != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: read_config_file failed for file : %s\n", __func__, __LINE__, file_to_read);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    webconfig_data = step->m_ui_mgr->get_webconfig_data();
+    webconfig_subdoc_data_t subdoc_data;
+
+    if (webconfig_decode(&webconfig_data->webconfig, &subdoc_data, json_data) == webconfig_error_none) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_decode success\n", __func__, __LINE__);
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n", __func__, __LINE__, file_to_read);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    radio_index = step->u.wifi_stats_set->radio_index;
+    emu_state = true;
+    phy_index = webconfig_data->hal_cap.wifi_prop.interface_map[radio_index].phy_index;
+    interface_index = if_nametoindex(webconfig_data->hal_cap.wifi_prop.interface_map[radio_index].interface_name);
+    response = static_cast<wifi_provider_response_t *> ((subdoc_data.u.decoded.collect_stats.stats));
+    neighbor_data = static_cast<wifi_neighbor_ap2_t *> (response->stat_pointer);
+
+    wifi_neighbor_ap2_t *neighbor_stats = new (std::nothrow) wifi_neighbor_ap2_t[response->stat_array_size];
+    if (neighbor_stats == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
+                __func__, __LINE__, step->step_number);
+        free(response->stat_pointer);
+        free(response);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    for (neighbor_count = 0; neighbor_count < (unsigned int)response->stat_array_size; neighbor_count++) {
+        strncpy(neighbor_stats[neighbor_count].ap_SSID, neighbor_data[neighbor_count].ap_SSID, sizeof(neighbor_stats[neighbor_count].ap_SSID) - 1);
+        neighbor_stats[neighbor_count].ap_SSID[sizeof(neighbor_stats[neighbor_count].ap_SSID) - 1] = '\0';
+
+        strncpy(neighbor_stats[neighbor_count].ap_BSSID, neighbor_data[neighbor_count].ap_BSSID, sizeof(neighbor_stats[neighbor_count].ap_BSSID) - 1);
+        neighbor_stats[neighbor_count].ap_BSSID[sizeof(neighbor_stats[neighbor_count].ap_BSSID) - 1] = '\0';
+
+        strncpy(neighbor_stats[neighbor_count].ap_Mode, neighbor_data[neighbor_count].ap_Mode, sizeof(neighbor_stats[neighbor_count].ap_Mode) - 1);
+        neighbor_stats[neighbor_count].ap_Mode[sizeof(neighbor_stats[neighbor_count].ap_Mode) - 1] = '\0';
+
+        neighbor_stats[neighbor_count].ap_Channel = neighbor_data[neighbor_count].ap_Channel;
+
+        neighbor_stats[neighbor_count].ap_SignalStrength = neighbor_data[neighbor_count].ap_SignalStrength;
+
+        strncpy(neighbor_stats[neighbor_count].ap_SecurityModeEnabled, neighbor_data[neighbor_count].ap_SecurityModeEnabled, sizeof(neighbor_stats[neighbor_count].ap_SecurityModeEnabled) - 1);
+        neighbor_stats[neighbor_count].ap_SecurityModeEnabled[sizeof(neighbor_stats[neighbor_count].ap_SecurityModeEnabled) - 1] = '\0';
+
+        strncpy(neighbor_stats[neighbor_count].ap_EncryptionMode, neighbor_data[neighbor_count].ap_EncryptionMode, sizeof(neighbor_stats[neighbor_count].ap_EncryptionMode) - 1);
+        neighbor_stats[neighbor_count].ap_EncryptionMode[sizeof(neighbor_stats[neighbor_count].ap_EncryptionMode) - 1] = '\0';
+
+        strncpy(neighbor_stats[neighbor_count].ap_OperatingFrequencyBand, neighbor_data[neighbor_count].ap_OperatingFrequencyBand, sizeof(neighbor_stats[neighbor_count].ap_OperatingFrequencyBand) - 1);
+        neighbor_stats[neighbor_count].ap_OperatingFrequencyBand[sizeof(neighbor_stats[neighbor_count].ap_OperatingFrequencyBand) - 1] = '\0';
+
+        strncpy(neighbor_stats[neighbor_count].ap_SupportedStandards, neighbor_data[neighbor_count].ap_SupportedStandards, sizeof(neighbor_stats[neighbor_count].ap_SupportedStandards) - 1);
+        neighbor_stats[neighbor_count].ap_SupportedStandards[sizeof(neighbor_stats[neighbor_count].ap_SupportedStandards) - 1] = '\0';
+        
+        strncpy(neighbor_stats[neighbor_count].ap_OperatingStandards, neighbor_data[neighbor_count].ap_OperatingStandards, sizeof(neighbor_stats[neighbor_count].ap_OperatingStandards) - 1);
+        neighbor_stats[neighbor_count].ap_OperatingStandards[sizeof(neighbor_stats[neighbor_count].ap_OperatingStandards) - 1] = '\0';
+
+        strncpy(neighbor_stats[neighbor_count].ap_OperatingChannelBandwidth, neighbor_data[neighbor_count].ap_OperatingChannelBandwidth, sizeof(neighbor_stats[neighbor_count].ap_OperatingChannelBandwidth) - 1);
+        neighbor_stats[neighbor_count].ap_OperatingChannelBandwidth[sizeof(neighbor_stats[neighbor_count].ap_OperatingChannelBandwidth) - 1] = '\0';
+
+        neighbor_stats[neighbor_count].ap_BeaconPeriod = neighbor_data[neighbor_count].ap_BeaconPeriod;
+
+        neighbor_stats[neighbor_count].ap_Noise = neighbor_data[neighbor_count].ap_Noise;
+
+        strncpy(neighbor_stats[neighbor_count].ap_BasicDataTransferRates, neighbor_data[neighbor_count].ap_BasicDataTransferRates, sizeof(neighbor_stats[neighbor_count].ap_BasicDataTransferRates) - 1);
+        neighbor_stats[neighbor_count].ap_BasicDataTransferRates[sizeof(neighbor_stats[neighbor_count].ap_BasicDataTransferRates) - 1] = '\0';
+
+        strncpy(neighbor_stats[neighbor_count].ap_SupportedDataTransferRates, neighbor_data[neighbor_count].ap_SupportedDataTransferRates, sizeof(neighbor_stats[neighbor_count].ap_SupportedDataTransferRates) - 1);
+        neighbor_stats[neighbor_count].ap_SupportedDataTransferRates[sizeof(neighbor_stats[neighbor_count].ap_SupportedDataTransferRates) - 1] = '\0';
+
+        neighbor_stats[neighbor_count].ap_DTIMPeriod = neighbor_data[neighbor_count].ap_DTIMPeriod;
+        
+        neighbor_stats[neighbor_count].ap_ChannelUtilization = neighbor_data[neighbor_count].ap_ChannelUtilization;
+    }
+
+    for (unsigned int i = 0; i < response->stat_array_size; i++) {
+        wlan_emu_print( wlan_emu_log_level_dbg, "%s:%d: Neighbor AP %u: SSID %s, BSSID %s, Mode %s, Channel %u, Signal Strength %d, Security Mode %s, Encryption Mode %s, Operating Frequency Band %s, Supported Standards %s," 
+                "Operating Standards %s, Operating Channel Bandwidth %s, Beacon Period %u, Noise %d, Basic Data Transfer Rates %s, Supported Data Transfer Rates %s, DTIM Period %u, Channel Utilization %u\n",
+                __func__, __LINE__, neighbor_stats[i].ap_Channel, neighbor_stats[i].ap_SSID, neighbor_stats[i].ap_BSSID, neighbor_stats[i].ap_Mode,
+                neighbor_stats[i].ap_Channel, neighbor_stats[i].ap_SignalStrength, neighbor_stats[i].ap_SecurityModeEnabled, neighbor_stats[i].ap_EncryptionMode,
+                neighbor_stats[i].ap_OperatingFrequencyBand, neighbor_stats[i].ap_SupportedStandards, neighbor_stats[i].ap_OperatingStandards,
+                neighbor_stats[i].ap_OperatingChannelBandwidth, neighbor_stats[i].ap_BeaconPeriod, neighbor_stats[i].ap_Noise,
+                neighbor_stats[i].ap_BasicDataTransferRates, neighbor_stats[i].ap_SupportedDataTransferRates, neighbor_stats[i].ap_DTIMPeriod,
+                neighbor_stats[i].ap_ChannelUtilization);
+    }
+
+    // if (wifi_hal_emu_set_neighbor_stats(radio_index, emu_state, neighbor_stats, response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
+    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_neighbor_stats failed\n", __func__, __LINE__);
+    //     step->test_state = wlan_emu_tests_state_cmd_abort;
+    //     return RETURN_ERR;
+    // }
+
+    delete[] neighbor_stats;
+    free(response->stat_pointer);
+    free(response);
+
     return RETURN_OK;
 }
 
