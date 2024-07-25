@@ -709,7 +709,7 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_get(cJSON *step, test_ste
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
         radioindex = atoi(config->valuestring);
-        if ((radioindex > 0) && (radioindex <= MAX_NUM_RADIOS)) {
+        if ((radioindex >= 0) && (radioindex < MAX_NUM_RADIOS)) {
             wifi_stats_get->radio_index = radioindex;
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
@@ -765,7 +765,7 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_get(cJSON *step, test_step_par
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
         radioindex = atoi(config->valuestring);
-        if ((radioindex > 0) && (radioindex <= MAX_NUM_RADIOS)) {
+        if ((radioindex >= 0) && (radioindex < MAX_NUM_RADIOS)) {
             wifi_stats_get->radio_index = radioindex;
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
@@ -822,7 +822,7 @@ int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_get(cJSON *step, test_step
     config = cJSON_GetObjectItem(step, "VapIndex");
     if (config != NULL) {
         vapindex = atoi(config->valuestring);
-        if ((vapindex > 0) && (vapindex <= MAX_NUM_VAP_PER_RADIO)) {
+        if ((vapindex >= 0) && (vapindex < (MAX_NUM_VAP_PER_RADIO * MAX_NUM_RADIOS))) {
             wifi_stats_get->vap_index = vapindex;
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success VapIndex value : %d\n", __func__, __LINE__, wifi_stats_get->vap_index);
         } else {
@@ -861,7 +861,7 @@ int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_get(cJSON *step, test_step_p
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
         radioindex = atoi(config->valuestring);
-        if ((radioindex > 0) && (radioindex <= MAX_NUM_RADIOS)) {
+        if ((radioindex >= 0) && (radioindex < MAX_NUM_RADIOS)) {
             wifi_stats_get->radio_index = radioindex;
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
@@ -900,7 +900,7 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_get(cJSON *step, test
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
         radioindex = atoi(config->valuestring);
-        if ((radioindex > 0) && (radioindex <= MAX_NUM_RADIOS)) {
+        if ((radioindex >= 0) && (radioindex < MAX_NUM_RADIOS)) {
             wifi_stats_get->radio_index = radioindex;
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_get->radio_index);
         } else {
@@ -975,7 +975,7 @@ int wlan_emu_ui_mgr_t::decode_step_radio_channel_stats_set(cJSON *step, test_ste
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
         wifi_stats_set->radio_index = atoi(config->valuestring);
-        if ((wifi_stats_set->radio_index > 0) && (wifi_stats_set->radio_index <= MAX_NUM_RADIOS)) {
+        if ((wifi_stats_set->radio_index >= 0) && (wifi_stats_set->radio_index < MAX_NUM_RADIOS)) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
@@ -1009,7 +1009,7 @@ int wlan_emu_ui_mgr_t::decode_step_neighbor_stats_set(cJSON *step, test_step_par
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
         wifi_stats_set->radio_index = atoi(config->valuestring);
-        if ((wifi_stats_set->radio_index > 0) && (wifi_stats_set->radio_index <= MAX_NUM_RADIOS)) {
+        if ((wifi_stats_set->radio_index >= 0) && (wifi_stats_set->radio_index < MAX_NUM_RADIOS)) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
@@ -1043,7 +1043,7 @@ int wlan_emu_ui_mgr_t::decode_step_assoc_client_stats_set(cJSON *step, test_step
     config = cJSON_GetObjectItem(step, "VapIndex");
     if (config != NULL) {
         wifi_stats_set->vap_index = atoi(config->valuestring);
-        if ((wifi_stats_set->vap_index > 0) && (wifi_stats_set->vap_index <= MAX_NUM_VAP_PER_RADIO)) {
+        if ((wifi_stats_set->vap_index >= 0) && (wifi_stats_set->vap_index < (MAX_NUM_VAP_PER_RADIO * MAX_NUM_RADIOS))) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success VapIndex value : %d\n", __func__, __LINE__, wifi_stats_set->vap_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid VapIndex\n", __func__, __LINE__);
@@ -1077,7 +1077,7 @@ int wlan_emu_ui_mgr_t::decode_step_radio_diag_stats_set(cJSON *step, test_step_p
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
         wifi_stats_set->radio_index = atoi(config->valuestring);
-        if ((wifi_stats_set->radio_index > 0) && (wifi_stats_set->radio_index <= MAX_NUM_RADIOS)) {
+        if ((wifi_stats_set->radio_index >= 0) && (wifi_stats_set->radio_index < MAX_NUM_RADIOS)) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
@@ -1111,7 +1111,7 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_set(cJSON *step, test
     config = cJSON_GetObjectItem(step, "RadioIndex");
     if (config != NULL) {
         wifi_stats_set->radio_index = atoi(config->valuestring);
-        if ((wifi_stats_set->radio_index > 0) && (wifi_stats_set->radio_index <= MAX_NUM_RADIOS)) {
+        if ((wifi_stats_set->radio_index >= 0) && (wifi_stats_set->radio_index < MAX_NUM_RADIOS)) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decode success RadioIndex value : %d\n", __func__, __LINE__, wifi_stats_set->radio_index);
         } else {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid RadioIndex\n", __func__, __LINE__);
@@ -1286,7 +1286,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_neighbor_stats_get success\n", __func__, __LINE__);
             }
         }
-        if (strcmp(param->valuestring, "AssocClientStats") == 0) {
+        if (strcmp(param->valuestring, "AssociatedDeviceStats") == 0) {
             *step_config = new(std::nothrow) test_step_param_get_assoc_clients_stats;
             if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for assoc client stats get step\n", __func__, __LINE__);
@@ -1299,7 +1299,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_assoc_client_stats_get success\n", __func__, __LINE__);
             }
         }
-        if (strcmp(param->valuestring, "RadioDiagStats") == 0) {
+        if (strcmp(param->valuestring, "RadioDiagnosticStats") == 0) {
             *step_config = new(std::nothrow) test_step_param_get_radio_diag_stats;
             if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio diag stats get step\n", __func__, __LINE__);
@@ -1312,7 +1312,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_radio_diag_stats_get success\n", __func__, __LINE__);
             }
         }
-        if (strcmp(param->valuestring, "RadioTemparatureStats") == 0) {
+        if (strcmp(param->valuestring, "RadioTemperatureStats") == 0) {
             *step_config = new(std::nothrow) test_step_param_get_radio_temperature_stats;
             if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio temperature stats get step\n", __func__, __LINE__);
@@ -1359,7 +1359,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
             }
         }
-        if (strcmp(param->valuestring, "AssocClientStats") == 0) {
+        if (strcmp(param->valuestring, "AssociatedDeviceStats") == 0) {
             *step_config = new(std::nothrow) test_step_param_set_assoc_clients_stats;
             if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for assoc client stats set step\n", __func__, __LINE__);
@@ -1372,7 +1372,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
             }
         }
-        if (strcmp(param->valuestring, "RadioDiagStats") == 0) {
+        if (strcmp(param->valuestring, "RadioDiagnosticStats") == 0) {
             *step_config = new(std::nothrow) test_step_param_set_radio_diag_stats;
             if ((*step_config)->is_step_initialized == false) {
                 wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for radio diag stats set step\n", __func__, __LINE__);

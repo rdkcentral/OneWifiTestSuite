@@ -79,24 +79,24 @@ int test_step_param_get_stats_t::get_subscription_string(char *str, int str_len)
     {
         case wifi_mon_stats_type_t::mon_stats_type_radio_channel_stats:
             if (get_scanmode() != nullptr) {
-                snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.ScanMode.%s.ChannelStats", step->u.wifi_stats_get->radio_index, scan_mode);
+                snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.ScanMode.%s.ChannelStats", step->u.wifi_stats_get->radio_index+1, scan_mode);
                 return RETURN_OK;
             }
         break;
         case wifi_mon_stats_type_t::mon_stats_type_neighbor_stats:
             if (get_scanmode() != nullptr) {
-                snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.ScanMode.%s.NeighborStats", step->u.wifi_stats_get->radio_index, scan_mode);
+                snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.ScanMode.%s.NeighborStats", step->u.wifi_stats_get->radio_index+1, scan_mode);
                 return RETURN_OK;
             }
         break;
         case wifi_mon_stats_type_t::mon_stats_type_associated_device_stats:
-            snprintf(str, str_len, "Device.WiFi.CollectStats.AccessPoint.%d.AssociatedDeviceStats", step->u.wifi_stats_get->vap_index);
+            snprintf(str, str_len, "Device.WiFi.CollectStats.AccessPoint.%d.AssociatedDeviceStats", step->u.wifi_stats_get->vap_index+1);
             return RETURN_OK;
         case wifi_mon_stats_type_t::mon_stats_type_radio_diagnostic_stats:
-            snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.RadioDiagnosticStats", step->u.wifi_stats_get->radio_index);
+            snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.RadioDiagnosticStats", step->u.wifi_stats_get->radio_index+1);
             return RETURN_OK;
         case wifi_mon_stats_type_t::mon_stats_type_radio_temperature:
-            snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.RadioTemperature", step->u.wifi_stats_get->radio_index);
+            snprintf(str, str_len, "Device.WiFi.CollectStats.Radio.%d.RadioTemperatureStats", step->u.wifi_stats_get->radio_index+1);
             return RETURN_OK;
         break;
         default:
