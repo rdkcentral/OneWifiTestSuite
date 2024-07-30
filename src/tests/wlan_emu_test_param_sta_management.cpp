@@ -23,12 +23,12 @@ int test_step_param_sta_management::decode_user_ap_config(cJSON *sta_root_json, 
 
         radio_index = convert_vap_name_to_radio_array_index(&webconfig_data->hal_cap.wifi_prop, ap_vap_info->vap_name);
         if (radio_index < 0) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index for vap_name : %s\n", __func__, __LINE__, ap_vap_info->vap_name);
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid radio Index for vap_name : %s\n", __func__, __LINE__, ap_vap_info->vap_name);
             return webconfig_error_decode;
         }
 
         if (convert_radio_index_to_freq_band(&webconfig_data->hal_cap.wifi_prop, radio_index, &band) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band for radio_index : %d\n", __func__, __LINE__, radio_index);
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to fetch proper band for radio_index : %d\n", __func__, __LINE__, radio_index);
             return webconfig_error_decode;
         }
 
@@ -60,10 +60,9 @@ int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_co
     snprintf(sta_vap_config->u.sta_info.security.u.key.key, sizeof(sta_vap_config->u.sta_info.security.u.key.key), "%s", ap_vap_config->u.bss_info.security.u.key.key);
     //snprintf((char *)sta_vap_config->u.sta_info.bssid, sizeof(sta_vap_config->u.sta_info.bssid), "%s", ap_vap_config->u.bss_info.bssid);
     memcpy(sta_vap_config->u.sta_info.bssid, ap_vap_config->u.bss_info.bssid, sizeof(sta_vap_config->u.sta_info.bssid));
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ssid : %s key : %s\n", __func__, __LINE__, sta_vap_config->u.sta_info.ssid,
-            sta_vap_config->u.sta_info.security.u.key.key);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid : %s\n", __func__, __LINE__, sta_vap_config->u.sta_info.ssid);
 
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: radio_index : %d bridge_name : %s mode : %d enc : %d\n", __func__, __LINE__, sta_vap_config->radio_index,
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: radio_index : %d bridge_name : %s mode : %d enc : %d\n", __func__, __LINE__, sta_vap_config->radio_index,
             sta_vap_config->bridge_name, sta_vap_config->u.sta_info.security.mode, sta_vap_config->u.sta_info.security.encr);
     return RETURN_OK;
 }
@@ -144,7 +143,7 @@ int test_step_param_sta_management::decode_step_sta_management_config()
             }
 
             cJSON_ArrayForEach(pattern, pattern_root) {
-                station_connectivity_profile *connect_profile = new station_connectivity_profile;
+                station_connectivity_profile_t *connect_profile = new station_connectivity_profile_t;
                 if (connect_profile == NULL) {
                     wlan_emu_print(wlan_emu_log_level_err,"%s:%d: allocation for connect profile failed\n", __func__, __LINE__);
                     return RETURN_ERR;
@@ -186,9 +185,13 @@ int test_step_param_sta_management::step_execute()
         step->u.sta_test->is_decoded = true;
         step->u.sta_test->test_id = step->step_number;
         if (step->m_sta_mgr->add_sta(step->u.sta_test) == RETURN_ERR) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: add_sta failed for step : %d\n",
+                    __func__, __LINE__, step->step_number);
             return RETURN_ERR;
         }
+        step->u.sta_test->is_station_associated = true;
     }
+
     if (step->capture_frames == true) {
         step->test_state = wlan_emu_tests_state_cmd_continue;
     } else {
@@ -223,7 +226,7 @@ int test_step_param_sta_management::step_timeout()
         if (step->u.sta_test->u.sta_management.is_sta_management_timer == true) {
             if (step->u.sta_test->u.sta_management.connectivity_q != NULL) {
                 if ((queue_count(step->u.sta_test->u.sta_management.connectivity_q) > 0) && (step->u.sta_test->u.sta_management.current_profile_count >=0)) {
-                    station_connectivity_profile *connect_profile = (station_connectivity_profile *)queue_peek(step->u.sta_test->u.sta_management.connectivity_q, step->u.sta_test->u.sta_management.current_profile_count);
+                    station_connectivity_profile_t *connect_profile = (station_connectivity_profile_t *)queue_peek(step->u.sta_test->u.sta_management.connectivity_q, step->u.sta_test->u.sta_management.current_profile_count);
                     if (connect_profile == NULL) {
                         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: connect_profile is NULL for  %d\n",
                                 __func__, __LINE__, step->u.sta_test->u.sta_management.current_profile_count);
@@ -361,8 +364,9 @@ void test_step_param_sta_management::step_remove()
         if (step->u.sta_test->sta_vap_config != NULL) {
             wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Disconnecting the client at vap index : %d\n",
                     __func__, __LINE__, step->u.sta_test->sta_vap_config->vap_index);
-
-            step->m_sta_mgr->remove_sta(step->u.sta_test);
+            if (step->u.sta_test->is_station_associated == true) {
+                step->m_sta_mgr->remove_sta(step->u.sta_test);
+            }
 
             delete step->u.sta_test->sta_vap_config;
         }
@@ -399,7 +403,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
     switch (msg->get_msg_type()) {
         case wlan_emu_msg_type_frm80211: //mgmt
             if ((step->capture_frames != true) || (!(step->frame_request.msg_type & (1<<msg->get_msg_type())))) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: TRK msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
                 return RETURN_UNHANDLED;
             }
 
@@ -461,6 +464,7 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->capture_frames = false;
     memset(step->u.sta_test->sta_vap_config, 0, sizeof(wifi_vap_info_t));
     step->u.sta_test->u.sta_management.is_sta_management_timer = false;
+    step->u.sta_test->is_station_associated = false;
 
 }
 

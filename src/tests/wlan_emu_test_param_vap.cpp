@@ -213,13 +213,11 @@ int test_step_param_vap::step_frame_filter(wlan_emu_msg_t *msg)
     switch (msg->get_msg_type()) {
         case wlan_emu_msg_type_cfg80211: //beacon
             if ((step->capture_frames != true) || (!(step->frame_request.msg_type & (1<<msg->get_msg_type())))) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: TRK msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
                 return RETURN_UNHANDLED;
             }
             //Check for the respective AP MAC Addresses
             subdoc_str = get_subdoc_string_from_type(step->frame_request.subdoc_type);
             if (subdoc_str == NULL) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: TRK msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
                 return RETURN_UNHANDLED;
             }
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d subdoc_str : %s\n", __func__, __LINE__, step->step_number, subdoc_str);

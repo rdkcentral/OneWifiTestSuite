@@ -14,6 +14,7 @@
 #include <netpacket/packet.h>
 #include <arpa/inet.h>
 #include "wifi_hal.h"
+#include <linux/types.h>
 
 #define RETURN_OK   0
 #define RETURN_ERR -1
@@ -40,6 +41,7 @@ int send_raw_packet(const void *data, size_t data_len,
         uint32_t source_nip, int source_port,
         uint32_t dest_nip, int dest_port, const uint8_t *dest_arp,
         int ifindex);
+unsigned int ieee_frame_hdr_len(__le16 fc);
 
 const uint8_t MAC_BCAST_ADDR[6] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0xff

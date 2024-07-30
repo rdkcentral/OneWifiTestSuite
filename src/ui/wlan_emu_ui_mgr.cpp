@@ -176,8 +176,8 @@ int wlan_emu_ui_mgr_t::http_get(const char *url, const char *output_file)
             res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
             res = curl_easy_perform(curl);
             if (res != CURLE_OK) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: curl_easy_perform() failed %s for url : %s len : %d\n",
-                        __func__, __LINE__, curl_easy_strerror(res), test_config_URL, strlen(test_config_URL));
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: curl_easy_perform() failed curl errno : %d errstr : %s for url : %s len : %d\n",
+                        __func__, __LINE__, res, curl_easy_strerror(res), test_config_URL, strlen(test_config_URL));
                 free(test_config_URL);
                 fclose(fp);
                 return RETURN_ERR;
@@ -418,6 +418,18 @@ int wlan_emu_ui_mgr_t::decode_pcap_frame_type(char *frame_type_str, frame_captur
         frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
         frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_eapol;
         return RETURN_OK;
+    } else if (strcmp(frame_type_str, "ReassociationRequest") == 0) {
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_reassoc_req;
+        return RETURN_OK;
+    } else if (strcmp(frame_type_str, "ReassociationResponse") == 0) {
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_reassoc_resp;
+        return RETURN_OK;
+    } else if (strcmp(frame_type_str, "Action") == 0) {
+        frame_capture_req->msg_type |= 1<<wlan_emu_msg_type_frm80211;
+        frame_capture_req->frm80211_ops |= 1<<wlan_emu_frm80211_ops_type_action;
+        return RETURN_OK;
     }
 
     return RETURN_ERR;
@@ -627,7 +639,32 @@ int wlan_emu_ui_mgr_t::decode_step_get_file(cJSON *step, test_step_params_t *ste
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config)
+{
+    get_file_t *get_file;
+    cJSON *config;
+    cJSON *param;
+    char temp_result_file[128] = {0};
 
+    step_config->param_type = step_param_type_mgmt_frame_capture;
+
+    get_file = step_config->u.get_file;
+
+    decode_param_integer(step, "MgmtFrameCaptureRadioIndex", param);
+    if ((param->valuedouble < 0) && (param->valuedouble >= MAX_NUM_RADIOS)) {
+        wlan_emu_print(wlan_emu_log_level_dbg,"%s:%d: Invalid radio index : %d\n", __func__, __LINE__, param->valuedouble);
+        return RETURN_ERR;
+    }
+    step_config->u.mgmt_frame_capture->radio_index = param->valuedouble;
+
+    decode_param_integer(step, "Duration", param);
+    step_config->u.mgmt_frame_capture->duration = param->valuedouble;
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: radio_index : %d duration : %d\n",
+            __func__, __LINE__, step_config->u.mgmt_frame_capture->radio_index, step_config->u.mgmt_frame_capture->duration);
+
+    return RETURN_OK;
+}
 
 int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, test_step_params_t *step_config)
 {
@@ -1271,6 +1308,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_radio_channel_stats_get success\n", __func__, __LINE__);
+                return RETURN_OK;
             }
         }
         if (strcmp(param->valuestring, "NeighborStats") == 0) {
@@ -1284,6 +1322,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_neighbor_stats_get success\n", __func__, __LINE__);
+                return RETURN_OK;
             }
         }
         if (strcmp(param->valuestring, "AssociatedDeviceStats") == 0) {
@@ -1297,6 +1336,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_assoc_client_stats_get success\n", __func__, __LINE__);
+                return RETURN_OK;
             }
         }
         if (strcmp(param->valuestring, "RadioDiagnosticStats") == 0) {
@@ -1310,6 +1350,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_radio_diag_stats_get success\n", __func__, __LINE__);
+                return RETURN_OK;
             }
         }
         if (strcmp(param->valuestring, "RadioTemperatureStats") == 0) {
@@ -1323,6 +1364,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_radio_temperature_stats_get success\n", __func__, __LINE__);
+                return RETURN_OK;
             }
         }
     }
@@ -1344,6 +1386,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_OK;
             }
         }
         if (strcmp(param->valuestring, "NeighborStats") == 0) {
@@ -1357,6 +1400,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_OK;
             }
         }
         if (strcmp(param->valuestring, "AssociatedDeviceStats") == 0) {
@@ -1370,6 +1414,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_OK;
             }
         }
         if (strcmp(param->valuestring, "RadioDiagnosticStats") == 0) {
@@ -1383,6 +1428,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_OK;
             }
         }
         if (strcmp(param->valuestring, "RadioTemperatureStats") == 0) {
@@ -1396,6 +1442,7 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 return RETURN_ERR;
             } else {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_stats_set_params success for %s\n", __func__, __LINE__, param->valuestring);
+                return RETURN_OK;
             }
         }
     }
@@ -1413,7 +1460,23 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
         }
         return RETURN_OK;
     }
-    return RETURN_OK;
+
+    config = cJSON_GetObjectItem(step, "MgmtFrameCaptureRadioIndex");
+    if (config != NULL) {
+        *step_config = new(std::nothrow) test_step_param_mgmt_frame_capture;
+        if ((*step_config)->is_step_initialized == false) {
+            wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for get file step\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        if (decode_step_mgmt_frame_capture(step, *step_config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_mgmt_frame_capture failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        return RETURN_OK;
+    }
+
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d Invalid step param\n\n", __func__, __LINE__);
+    return RETURN_ERR;
 }
 
 void wlan_emu_ui_mgr_t::dump_json(cJSON *json_buff, const char *func, int line)
@@ -2228,7 +2291,7 @@ int wlan_emu_ui_mgr_t::get_mlts_configuration()
 int wlan_emu_ui_mgr_t::init()
 {
     unsigned int i;
-    char timestamp[16] = {0};
+    char timestamp[24] = {0};
 
     memset(input_test_buff, 0, sizeof(input_test_buff));
     memset(ssl_cert, 0, sizeof(ssl_cert));

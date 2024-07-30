@@ -315,9 +315,12 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         wifi_hal_startScan(sta_info->rdk_radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, 500, 1, chan_list);
         usleep(500000);
     }
-    wifi_hal_connect(sta_test_config->sta_vap_config->vap_index, &bss);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: hal connect called\n", __func__, __LINE__);
+    if (wifi_hal_connect(sta_test_config->sta_vap_config->vap_index, &bss) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: hal connect failed for dev_id : %d for vap_index : %d\n", __func__, __LINE__, dev_id, sta_test_config->sta_vap_config->vap_index);
+        return RETURN_ERR;
+    }
 
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: hal connect succesful for dev_id : %d for vap_index : %d\n", __func__, __LINE__, dev_id, sta_test_config->sta_vap_config->vap_index);
     hash_map_put(m_sta_map, strdup(sta_test_config->key), sta);
     set_dev_busy(dev_id);
 

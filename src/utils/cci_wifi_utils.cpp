@@ -1,4 +1,7 @@
 #include "cci_wifi_utils.hpp"
+#include "common/ieee802_11_defs.h"
+#include <sys/time.h>
+#include <ctime>
 
 char *mac_to_str(unsigned char *mac, char *s_mac)
 {
@@ -22,27 +25,28 @@ char *mac_str_without_colon(mac_address_t mac, mac_addr_str_t key)
 
 int get_current_time_string(char *time_str, int time_str_len)
 {
-    time_t current_time;
+    struct timeval tv_now;
     struct tm *timeinfo;
-    char timestamp[16];
+    char timestamp[24];
     int ret = 0;
 
     if ((time_str == NULL) || (time_str_len == 0)) {
         return RETURN_ERR;
     }
-    time(&current_time);
-    timeinfo = localtime(&current_time);
+
+    memset(time_str, 0, time_str_len);
+    gettimeofday(&tv_now, NULL);
+    timeinfo = localtime(&tv_now.tv_sec);
 
     // Format the timestamp
     strftime(timestamp, sizeof(timestamp), "%Y%m%d%H%M%S", timeinfo);
 
-    ret = snprintf(time_str, time_str_len, "%s", timestamp);
+    ret = snprintf(time_str, time_str_len, "%s%06lu", timestamp, tv_now.tv_usec);
     if ((ret < 0) || (ret >= time_str_len)) {
         return RETURN_ERR;
     }
 
     return RETURN_OK;
-
 }
 
 int dmcli_get(char *cmd, char *value, unsigned int val_len)
@@ -206,8 +210,62 @@ int send_raw_packet(const void *data, size_t data_len,
 
     free(buf);
 
- ret_close:
+  ret_close:
     close(fd);
     return res;
+}
+
+unsigned int ieee_frame_hdr_len(__le16 fc)
+{
+    unsigned int hdrlen = 24;
+    unsigned short type = 0;
+    type = WLAN_FC_GET_TYPE(fc);
+
+    if (type == WLAN_FC_TYPE_DATA) {
+        if ((fc & (WLAN_FC_TODS | WLAN_FC_FROMDS))  == (WLAN_FC_TODS | WLAN_FC_FROMDS)) {
+            hdrlen = 30;
+        }
+
+        //QOSDATA
+        if (((fc & 0x00f0) & 0x80) == 0x80) {
+            //IEEE80211_QOS_CTL_LEN
+            hdrlen += 2;
+            //IEEE80211_FC1_ORDER     0x80
+            if (((fc & 0xf000) & 0x8000) != 0) {
+                hdrlen += 0x04;
+            }
+            goto out;
+        }
+    }
+
+
+    if (type == WLAN_FC_TYPE_MGMT) {
+        //IEEE80211_FC1_ORDER
+        if (((fc & 0xf000) & 0x8000) != 0) {
+            hdrlen += 0x04;
+        }
+        goto out;
+    }
+
+
+    if (type == WLAN_FC_TYPE_CTRL) {
+        /*
+         * ACK and CTS are 10 bytes, all others 16. To see how
+         * to get this condition consider
+         *   subtype mask:   0b0000000011110000 (0x00F0)
+         *   ACK subtype:    0b0000000011010000 (0x00D0)
+         *   CTS subtype:    0b0000000011000000 (0x00C0)
+         *   bits that matter:         ^^^      (0x00E0)
+         *   value of those: 0b0000000011000000 (0x00C0)
+         */
+        if (((fc & 0xff00) & 0x00E0) == 0x00C) {
+            hdrlen = 10;
+        } else {
+            hdrlen = 16;
+        }
+    }
+
+  out:
+    return hdrlen;
 }
 

@@ -53,6 +53,7 @@ class test_step_param_set_assoc_clients_stats;
 class test_step_param_set_radio_diag_stats;
 class test_step_param_set_radio_temperature_stats;
 class test_step_param_get_file;
+class test_step_param_mgmt_frame_capture;
 
 class wlan_emu_ui_mgr_t {
     static unsigned int m_token;
@@ -73,7 +74,7 @@ class wlan_emu_ui_mgr_t {
     queue_t *test_cov_cases_q; //wlan_emu_test_case_config
     char test_results_dir_path[64];
     bool is_local_host_enabled;
-    char remote_test_results_loc[128];
+    char remote_test_results_loc[256];
     webconfig_cci_t *m_webconfig_data;
     wifi_hal_capability_t *m_sta_hal_cap;
     char ssl_cert[128];
@@ -125,6 +126,7 @@ class wlan_emu_ui_mgr_t {
     int cci_post_result_to_tda(bool result);
     int get_mlts_configuration();
     int decode_step_get_file(cJSON *step, test_step_params_t *step_config);
+    int decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config);
 
   public:
     int init(void);
@@ -200,7 +202,5 @@ public:
     wlan_emu_standalone_ui_mgr_t();
     ~wlan_emu_standalone_ui_mgr_t();
 };
-
-
 
 #endif // WLAN_UI_MGR_H

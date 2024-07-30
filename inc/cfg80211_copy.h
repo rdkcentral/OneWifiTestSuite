@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <linux/types.h>
 
-
 #define IEEE80211_HT_MCS_MASK_LEN 10
 #define ETH_ALEN 6
 
@@ -112,8 +111,6 @@ struct ieee80211_ht_cap {
     __le32 tx_BF_cap_info;
     u8 antenna_selection_info;
 } __attribute__((packed));
-
-
 
 
 /**

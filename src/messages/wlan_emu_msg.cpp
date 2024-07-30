@@ -13,12 +13,13 @@
 #include <pcap.h>
 #include <time.h>
 #include "common/ieee802_11_defs.h"
+#include "common/defs.h"
+#include "common/wpa_common.h"
 #include "wifi_hal.h"
 #include "cci_wifi_utils.hpp"
 
 
 bool wlan_emu_msg_t::enable_beacon_dump = false;
-bool wlan_emu_msg_t::eapol_msg1 = false;
 
 bool wlan_emu_msg_t::operator==(wlan_emu_msg_mac80211_t *grd)
 {
@@ -188,7 +189,7 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
     char fname[248];
     mac_addr_str_t mac_str, c_mac_str;
     char *to_queue;
-    char timestamp[16] = {0};
+    char timestamp[24] = {0};
     unsigned int radio_index = 0;
 
     memset(fname, 0, sizeof(fname));
@@ -203,15 +204,10 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
 
     wlan_emu_msg_type_t msg_type = get_msg_type();
     if (msg_type == wlan_emu_msg_type_frm80211) {
-        wlan_emu_frm80211_ops_type_t ops_type = get_frm80211_ops_type();
-        if (ops_type == wlan_emu_frm80211_ops_type_eapol) {
-            cap_len = sizeof(radio_tap_header) + sizeof(eapol_qos_info) + sizeof(llc_info) + f_data->u.frm80211.u.frame.frame_len;
-        } else {
-            cap_len = sizeof(radio_tap_header) + f_data->u.frm80211.u.frame.frame_len;
-        }
+        cap_len = sizeof(radio_tap_header) + f_data->u.frm80211.u.frame.frame_len;
     } else {
         cap_len = sizeof(radio_tap_header) + f_data->u.cfg80211.u.start_ap.ap_params.beacon.head_len + sizeof(traffic_indication_map) + f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail_len;
-    } 
+    }
 
     buff = malloc(cap_len);
     memset(buff, 0, cap_len);
@@ -219,20 +215,6 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
 
     memcpy(buff, radio_tap_header, sizeof(radio_tap_header));
     buff += sizeof(radio_tap_header);
-
-    if (msg_type == wlan_emu_msg_type_frm80211) {
-        wlan_emu_frm80211_ops_type_t ops_type = get_frm80211_ops_type();
-        if (ops_type == wlan_emu_frm80211_ops_type_eapol) {
-            memcpy(eapol_qos_info+4, f_data->u.frm80211.u.frame.client_macaddr, ETH_ALEN);
-            memcpy(eapol_qos_info+10, f_data->u.frm80211.u.frame.macaddr, ETH_ALEN);
-            memcpy(eapol_qos_info+10+ETH_ALEN, f_data->u.frm80211.u.frame.macaddr, ETH_ALEN);
-            memcpy(buff, eapol_qos_info, sizeof(eapol_qos_info));
-            buff += sizeof(eapol_qos_info);
-
-            memcpy(buff, llc_info, sizeof(llc_info));
-            buff += sizeof(llc_info);
-        }
-    }
 
     handle = pcap_open_dead(DLT_IEEE802_11_RADIO, 4000);
     if (handle == NULL) {
@@ -248,13 +230,29 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
 
     if (msg_type == wlan_emu_msg_type_frm80211) {
         mac_str_without_colon(f_data->u.frm80211.u.frame.macaddr, mac_str);
-        step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.frm80211.u.frame.macaddr, &radio_index);
+        wlan_emu_frm80211_ops_type_t ops_type = get_frm80211_ops_type();
+
+        if (step->param_type == step_param_type_mgmt_frame_capture) {
+            if (step->u.mgmt_frame_capture == nullptr) {
+                return RETURN_ERR;
+            }
+            //in mgmt frame capture already the validation is done as part of test, so assigning the input value
+            radio_index = step->u.mgmt_frame_capture->radio_index;
+        } else {
+            step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.frm80211.u.frame.macaddr, &radio_index);
+        }
         mac_str_without_colon(f_data->u.frm80211.u.frame.client_macaddr, c_mac_str);
+        if (get_msgname_from_msgtype() == RETURN_ERR) {
+            return RETURN_ERR;
+        }
         snprintf(fname, sizeof(fname), "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
                 step->test_case_id, step->step_number, timestamp, mac_str, c_mac_str, step->test_case_name, get_msg_name(), radio_index);
         memcpy(buff, f_data->u.frm80211.u.frame.frame, f_data->u.frm80211.u.frame.frame_len);
     } else if (msg_type == wlan_emu_msg_type_cfg80211) {
         mac_str_without_colon(f_data->u.cfg80211.u.start_ap.macaddr, mac_str);
+        if (get_msgname_from_msgtype() == RETURN_ERR) {
+            return RETURN_ERR;
+        }
         snprintf(fname, sizeof(fname), "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
                 step->test_case_id, step->step_number, timestamp, mac_str, "NA", step->test_case_name, get_msg_name(), f_data->u.cfg80211.u.start_ap.phy_index);
 
@@ -314,7 +312,6 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
         queue_push(step->test_results_queue, capture);
     }
 
-
     pcap_dump((u_char *)dump_handle, &pkthdr, tmp_buff);
     pcap_dump_flush(dump_handle);
     pcap_close(handle);
@@ -322,57 +319,135 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
     return RETURN_OK;
 }
 
-char * wlan_emu_msg_t::get_msg_name() {
+int wlan_emu_msg_t::get_msgname_from_msgtype()
+{
+    unsigned int frame_hdr_len = 0;
+    struct ieee80211_mgmt *mgmt = NULL;
     wlan_emu_msg_type_t msg_type = get_msg_type();
+    unsigned char *frame_buf =  NULL;
+    unsigned char *tmp_frame_buf = NULL;
+    u8 tmp_key_info[2] = {0};
+    u16 key_info = 0;
+
+    unsigned int temp_count = 0;
+    unsigned int count = 0;
 
     memset(msg_name, 0, sizeof(msg_name));
 
     if (msg_type == wlan_emu_msg_type_frm80211) {
         wlan_emu_frm80211_ops_type_t ops_type = get_frm80211_ops_type();
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ops_type : %d\n",
+                __func__, __LINE__, ops_type);
+
+        frame_buf = (unsigned char *)this->m_msg.u.frm80211.u.frame.frame;
+
+        mgmt = reinterpret_cast<ieee80211_mgmt *>(this->m_msg.u.frm80211.u.frame.frame);
+
+        frame_hdr_len =  ieee_frame_hdr_len(le16toh(mgmt->frame_control));
+
         switch (ops_type) {
+            case wlan_emu_frm80211_ops_type_assoc_req:
+                strncpy(msg_name, "assoc-request", sizeof(msg_name));
+            break;
+            case wlan_emu_frm80211_ops_type_prb_req:
+                strncpy(msg_name, "probe-request", sizeof(msg_name));
+            break;
             case wlan_emu_frm80211_ops_type_prb_resp:
                 strncpy(msg_name, "probe-response", sizeof(msg_name));
-                break;
+            break;
             case wlan_emu_frm80211_ops_type_assoc_resp:
                 strncpy(msg_name, "assoc-response", sizeof(msg_name));
-                break;
+            break;
             case wlan_emu_frm80211_ops_type_auth:
-                strncpy(msg_name, "authentication", sizeof(msg_name));
-                break;
+                u16 auth_alg, auth_transaction, status_code;
+                auth_alg = le_to_host16(mgmt->u.auth.auth_alg);
+                auth_transaction = le_to_host16(mgmt->u.auth.auth_transaction);
+                status_code = le_to_host16(mgmt->u.auth.status_code);
+/*
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: auth_alg : %d auth_transaction : %d status_code : %d\n",
+                        __func__, __LINE__, auth_alg, auth_transaction, status_code);
+*/
+
+                if (auth_alg == WLAN_AUTH_OPEN) {
+                    if ((auth_transaction == 1) && (status_code == 0)) {
+                        strncpy(msg_name, "auth-request", sizeof(msg_name));
+                    } else if ((auth_transaction == 2) && (status_code == 0)) {
+                        strncpy(msg_name, "auth-response", sizeof(msg_name));
+                    }
+
+                } else if ((auth_alg == WLAN_AUTH_SAE)) {
+                    if (auth_transaction == 1) {
+                        strncpy(msg_name, "auth-commit", sizeof(msg_name));
+                    } else if (auth_transaction == 2) {
+                        strncpy(msg_name, "auth-confirm", sizeof(msg_name));
+                    }
+                }
+            break;
             case wlan_emu_frm80211_ops_type_deauth:
                 strncpy(msg_name, "deauthentication", sizeof(msg_name));
-                break;
+            break;
             case wlan_emu_frm80211_ops_type_disassoc:
                 strncpy(msg_name, "disassoc", sizeof(msg_name));
-                break;
+            break;
             case wlan_emu_frm80211_ops_type_eapol:
-                if (eapol_msg1) {
-                    strncpy(msg_name, "eapol-msg3", sizeof(msg_name));
-                    eapol_msg1 = false;
-                } else {
-                    strncpy(msg_name, "eapol-msg1", sizeof(msg_name));
-                    eapol_msg1 = true;
-                }
-                break;
+                  // 8 = sizeof logical link control header
+                  // 1 = 802.1x auth version
+                  // 4 = TLV for 802.1x
+                  tmp_frame_buf = frame_buf + frame_hdr_len + 8 + 1 + 4;
+
+                  memcpy(tmp_key_info, tmp_frame_buf, sizeof(key_info));
+                  key_info = WPA_GET_BE16(tmp_key_info);
+
+                  if (key_info & WPA_KEY_INFO_KEY_TYPE) {
+                      if ((key_info & (WPA_KEY_INFO_KEY_TYPE | WPA_KEY_INFO_INSTALL | WPA_KEY_INFO_ACK | WPA_KEY_INFO_MIC | WPA_KEY_INFO_SECURE)) ==
+                              (WPA_KEY_INFO_KEY_TYPE | WPA_KEY_INFO_INSTALL | WPA_KEY_INFO_ACK | WPA_KEY_INFO_MIC | WPA_KEY_INFO_SECURE)) {
+                          strncpy(msg_name, "eapol-msg3", sizeof(msg_name));
+                      } else if ((key_info & (WPA_KEY_INFO_KEY_TYPE | WPA_KEY_INFO_MIC | WPA_KEY_INFO_SECURE)) ==
+                              (WPA_KEY_INFO_KEY_TYPE | WPA_KEY_INFO_MIC | WPA_KEY_INFO_SECURE)) {
+                          strncpy(msg_name, "eapol-msg4", sizeof(msg_name));
+                      } else if ((key_info & (WPA_KEY_INFO_KEY_TYPE | WPA_KEY_INFO_MIC)) == (WPA_KEY_INFO_KEY_TYPE | WPA_KEY_INFO_MIC)) {
+                          strncpy(msg_name, "eapol-msg2", sizeof(msg_name));
+                      } else if ((key_info & (WPA_KEY_INFO_ACK | WPA_KEY_INFO_KEY_TYPE)) == (WPA_KEY_INFO_KEY_TYPE | WPA_KEY_INFO_ACK)) {
+                          strncpy(msg_name, "eapol-msg1", sizeof(msg_name));
+                      }
+                  }
+
+            break;
+            case wlan_emu_frm80211_ops_type_reassoc_req:
+                strncpy(msg_name, "reassoc-request", sizeof(msg_name));
+            break;
+            case wlan_emu_frm80211_ops_type_reassoc_resp:
+                strncpy(msg_name, "reassoc-response", sizeof(msg_name));
+            break;
+            case wlan_emu_frm80211_ops_type_action:
+                strncpy(msg_name, "action", sizeof(msg_name));
+            break;
             default:
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid msg type : %d\n", __func__, __LINE__, ops_type);
                 strncpy(msg_name, "INVALID", sizeof(msg_name));
-                break;
+            break;
         }
     } else if (msg_type == wlan_emu_msg_type_cfg80211) {
         wlan_emu_cfg80211_ops_type_t ops_type = get_cfg80211_ops_type();
         switch (ops_type) {
             case wlan_emu_cfg80211_ops_type_start_ap:
                 strncpy(msg_name, "beacon", sizeof(msg_name));
-                break;
+            break;
             default:
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid msg type : %d\n", __func__, __LINE__, ops_type);
                 strncpy(msg_name, "INVALID", sizeof(msg_name));
-                break;
+            break;
         }
     } else {
         strncpy(msg_name, "INVALID", sizeof(msg_name));
     }
 
-    return msg_name;
+    if (msg_name[0] == '\0') {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid msg type\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
 }
 
 void wlan_emu_msg_t::unload_cfg80211_start_ap(test_step_params_t *step_config)

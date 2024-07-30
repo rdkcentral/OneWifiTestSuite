@@ -17,7 +17,10 @@ public:
     const char *cfg80211_ops_type_to_string();
     const char *mac80211_ops_type_to_string();
     const char *emu80211_ops_type_to_string();
-    char *get_msg_name();
+    char *get_msg_name() {
+        return msg_name;
+    }
+    int get_msgname_from_msgtype();
 
     inline void update_msg_data(wlan_emu_msg_data_t* data) {
         memcpy(&m_msg, data, sizeof(wlan_emu_msg_data_t));

@@ -66,11 +66,11 @@ void wlan_emu_sta_t::send_radio_tap_header(heart_beat_data_t *heart_beat_data)
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: mac_str : %s rssi : %d\n", __func__, __LINE__,
         to_mac_str(heart_beat_data->mac, mac_str), heart_beat_data->rssi);
-
+/*
     for (count = 0; count < byte_count; count++) {
         wlan_emu_print(wlan_emu_log_level_dbg, " %02X", char_buf[count]);
     }
-
+*/
     msg.send_ctrl_msg(char_buf, byte_count, wlan_emu_emu80211_cmd_radiotap);
 
     return;

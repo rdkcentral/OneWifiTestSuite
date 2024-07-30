@@ -249,6 +249,19 @@ void handle_frm80211_msg(char *f_tmp, wlan_emu_msg_data_t *f_data) {
     f_data->u.frm80211.u.frame.frame = (unsigned char *)malloc(f_data->u.frm80211.u.frame.frame_len);
     memset(f_data->u.frm80211.u.frame.frame, 0, f_data->u.frm80211.u.frame.frame_len);
     memcpy(f_data->u.frm80211.u.frame.frame, f_tmp, f_data->u.frm80211.u.frame.frame_len);
+
+    /* //Debug purpose
+    char dump_buff[4196];
+    unsigned int temp_count = 0;
+    unsigned int count = 0;
+    memset(dump_buff, 0, sizeof(dump_buff));
+    for ( count = 0; count < f_data->u.frm80211.u.frame.frame_len; count++ ) {
+        temp_count += snprintf(&dump_buff[temp_count], sizeof(dump_buff)-temp_count, " %02X", f_tmp[count]);
+    }
+    dump_buff[temp_count] = '\0';
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: len  : %d complete buff : %s\n", __func__, __LINE__, f_data->u.frm80211.u.frame.frame_len, dump_buff);
+    */
+
     f_tmp += f_data->u.frm80211.u.frame.frame_len;
 
     memcpy(f_data->u.frm80211.u.frame.macaddr, f_tmp, ETH_ALEN);

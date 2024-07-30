@@ -148,7 +148,7 @@ test_step_param_get_file::test_step_param_get_file()
                 __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
     }
-    memset(step->u.get_file, 0, sizeof(command_t));
+    memset(step->u.get_file, 0, sizeof(get_file_t));
     step->execution_time = 5;
     step->timeout_count = 0;
     step->capture_frames = false;

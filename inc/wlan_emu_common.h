@@ -42,7 +42,10 @@ typedef enum {
     wlan_emu_frm80211_ops_type_auth,
     wlan_emu_frm80211_ops_type_deauth,
     wlan_emu_frm80211_ops_type_disassoc,
-    wlan_emu_frm80211_ops_type_eapol
+    wlan_emu_frm80211_ops_type_eapol,
+    wlan_emu_frm80211_ops_type_reassoc_req,
+    wlan_emu_frm80211_ops_type_reassoc_resp, //Not implemented in hal
+    wlan_emu_frm80211_ops_type_action
 } wlan_emu_frm80211_ops_type_t;
 
 typedef enum {
@@ -162,7 +165,8 @@ typedef enum {
     step_param_type_dml_reset,
     step_param_type_stats_get,
     step_param_type_stats_set,
-    step_param_type_get_file
+    step_param_type_get_file,
+    step_param_type_mgmt_frame_capture
 } step_param_type_t;
 
 typedef struct {
@@ -235,8 +239,12 @@ typedef struct {
     unsigned int duration;
     unsigned int  counter;
     test_state_t test_state;
-} station_connectivity_profile;
+} station_connectivity_profile_t;
 
+typedef struct {
+    unsigned int radio_index;
+    unsigned int duration;
+} mgmt_frame_capture_t;
 
 //Connectivity is called as management
 typedef struct {
@@ -261,6 +269,7 @@ typedef struct {
     wifi_vap_info_t *sta_vap_config;
     wifi_radio_operationParam_t *radio_oper_param;
     sta_profile_t  profile;
+    bool is_station_associated;
     union {
         sta_management_t sta_management;
         //sta_mobility_t

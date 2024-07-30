@@ -65,7 +65,7 @@ int test_step_param_logredirect::step_execute()
     FD_ZERO(&poll_set);
     test_step_params_t *step = this;
     char tmp_log_result_file[128] = {0};
-    char timestamp[16] = {0};
+    char timestamp[24] = {0};
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n",
             __func__, __LINE__, step->step_number);
 
@@ -82,7 +82,7 @@ int test_step_param_logredirect::step_execute()
             if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
                         __func__, __LINE__);
-                return NULL;
+                return RETURN_ERR;
             }
 
             snprintf(tmp_log_result_file, sizeof(tmp_log_result_file), "%s/%s_%d_%s_%s",
@@ -100,7 +100,7 @@ int test_step_param_logredirect::step_execute()
 
             if (pthread_detach(step->u.log_capture->thread_id)) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: thread detach failed\n", __func__, __LINE__);
-                return -1;
+                return RETURN_ERR;
             }
         }
     } else {
