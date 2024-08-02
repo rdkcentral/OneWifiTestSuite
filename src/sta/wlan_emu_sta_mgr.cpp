@@ -12,6 +12,7 @@ extern "C" {
     INT wifi_hal_connect(INT ap_index, wifi_bss_info_t *bss);
     INT wifi_hal_disconnect(INT ap_index);
     INT wifi_hal_getRadioVapInfoMap(wifi_radio_index_t index, wifi_vap_info_map_t *map);
+    INT wifi_hal_startScan(wifi_radio_index_t index, wifi_neighborScanMode_t scan_mode, INT dwell_time, UINT num, UINT *chan_list);
 }
 
 static void ovs_fdb_flush(char *bridge_name)
@@ -244,6 +245,7 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
 {
     wlan_emu_sta_t *sta;
     int dev_id;
+    unsigned int chan_list[1] = {0};
     wifi_vap_info_map_t map;
     wifi_bss_info_t bss;
     sta_info_t *sta_info = NULL;
@@ -308,6 +310,11 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
 
     snprintf(bss.ssid, sizeof(bss.ssid), "%s", sta_test_config->sta_vap_config->u.sta_info.ssid);
     memcpy(bss.bssid, sta_test_config->sta_vap_config->u.sta_info.bssid, sizeof(mac_address_t));
+    if ((sta_test_config->sta_vap_config->u.sta_info.security.mode == wifi_security_mode_wpa3_personal)  || (sta_test_config->sta_vap_config->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) || (sta_test_config->sta_vap_config->u.sta_info.security.mode == wifi_security_mode_wpa3_transition)) {
+        chan_list[0] = sta_test_config->radio_oper_param->channel;
+        wifi_hal_startScan(sta_info->rdk_radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, 500, 1, chan_list);
+        usleep(500000);
+    }
     wifi_hal_connect(sta_test_config->sta_vap_config->vap_index, &bss);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: hal connect called\n", __func__, __LINE__);
 
