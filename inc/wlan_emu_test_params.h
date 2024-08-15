@@ -51,6 +51,7 @@ class test_step_params_t {
           wifi_stats_set_t *wifi_stats_set;
           get_file_t *get_file;
           mgmt_frame_capture_t  *mgmt_frame_capture;
+          get_pattern_files_t   *get_pattern_files;
       } u;
       virtual int step_execute() = 0;
       virtual int step_timeout() = 0;
@@ -280,5 +281,16 @@ class test_step_param_mgmt_frame_capture : public test_step_params_t  {
       int step_frame_filter(wlan_emu_msg_t *msg);
       test_step_param_mgmt_frame_capture();
       ~test_step_param_mgmt_frame_capture();
+};
+
+class test_step_param_get_pattern_files : public test_step_params_t  {
+  public:
+      int step_execute();
+      int step_timeout();
+      int step_upload_files(FILE *output_file, bool *update_to_tda);
+      void step_remove();
+      int step_frame_filter(wlan_emu_msg_t *msg);
+      test_step_param_get_pattern_files();
+      ~test_step_param_get_pattern_files();
 };
 #endif

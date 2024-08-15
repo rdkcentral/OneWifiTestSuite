@@ -594,7 +594,6 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
             delete log_redirect;
             return RETURN_ERR;
         }
-
         extension = strrchr(temp_result_file, '.');
 
         if (extension) {
@@ -626,16 +625,38 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
 }
 
 
+int wlan_emu_ui_mgr_t::decode_step_get_pattern_files(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *config;
+    cJSON *param;
+    char temp_result_file[128] = {0};
+
+    step_config->param_type = step_param_type_get_pattern_files;
+
+    config = cJSON_GetObjectItem(step, "GetPatternFiles");
+
+    decode_param_string(config, "Location", param);
+    snprintf(step_config->u.get_pattern_files->file_location, sizeof(step_config->u.get_pattern_files->file_location), "%s", param->valuestring);
+
+    decode_param_string(config, "FilePattern", param);
+    snprintf(step_config->u.get_pattern_files->file_pattern, sizeof(step_config->u.get_pattern_files->file_pattern), "%s",param->valuestring);
+
+    decode_param_bool(config, "DeleteFiles", param);
+    step_config->u.get_pattern_files->delete_pattern_files = (param->type & cJSON_True) ? true:false;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File Location : %s File pattern : %s delete pattern files : %d\n",
+            __func__, __LINE__, step_config->u.get_pattern_files->file_location,  step_config->u.get_pattern_files->file_pattern, step_config->u.get_pattern_files->delete_pattern_files);
+
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::decode_step_get_file(cJSON *step, test_step_params_t *step_config)
 {
-    get_file_t *get_file;
     cJSON *config;
     cJSON *param;
     char temp_result_file[128] = {0};
 
     step_config->param_type = step_param_type_get_file;
 
-    get_file = step_config->u.get_file;
     config = cJSON_GetObjectItem(step, "GetFile");
 
     decode_param_string(config, "SourceFilename", param);
@@ -654,14 +675,11 @@ int wlan_emu_ui_mgr_t::decode_step_get_file(cJSON *step, test_step_params_t *ste
 
 int wlan_emu_ui_mgr_t::decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config)
 {
-    get_file_t *get_file;
     cJSON *config;
     cJSON *param;
     char temp_result_file[128] = {0};
 
     step_config->param_type = step_param_type_mgmt_frame_capture;
-
-    get_file = step_config->u.get_file;
 
     decode_param_integer(step, "MgmtFrameCaptureRadioIndex", param);
     if ((param->valuedouble < 0) && (param->valuedouble >= MAX_NUM_RADIOS)) {
@@ -1472,6 +1490,20 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
         }
         if (decode_step_mgmt_frame_capture(step, *step_config) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_mgmt_frame_capture failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        return RETURN_OK;
+    }
+
+    config = cJSON_GetObjectItem(step, "GetPatternFiles");
+    if (config != NULL) {
+        *step_config = new(std::nothrow) test_step_param_get_pattern_files;
+        if ((*step_config)->is_step_initialized == false) {
+            wlan_emu_print(wlan_emu_log_level_err,"%s:%d: Failed allocating memory for get pattern files step\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        if (decode_step_get_pattern_files(step, *step_config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_get_pattern_files failed\n", __func__, __LINE__);
             return RETURN_ERR;
         }
         return RETURN_OK;

@@ -166,7 +166,8 @@ typedef enum {
     step_param_type_stats_get,
     step_param_type_stats_set,
     step_param_type_get_file,
-    step_param_type_mgmt_frame_capture
+    step_param_type_mgmt_frame_capture,
+    step_param_type_get_pattern_files
 } step_param_type_t;
 
 typedef struct {
@@ -256,6 +257,13 @@ typedef struct {
     unsigned int current_profile_count;
     bool is_sta_management_timer;
 } sta_management_t;
+
+typedef struct {
+    char file_location[128];
+    char file_pattern[128];
+    bool delete_pattern_files;
+    queue_t   *get_pattern_files_queue;//char *
+} get_pattern_files_t;
 
 typedef struct {
     unsigned int test_id;

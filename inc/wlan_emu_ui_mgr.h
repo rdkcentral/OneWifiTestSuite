@@ -54,6 +54,7 @@ class test_step_param_set_radio_diag_stats;
 class test_step_param_set_radio_temperature_stats;
 class test_step_param_get_file;
 class test_step_param_mgmt_frame_capture;
+class test_step_param_get_pattern_files;
 
 class wlan_emu_ui_mgr_t {
     static unsigned int m_token;
@@ -127,6 +128,7 @@ class wlan_emu_ui_mgr_t {
     int get_mlts_configuration();
     int decode_step_get_file(cJSON *step, test_step_params_t *step_config);
     int decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config);
+    int decode_step_get_pattern_files(cJSON *step, test_step_params_t *step_config);
 
   public:
     int init(void);
