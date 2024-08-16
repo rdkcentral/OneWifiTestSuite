@@ -311,7 +311,7 @@ rbusError_t wlan_emu_t::get_cci_handler(rbusHandle_t handle, rbusProperty_t prop
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: Rbus property=%s\n",__FUNCTION__,name);
 
     if (get_dml_state()  == wlan_emu_dml_tests_state_running) {
-        wlan_emu_print(wlan_emu_log_level_info, "%s: Rbus property=%s execution not allowed as test case is in running state\n",__FUNCTION__);
+        wlan_emu_print(wlan_emu_log_level_info, "%s: Execution not allowed as test case is in running state\n",__FUNCTION__);
         return RBUS_ERROR_SUCCESS;
     }
 
@@ -340,7 +340,7 @@ rbusError_t wlan_emu_t::get_cci_handler(rbusHandle_t handle, rbusProperty_t prop
     }else if (strstr(extension, "SimulatedClientDevices")) {
         int count = 0;
         memcpy(&count, m_ui_mgr.get_simulated_client_count(), sizeof(int));
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s: JRA count is %d\n", __func__, __LINE__, count);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s: count is %d\n", __func__, count);
         if (count == 0) {
             count = 100;
         }

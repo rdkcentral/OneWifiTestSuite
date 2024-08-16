@@ -174,7 +174,7 @@ int test_step_param_sta_management::step_execute()
     test_step_params_t *step = this;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n",
-                             __func__, __LINE__, step->step_number);
+            __func__, __LINE__, step->step_number);
 
     //    step->frame_capture.msg_type |= 1<<wlan_emu_msg_type_webconfig;
     //    step->frame_capture.subdoc_type = webconfig_subdoc_type_associated_clients;
@@ -189,7 +189,6 @@ int test_step_param_sta_management::step_execute()
                     __func__, __LINE__, step->step_number);
             return RETURN_ERR;
         }
-        step->u.sta_test->is_station_associated = true;
     }
 
     if (step->capture_frames == true) {
@@ -221,57 +220,58 @@ int test_step_param_sta_management::step_timeout()
             return RETURN_OK;
         }
 
-
-        //add the logic  connectivity profile
-        if (step->u.sta_test->u.sta_management.is_sta_management_timer == true) {
-            if (step->u.sta_test->u.sta_management.connectivity_q != NULL) {
-                if ((queue_count(step->u.sta_test->u.sta_management.connectivity_q) > 0) && (step->u.sta_test->u.sta_management.current_profile_count >=0)) {
-                    station_connectivity_profile_t *connect_profile = (station_connectivity_profile_t *)queue_peek(step->u.sta_test->u.sta_management.connectivity_q, step->u.sta_test->u.sta_management.current_profile_count);
-                    if (connect_profile == NULL) {
-                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: connect_profile is NULL for  %d\n",
-                                __func__, __LINE__, step->u.sta_test->u.sta_management.current_profile_count);
-                        return RETURN_OK;
-                    }
-                    wlan_emu_print(wlan_emu_log_level_dbg,"%s:%d: Rssi : %d Duration : %d Counter : %d\n", __func__, __LINE__, connect_profile->rssi, connect_profile->duration, connect_profile->counter);
-                    connect_profile->counter++;
-                    //create the heart beat data
-                    heart_beat_data = new  heart_beat_data_t;
-                    if (heart_beat_data == NULL) {
-                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat for step %d\n",
-                                __func__, __LINE__, step->step_number);
-                        return RETURN_ERR;
-                    }
-                    memcpy(heart_beat_data->mac, step->u.sta_test->sta_vap_config->u.sta_info.mac, sizeof(mac_address_t));
-                    heart_beat_data->rssi = connect_profile->rssi;
-                    step->m_sta_mgr->send_heart_beat(step->u.sta_test->key, heart_beat_data);
-                    delete(heart_beat_data);
-                    if (connect_profile->counter == connect_profile->duration) {
-                        connect_profile->test_state = test_state_complete;
-                        step->u.sta_test->u.sta_management.current_profile_count--;
-                        if (step->u.sta_test->u.sta_management.current_profile_count == -1) {
-                            step->test_state = wlan_emu_tests_state_cmd_results;
-                            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: connectivity test case completed for step : %d\n",
-                                    __func__, __LINE__, step->step_number);
+        if (step->u.sta_test->is_station_associated == true) {
+            //add the logic  connectivity profile
+            if (step->u.sta_test->u.sta_management.is_sta_management_timer == true) {
+                if (step->u.sta_test->u.sta_management.connectivity_q != NULL) {
+                    if ((queue_count(step->u.sta_test->u.sta_management.connectivity_q) > 0) && (step->u.sta_test->u.sta_management.current_profile_count >=0)) {
+                        station_connectivity_profile_t *connect_profile = (station_connectivity_profile_t *)queue_peek(step->u.sta_test->u.sta_management.connectivity_q, step->u.sta_test->u.sta_management.current_profile_count);
+                        if (connect_profile == NULL) {
+                            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: connect_profile is NULL for  %d\n",
+                                    __func__, __LINE__, step->u.sta_test->u.sta_management.current_profile_count);
                             return RETURN_OK;
                         }
-                    } else {
-                        connect_profile->test_state = test_state_active;
+                        wlan_emu_print(wlan_emu_log_level_dbg,"%s:%d: Rssi : %d Duration : %d Counter : %d\n", __func__, __LINE__, connect_profile->rssi, connect_profile->duration, connect_profile->counter);
+                        connect_profile->counter++;
+                        //create the heart beat data
+                        heart_beat_data = new  heart_beat_data_t;
+                        if (heart_beat_data == NULL) {
+                            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat for step %d\n",
+                                    __func__, __LINE__, step->step_number);
+                            return RETURN_ERR;
+                        }
+                        memcpy(heart_beat_data->mac, step->u.sta_test->sta_vap_config->u.sta_info.mac, sizeof(mac_address_t));
+                        heart_beat_data->rssi = connect_profile->rssi;
+                        step->m_sta_mgr->send_heart_beat(step->u.sta_test->key, heart_beat_data);
+                        delete(heart_beat_data);
+                        if (connect_profile->counter == connect_profile->duration) {
+                            connect_profile->test_state = test_state_complete;
+                            step->u.sta_test->u.sta_management.current_profile_count--;
+                            if (step->u.sta_test->u.sta_management.current_profile_count == -1) {
+                                step->test_state = wlan_emu_tests_state_cmd_results;
+                                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: connectivity test case completed for step : %d\n",
+                                        __func__, __LINE__, step->step_number);
+                                return RETURN_OK;
+                            }
+                        } else {
+                            connect_profile->test_state = test_state_active;
+                        }
                     }
                 }
+            } else {
+                heart_beat_data = new  heart_beat_data_t;
+                if (heart_beat_data == NULL) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat for step %d\n",
+                            __func__, __LINE__, step->step_number);
+                    return RETURN_ERR;
+                }
+                memcpy(heart_beat_data->mac, step->u.sta_test->sta_vap_config->u.sta_info.mac, sizeof(mac_address_t));
+                heart_beat_data->rssi = -25;
+                step->m_sta_mgr->send_heart_beat(step->u.sta_test->key, heart_beat_data);
+                delete(heart_beat_data);
             }
-        } else {
-            heart_beat_data = new  heart_beat_data_t;
-            if (heart_beat_data == NULL) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat for step %d\n",
-                        __func__, __LINE__, step->step_number);
-                return RETURN_ERR;
-            }
-            memcpy(heart_beat_data->mac, step->u.sta_test->sta_vap_config->u.sta_info.mac, sizeof(mac_address_t));
-            heart_beat_data->rssi = -25;
-            step->m_sta_mgr->send_heart_beat(step->u.sta_test->key, heart_beat_data);
-            delete(heart_beat_data);
-        }
 
+        }
 
         if (step->fork == true) {
             if ((step->timeout_count % STATION_STEP_EXEC_TIMEOUT) == 0) {
@@ -304,9 +304,16 @@ int test_step_param_sta_management::step_upload_files(FILE *output_file, bool *u
     char *temp_res_file = NULL;
     char res_file_name[128] = {0};
     char *remote_test_results_loc = NULL;
+    char sta_connect_info[256] = {0};
+    char timestamp[24] = {0};
+    cJSON *json;
+    char  mac_str[32] = {0};
+    FILE *fp;
+    char *json_str;
 
     test_step_params_t *step = this;
 
+    remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
     if (step->capture_frames == true) {
         if (step->test_results_queue == NULL) {
             return RETURN_ERR;
@@ -318,8 +325,6 @@ int test_step_param_sta_management::step_upload_files(FILE *output_file, bool *u
         }
 
         res_file = (wlan_emu_pcap_captures *)queue_pop(step->test_results_queue);
-
-        remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
 
         while(res_file != NULL) {
             if (res_file != NULL) {
@@ -347,6 +352,59 @@ int test_step_param_sta_management::step_upload_files(FILE *output_file, bool *u
         queue_destroy(step->test_results_queue);
         step->test_results_queue = NULL;
     }
+
+    //Creation of json for station
+    if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
+                __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
+    uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, mac_str);
+    cJSON_AddStringToObject(json, "StationMacAddress", mac_str);
+
+    snprintf(sta_connect_info, sizeof(sta_connect_info), "%s/%s_%d_%s_STATION_%d.json",
+            step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number, timestamp, step->u.sta_test->sta_vap_config->radio_index);
+
+    fp = fopen(sta_connect_info, "w");
+    if (fp == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n",
+                __func__, __LINE__, sta_connect_info);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    json_str = cJSON_Print(json);
+
+    fputs(json_str, fp);
+    fclose(fp);
+    free(json_str);
+    cJSON_Delete(json);
+
+    if (step->m_ui_mgr->upload_file_to_server(sta_connect_info, remote_test_results_loc) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__, __LINE__, sta_connect_info);
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__, sta_connect_info);
+        *update_to_tda = true;
+        temp_res_file = strdup(sta_connect_info);
+        if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name, sizeof(res_file_name)) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_last_substring_after_slash failed for str : %s\n",
+                    __func__, __LINE__, temp_res_file);
+            free(temp_res_file);
+            return RETURN_ERR;
+        }
+        fprintf(output_file, "%s\n", res_file_name);
+        free(temp_res_file);
+    }
+
+    if (remove(sta_connect_info) == 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error Removing the file : %s\n",
+                __func__, __LINE__, sta_connect_info);
+    }
+
     return RETURN_OK;
 }
 
@@ -366,6 +424,7 @@ void test_step_param_sta_management::step_remove()
                     __func__, __LINE__, step->u.sta_test->sta_vap_config->vap_index);
             if (step->u.sta_test->is_station_associated == true) {
                 step->m_sta_mgr->remove_sta(step->u.sta_test);
+                step->u.sta_test->is_station_associated = false;
             }
 
             delete step->u.sta_test->sta_vap_config;
@@ -406,11 +465,18 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 return RETURN_UNHANDLED;
             }
 
+            //irrespective of capture_frames check for eapol-3 to confirm whether the client is associated or not
             f_data = msg->get_msg();
 
             if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac, f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: succesful matching with sta mac address\n",
-                        __func__, __LINE__);
+
+                if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
+                    if (msg->get_msgname_from_msgtype() == RETURN_OK) {
+                        if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
+                            step->u.sta_test->is_station_associated = true;
+                        }
+                    }
+                }
 
                 if (!(step->frame_request.frm80211_ops & (1<<msg->get_frm80211_ops_type()))) {
                     return RETURN_UNHANDLED;
