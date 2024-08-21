@@ -573,6 +573,10 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
     cJSON *config;
     cJSON *param;
     char temp_result_file[128] = {0};
+    char *extension;
+    char text_extension_filename[128] = {0};
+    int length = 0;
+
 
     step_config->param_type = step_param_type_log_redirection;
 
@@ -590,8 +594,17 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
             delete log_redirect;
             return RETURN_ERR;
         }
-        //snprintf(log_redirect->log_result_file, sizeof(log_redirect->log_result_file), "%s/%s", test_results_dir_path, temp_result_file);
-        snprintf(log_redirect->log_result_file, sizeof(log_redirect->log_result_file), "%s", temp_result_file);
+
+        extension = strrchr(temp_result_file, '.');
+
+        if (extension) {
+            int length = extension - temp_result_file;
+            snprintf(text_extension_filename, sizeof(text_extension_filename), "%.*s.txt", length, temp_result_file);
+        } else {
+            snprintf(text_extension_filename, sizeof(text_extension_filename), "%s.txt", temp_result_file);
+        }
+
+        snprintf(log_redirect->log_result_file, sizeof(log_redirect->log_result_file), "%s", text_extension_filename);
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: log result file name is : %s\n",
                 __func__, __LINE__, log_redirect->log_result_file);
     }
@@ -670,7 +683,6 @@ int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, test_step_par
 {
     cJSON *config;
     int stop_step_number = 0;
-    char output_file_name[128] = {0};
     char operation[32] = {0};
 
     wifi_stats_get_t *wifi_stats_get = step_config->u.wifi_stats_get;
@@ -713,16 +725,6 @@ int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, test_step_par
             return RETURN_ERR;
         }
     } else {
-        config = cJSON_GetObjectItem(step, "OutputFileName");
-        if (config != NULL) {
-            snprintf(output_file_name, sizeof(output_file_name), "%s", config->valuestring);
-            snprintf(wifi_stats_get->output_file_name, sizeof(wifi_stats_get->output_file_name), "%s", output_file_name);
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: OutputFileName value : %s\n", __func__, __LINE__, wifi_stats_get->output_file_name);
-        } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: OutputFileName is not present\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
-
         wifi_stats_get->get_stats_queue =  queue_create();
         if (wifi_stats_get->get_stats_queue == NULL) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_stats_queue failed\n", __func__, __LINE__);

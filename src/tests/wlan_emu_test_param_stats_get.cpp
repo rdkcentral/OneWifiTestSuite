@@ -105,6 +105,74 @@ int test_step_param_get_stats_t::get_subscription_string(char *str, int str_len)
     return RETURN_ERR;
 }
 
+
+char* test_step_param_get_stats_t::get_scanmode_str()
+{
+    test_step_params_t* step = this;
+
+    switch (step->u.wifi_stats_get->scan_mode)
+    {
+        case wifi_neighborScanMode_t::WIFI_RADIO_SCAN_MODE_ONCHAN:
+            return "OnChan";
+        case wifi_neighborScanMode_t::WIFI_RADIO_SCAN_MODE_OFFCHAN:
+            return "OffChan";
+        case wifi_neighborScanMode_t::WIFI_RADIO_SCAN_MODE_FULL:
+            return "FullChan";
+        case wifi_neighborScanMode_t::WIFI_RADIO_SCAN_MODE_SURVEY:
+            return "Survey";
+        default:
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown scan mode %d\n", __func__, __LINE__, step->u.wifi_stats_get->scan_mode);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            return nullptr;
+    }
+}
+
+
+
+int test_step_param_get_stats_t::update_output_file_name()
+{
+    test_step_params_t* step = this;
+    char *scan_mode = nullptr;
+    switch (step->u.wifi_stats_get->data_type)
+    {
+        case wifi_mon_stats_type_t::mon_stats_type_radio_channel_stats:
+            scan_mode = get_scanmode_str();
+            if (scan_mode == nullptr) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown scan mode for type %d\n", __func__, __LINE__, step->u.wifi_stats_get->data_type);
+                return RETURN_ERR;
+            }
+            snprintf(step->u.wifi_stats_get->output_file_name, sizeof(step->u.wifi_stats_get->output_file_name), "GET_RadioChannelStats_r%d_%s",
+                    step->u.wifi_stats_get->radio_index, scan_mode);
+            return RETURN_OK;
+        case wifi_mon_stats_type_t::mon_stats_type_neighbor_stats:
+            scan_mode = get_scanmode_str();
+            if (scan_mode == nullptr) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown scan mode for type %d\n", __func__, __LINE__, step->u.wifi_stats_get->data_type);
+                return RETURN_ERR;
+            }
+            snprintf(step->u.wifi_stats_get->output_file_name, sizeof(step->u.wifi_stats_get->output_file_name), "GET_NeighborStats_r%d_%s",
+                    step->u.wifi_stats_get->radio_index, scan_mode);
+            return RETURN_OK;
+        case wifi_mon_stats_type_t::mon_stats_type_associated_device_stats:
+            snprintf(step->u.wifi_stats_get->output_file_name, sizeof(step->u.wifi_stats_get->output_file_name), "GET_AssocClientStats_v%d",
+                    step->u.wifi_stats_get->vap_index);
+            return RETURN_OK;
+        case wifi_mon_stats_type_t::mon_stats_type_radio_diagnostic_stats:
+            snprintf(step->u.wifi_stats_get->output_file_name, sizeof(step->u.wifi_stats_get->output_file_name), "GET_RadioDiagStats_r%d",
+                    step->u.wifi_stats_get->radio_index);
+            return RETURN_OK;
+        case wifi_mon_stats_type_t::mon_stats_type_radio_temperature:
+            snprintf(step->u.wifi_stats_get->output_file_name, sizeof(step->u.wifi_stats_get->output_file_name), "GET_RadioTempStats_r%d",
+                    step->u.wifi_stats_get->radio_index);
+            return RETURN_OK;
+        default:
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown data type %d\n", __func__, __LINE__, step->u.wifi_stats_get->data_type);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+    }
+
+    return RETURN_ERR;
+}
+
 void test_step_param_get_stats_t::stats_get_event_handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     const char* event_name = event->name;
@@ -116,6 +184,7 @@ void test_step_param_get_stats_t::stats_get_event_handler(rbusHandle_t handle, r
     char file_name[128] = {0};
     char *temp_file_name;
     FILE *fp = NULL;
+    char timestamp[24] = {0};
 
     wlan_emu_print(wlan_emu_log_level_dbg,"%s: %d rbus event callback Event is %s \n", __func__, __LINE__, event_name);
 
@@ -134,7 +203,15 @@ void test_step_param_get_stats_t::stats_get_event_handler(rbusHandle_t handle, r
     pthread_mutex_lock(&step->s_lock);
     count = queue_count(step->u.wifi_stats_get->get_stats_queue);
 
-    snprintf(file_name, sizeof(file_name), "/tmp/cci_res/%s_%d.json", step->u.wifi_stats_get->output_file_name, count);
+    if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
+                __func__, __LINE__);
+        return;
+    }
+
+    snprintf(file_name, sizeof(file_name), "%s/%s_%d_%s_%s_%d.json", step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id,
+             step->step_number, timestamp, step->u.wifi_stats_get->output_file_name, count);
+    wlan_emu_print(wlan_emu_log_level_dbg,"%s:%d file_name : %s\n",__FUNCTION__, __LINE__, file_name);
 
     fp = fopen(file_name, "w");
     if (fp == NULL) {
@@ -237,6 +314,11 @@ int test_step_param_get_stats_t::step_execute()
             return RETURN_ERR;
         }
         step->test_state = wlan_emu_tests_state_cmd_wait;
+        if (update_output_file_name() == RETURN_ERR) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: update of output file name failed for step : %d \n",
+                    __func__, __LINE__, step->step_number);
+            return RETURN_ERR;
+        }
     } else if (step->u.wifi_stats_get->log_operation == log_operation_type_t::log_operation_type_stop) {
         wlan_emu_test_case_config *test_case_config = (wlan_emu_test_case_config *)step->param_get_test_case_config();
         step_to_be_stopped = (test_step_params_t *)step->m_ui_mgr->get_step_from_step_number(test_case_config, step->u.wifi_stats_get->stop_log_step_number);
@@ -262,6 +344,11 @@ int test_step_param_get_stats_t::step_execute()
         step->execution_time = step->u.wifi_stats_get->timeout;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: execution time : %d\n", __func__, __LINE__, step->execution_time);
         step->test_state = wlan_emu_tests_state_cmd_continue;
+        if (update_output_file_name() == RETURN_ERR) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: update of output file name failed for step : %d \n",
+                    __func__, __LINE__, step->step_number);
+            return RETURN_ERR;
+        }
     }
 
     return RETURN_OK;

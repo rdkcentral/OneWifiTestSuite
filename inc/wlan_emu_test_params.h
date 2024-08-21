@@ -176,6 +176,8 @@ class test_step_param_get_stats_t : public test_step_params_t  {
       int stop_subscription(test_step_params_t *step);
       char* getStatsClass();
       char* get_scanmode();
+      char* get_scanmode_str();
+      int update_output_file_name();
       int get_subscription_string(char *str, int str_len);
       static void stats_get_event_handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
       int step_frame_filter(wlan_emu_msg_t *msg);
