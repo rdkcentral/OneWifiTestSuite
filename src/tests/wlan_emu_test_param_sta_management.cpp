@@ -173,8 +173,8 @@ int test_step_param_sta_management::decode_step_sta_management_config()
 
             cJSON_ArrayForEach(pattern, pattern_root)
             {
-                station_connectivity_profile_t *connect_profile =
-                    new station_connectivity_profile_t;
+                station_connectivity_profile_t *connect_profile = new (std::nothrow)
+                    station_connectivity_profile_t;
                 if (connect_profile == NULL) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: allocation for connect profile failed\n", __func__, __LINE__);
@@ -283,7 +283,7 @@ int test_step_param_sta_management::step_timeout()
                             connect_profile->counter);
                         connect_profile->counter++;
                         // create the heart beat data
-                        heart_beat_data = new heart_beat_data_t;
+                        heart_beat_data = new (std::nothrow) heart_beat_data_t;
                         if (heart_beat_data == NULL) {
                             wlan_emu_print(wlan_emu_log_level_err,
                                 "%s:%d: Unable to send the heart beat for step %d\n", __func__,
@@ -312,7 +312,7 @@ int test_step_param_sta_management::step_timeout()
                     }
                 }
             } else {
-                heart_beat_data = new heart_beat_data_t;
+                heart_beat_data = new (std::nothrow) heart_beat_data_t;
                 if (heart_beat_data == NULL) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: Unable to send the heart beat for step %d\n", __func__, __LINE__,
@@ -512,6 +512,12 @@ void test_step_param_sta_management::step_remove()
             }
         }
 
+        if (step->u.sta_test->station_prototype != nullptr) {
+            queue_destroy(step->u.sta_test->station_prototype->fc_prototype_q);
+            step->u.sta_test->station_prototype->fc_prototype_q = nullptr;
+            delete step->u.sta_test->station_prototype;
+            step->u.sta_test->station_prototype = nullptr;
+        }
         delete step->u.sta_test;
     }
 
@@ -589,6 +595,26 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 msg->unload_frm80211_msg(step);
                 return RETURN_HANDLED;
             }
+
+            if (step->u.sta_test->capture_sta_requests == true) {
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: capture_sta_requests in macaddr : %s client_macaddr : %s\n",
+                    __func__, __LINE__, macaddr, client_macaddr);
+                if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                            f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) {
+                    if ((step->capture_frames != true) ||
+                            (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
+                        return RETURN_UNHANDLED;
+                    }
+
+                    if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
+                        return RETURN_UNHANDLED;
+                    }
+                    msg->unload_frm80211_msg(step);
+                    return RETURN_HANDLED;
+
+                }
+            }
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
@@ -613,7 +639,7 @@ test_step_param_sta_management::test_step_param_sta_management()
     test_step_params_t *step = this;
     step->is_step_initialized = true;
 
-    step->u.sta_test = new sta_test_t;
+    step->u.sta_test = new (std::nothrow) sta_test_t;
     if (step->u.sta_test == nullptr) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: allocation of memory for sta_test failed for %d\n", __func__, __LINE__,
@@ -632,13 +658,36 @@ test_step_param_sta_management::test_step_param_sta_management()
     }
     memset(step->u.sta_test->sta_vap_config, 0, sizeof(wifi_vap_info_t));
 
+    step->u.sta_test->station_prototype = new (std::nothrow) station_prototype_t;
+    if (step->u.sta_test->station_prototype == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: allocation of memory for station_prototype failed for %d\n", __func__, __LINE__,
+            step->step_number);
+        delete step->u.sta_test->sta_vap_config;
+        delete step->u.sta_test;
+        step->is_step_initialized = false;
+    }
+    memset(step->u.sta_test->station_prototype, 0, sizeof(station_prototype_t));
+
+    step->u.sta_test->station_prototype->fc_prototype_q = queue_create();
+    if (step->u.sta_test->station_prototype->fc_prototype_q == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Queue create failed for fc_prototype_q\n",
+            __func__, __LINE__);
+        delete step->u.sta_test->sta_vap_config;
+        delete step->u.sta_test->station_prototype;
+        delete step->u.sta_test;
+        step->is_step_initialized = false;
+    }
+
     step->execution_time = 3;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
+    step->test_results_queue = nullptr;
     step->capture_frames = false;
     memset(step->u.sta_test->sta_vap_config, 0, sizeof(wifi_vap_info_t));
     step->u.sta_test->u.sta_management.is_sta_management_timer = false;
     step->u.sta_test->is_station_associated = false;
+    step->u.sta_test->is_station_prototype_enabled = false;
+    step->u.sta_test->capture_sta_requests = false;
 }
 
 test_step_param_sta_management::~test_step_param_sta_management()

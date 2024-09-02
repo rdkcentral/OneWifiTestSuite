@@ -266,6 +266,23 @@ typedef struct {
 } get_pattern_files_t;
 
 typedef struct {
+    unsigned int msg_type; // wlan_emu_msg_type_t
+    unsigned int frm80211_ops; // wlan_emu_frm80211_ops_type_t
+    unsigned int cfg80211_ops; // wlan_emu_cfg80211_ops_type_t
+    webconfig_subdoc_type_t subdoc_type; // webconfig_subdoc_type_t
+} frame_capture_request_t;
+
+typedef struct {
+    frame_capture_request_t fc_request;
+    char file_location[256];
+} station_prototype_pcaps_t;
+
+typedef struct {
+    frame_capture_request_t fc_request_summary;
+    queue_t *fc_prototype_q; // station_prototype_pcaps_t
+} station_prototype_t;
+
+typedef struct {
     unsigned int test_id;
     unsigned int phy_index;
     bool is_decoded;
@@ -278,6 +295,9 @@ typedef struct {
     wifi_radio_operationParam_t *radio_oper_param;
     sta_profile_t profile;
     bool is_station_associated;
+    bool is_station_prototype_enabled;
+    station_prototype_t *station_prototype;
+    bool capture_sta_requests;
 
     union {
         sta_management_t sta_management;
@@ -318,13 +338,6 @@ typedef struct {
     mac_address_t new_mac;
     char bridge_name[32];
 } mac_update_t;
-
-typedef struct {
-    unsigned int msg_type; // wlan_emu_msg_type_t
-    unsigned int frm80211_ops; // wlan_emu_frm80211_ops_type_t
-    unsigned int cfg80211_ops; // wlan_emu_cfg80211_ops_type_t
-    webconfig_subdoc_type_t subdoc_type; // webconfig_subdoc_type_t
-} frame_capture_request_t;
 
 #ifdef __cplusplus
 }

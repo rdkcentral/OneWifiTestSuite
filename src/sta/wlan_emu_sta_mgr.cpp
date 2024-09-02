@@ -1,8 +1,14 @@
 #include "wlan_emu_sta_mgr.h"
 #include "cci_wifi_utils.hpp"
+#include "utils/common.h"
+#include "common/defs.h"
+#include "common/ieee802_11_defs.h"
+#include "common/wpa_common.h"
+#include "radiotap_iter.h"
 #include "wlan_emu_log.h"
 #include "wlan_emu_sta.h"
 #include <assert.h>
+#include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -250,6 +256,213 @@ void wlan_emu_sta_mgr_t::remove_sta(sta_test_t *sta_test)
     return;
 }
 
+int wlan_emu_sta_mgr_t::send_proto_pcap(wlan_emu_emu80211_cmd_type_t cmd_type,
+    mac_address_t mac_addr, char *proto_file)
+{
+    struct pcap_pkthdr header;
+    pcap_t *handle;
+
+    wlan_emu_msg_t msg;
+    const unsigned char *packet = nullptr;
+    struct ieee80211_mgmt *mgmt = nullptr;
+    char errbuf[PCAP_ERRBUF_SIZE];
+    struct ieee80211_radiotap_header *radiotap;
+    unsigned int radiotap_len;
+    unsigned int buff_len;
+    unsigned char *buff;
+    struct ieee80211_radiotap_iterator iterator;
+    int ret;
+    bool is_fcs_present = false;
+    // Send auth data.
+
+    if (proto_file == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: proto file NULL pointer \n", __func__,
+            __LINE__);
+        return -1;
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: proto_file is :%s\n", __func__, __LINE__,
+        proto_file);
+    handle = pcap_open_offline(proto_file, errbuf);
+    if (!handle) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pcap_open_offline failed \n", __func__,
+            __LINE__);
+        return -1;
+    }
+
+    packet = pcap_next(handle, &header);
+    if (packet == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: packet is null \n", __func__, __LINE__);
+        return -1;
+    }
+
+    radiotap = (struct ieee80211_radiotap_header *)packet;
+    radiotap_len = radiotap->it_len;
+
+    if (ieee80211_radiotap_iterator_init(&iterator, radiotap, header.caplen, NULL)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: radio tap iterator init failed \n", __func__,
+            __LINE__);
+        return -1;
+    }
+
+    while (!(ret = ieee80211_radiotap_iterator_next(&iterator))) {
+        // Check for specific field types
+        switch (iterator.this_arg_index) {
+        case IEEE80211_RADIOTAP_FLAGS: {
+            uint8_t flags = *iterator.this_arg;
+
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Flags : 0x%x\n", __func__, __LINE__,
+                flags);
+            // Check if the FCS flag (0x10) is set
+            if (flags & IEEE80211_RADIOTAP_F_FCS) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: FCS is present in the packet\n",
+                    __func__, __LINE__);
+                is_fcs_present = true;
+                break;
+            } else {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: FCS is not present in the packet\n",
+                    __func__, __LINE__);
+            }
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
+    // remove FCS.
+    // buff_len = header.len - radiotap_len - 4;
+    // check if FCS is present or not
+    if (is_fcs_present == true) {
+        buff_len = header.len - radiotap_len - 4;
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: fcs is present remove 4 bytes\n", __func__,
+            __LINE__);
+    } else {
+        buff_len = header.len - radiotap_len;
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: fcs is not present remove 4 bytes\n",
+            __func__, __LINE__);
+    }
+
+    mgmt = (struct ieee80211_mgmt *)(packet + radiotap_len);
+    buff = (unsigned char *)malloc(buff_len + ETH_ALEN);
+    memset(buff, 0, (buff_len + ETH_ALEN));
+    memcpy(buff, mac_addr, ETH_ALEN);
+    memcpy(buff + ETH_ALEN, mgmt, buff_len);
+    msg.send_ctrl_msg(buff, buff_len + ETH_ALEN, cmd_type);
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Src MAC is %02x..%02x \n", __func__, __LINE__,
+        mgmt->sa[0], mgmt->sa[5]);
+    pcap_close(handle);
+
+    return 0;
+}
+
+station_prototype_pcaps_t *wlan_emu_sta_mgr_t::get_frm80211_proto_pcap(
+    station_prototype_t *station_prototype, unsigned int type)
+{
+
+    if (station_prototype == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: station_prototype is NULL\n", __func__,
+            __LINE__);
+        return nullptr;
+    }
+
+    if (station_prototype->fc_prototype_q) {
+        queue_t *fc_prototype_q = station_prototype->fc_prototype_q;
+        element_t *current = fc_prototype_q->head;
+
+        while (current != NULL) {
+            station_prototype_pcaps_t *station_prototype_pcap =
+                (station_prototype_pcaps_t *)current->data;
+
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: found type : %d file : %s msg_type : %d\n", __func__, __LINE__,
+                station_prototype_pcap->fc_request.frm80211_ops,
+                station_prototype_pcap->file_location, station_prototype_pcap->fc_request.msg_type);
+            if ((station_prototype_pcap != NULL) &&
+                (station_prototype_pcap->fc_request.msg_type == 1 << wlan_emu_msg_type_frm80211) &&
+                (station_prototype_pcap->fc_request.frm80211_ops == type)) {
+
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: found type : %d file : %s \n",
+                    __func__, __LINE__, type, station_prototype_pcap->file_location);
+                return station_prototype_pcap;
+            }
+            current = current->next;
+        }
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: no prototype with type : %d found\n", __func__,
+        __LINE__, type);
+    return nullptr;
+}
+
+int wlan_emu_sta_mgr_t::configure_proto_types_on_sta(sta_test_t *sta_test_config)
+{
+    station_prototype_pcaps_t *station_prototype_pcap = nullptr;
+    int ret = RETURN_ERR;
+
+    if (sta_test_config->station_prototype == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: station_prototype is NULL\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (sta_test_config->station_prototype->fc_prototype_q == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fc_prototype_q is NULL\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (sta_test_config->station_prototype->fc_request_summary.msg_type &
+        1 << wlan_emu_msg_type_frm80211) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: frm80211 prototype request\n", __func__,
+            __LINE__);
+
+        if (sta_test_config->station_prototype->fc_request_summary.frm80211_ops &
+            1 << wlan_emu_frm80211_ops_type_auth) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: auth prototype request\n", __func__,
+                __LINE__);
+            station_prototype_pcap = get_frm80211_proto_pcap(sta_test_config->station_prototype,
+                1 << wlan_emu_frm80211_ops_type_auth);
+            if (station_prototype_pcap == nullptr) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Failed to find proto pcap\n",
+                    __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            ret = send_proto_pcap(wlan_emu_emu80211_cmd_frame_auth_req,
+                sta_test_config->sta_vap_config->u.sta_info.mac,
+                station_prototype_pcap->file_location);
+            if (ret == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: Unable to send auth request prototype frame\n", __func__, __LINE__);
+                return ret;
+            }
+        }
+
+        if (sta_test_config->station_prototype->fc_request_summary.frm80211_ops &
+            1 << wlan_emu_frm80211_ops_type_assoc_req) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: assoc req prototype request\n", __func__,
+                __LINE__);
+            station_prototype_pcap = get_frm80211_proto_pcap(sta_test_config->station_prototype,
+                1 << wlan_emu_frm80211_ops_type_assoc_req);
+            if (station_prototype_pcap == nullptr) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Failed to find proto pcap\n",
+                    __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            ret = send_proto_pcap(wlan_emu_emu80211_cmd_frame_assoc_req,
+                sta_test_config->sta_vap_config->u.sta_info.mac,
+                station_prototype_pcap->file_location);
+            if (ret == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: Unable to send assoc request prototype frame\n", __func__, __LINE__);
+                return ret;
+            }
+        }
+    }
+
+    return ret;
+}
+
 int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
 {
     wlan_emu_sta_t *sta;
@@ -316,6 +529,14 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     memcpy(mac_update.bridge_name, map.vap_array[0].bridge_name, sizeof(mac_update.bridge_name));
     sta->send_mac_update(&mac_update);
 
+    if (sta_test_config->is_station_prototype_enabled == true) {
+        if (configure_proto_types_on_sta(sta_test_config) == RETURN_ERR) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Unable to configure proto types on sta for dev_id : %d\n", __func__,
+                __LINE__, dev_id);
+            return RETURN_ERR;
+        }
+    }
     memset(&bss, 0, sizeof(bss));
 
     bss.freq = chann_to_freq(sta_test_config->radio_oper_param->channel);

@@ -5,6 +5,7 @@
 #include "wifi_base.h"
 #include "wifi_hal.h"
 #include "wlan_emu_common.h"
+#include "wlan_emu_msg_data.h"
 
 typedef enum { sta_state_free = 0, sta_state_in_use } sta_state_t;
 
@@ -61,6 +62,11 @@ public:
     void send_heart_beat(char *key, heart_beat_data_t *heart_beat_data);
     sta_info_t *get_devid_sta_info(unsigned int dev_id);
     void remove_sta(sta_test_t *sta_test);
+    station_prototype_pcaps_t *get_frm80211_proto_pcap(station_prototype_t *station_prototype,
+        unsigned int type);
+    int configure_proto_types_on_sta(sta_test_t *sta_test_config);
+    int send_proto_pcap(wlan_emu_emu80211_cmd_type_t cmd_type, mac_address_t mac_addr,
+        char *proto_file);
 
     wlan_emu_sta_mgr_t();
     ~wlan_emu_sta_mgr_t();

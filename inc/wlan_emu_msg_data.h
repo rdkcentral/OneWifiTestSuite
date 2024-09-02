@@ -21,6 +21,8 @@ typedef enum {
 typedef enum {
     wlan_emu_emu80211_cmd_radiotap,
     wlan_emu_emu80211_cmd_mac_update,
+    wlan_emu_emu80211_cmd_frame_auth_req,
+    wlan_emu_emu80211_cmd_frame_assoc_req
 } wlan_emu_emu80211_cmd_type_t;
 
 typedef struct {

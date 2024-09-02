@@ -262,6 +262,14 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
             step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.frm80211.u.frame.macaddr,
                 &radio_index);
         }
+
+        if (step->param_type == step_param_type_station_management) {
+            if (step->u.sta_test->capture_sta_requests == true) {
+                step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.frm80211.u.frame.client_macaddr,
+                        &radio_index);
+            }
+        }
+
         mac_str_without_colon(f_data->u.frm80211.u.frame.client_macaddr, c_mac_str);
         if (get_msgname_from_msgtype() == RETURN_ERR) {
             return RETURN_ERR;

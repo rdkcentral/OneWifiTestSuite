@@ -538,10 +538,80 @@ int wlan_emu_ui_mgr_t::decode_step_station_management_config(cJSON *step,
     test_step_params_t *step_config)
 {
     cJSON *param = NULL;
+    cJSON *param_loc = NULL;
+    cJSON *frame_type_list = NULL;
+    cJSON *frame_type = NULL;
+    cJSON *frame = NULL;
+    frame_capture_request_t frame_capture_req;
+    station_prototype_pcaps_t *tmp_station_prototype_pcap;
     step_config->param_type = step_param_type_station_management;
     decode_param_string(step, "StationManagement", param);
     snprintf(step_config->u.sta_test->test_station_config,
         sizeof(step_config->u.sta_test->test_station_config), "%s", param->valuestring);
+
+    param = cJSON_GetObjectItem(step, "CaptureStationRequests");
+    if (param != NULL && cJSON_IsBool(param)) {
+        step_config->u.sta_test->capture_sta_requests = (param->type & cJSON_True) ? true : false;
+    }
+
+    param = cJSON_GetObjectItem(step, "StationPrototypes");
+
+    if (param != NULL && cJSON_IsBool(param)) {
+        step_config->u.sta_test->is_station_prototype_enabled = (param->type & cJSON_True) ? true :
+                                                                                             false;
+        if (step_config->u.sta_test->is_station_prototype_enabled == true) {
+            if ((frame_type_list = cJSON_GetObjectItem(step, "StationPrototypeFrames")) != NULL) {
+                cJSON_ArrayForEach(frame_type, frame_type_list)
+                {
+                    memset(&frame_capture_req, 0, sizeof(frame_capture_request_t));
+                    frame = cJSON_GetObjectItem(frame_type, "FrameType");
+                    if (decode_pcap_frame_type(frame->valuestring, &frame_capture_req) !=
+                        RETURN_OK) {
+                        wlan_emu_print(wlan_emu_log_level_err,
+                            "%s:%d Unable to decode the pcap frametype : %s\n", __func__, __LINE__,
+                            param->valuestring);
+                        return RETURN_ERR;
+                    }
+
+                    // check if msg type is wlan_emu_msg_type_frm80211
+                    if (frame_capture_req.msg_type & (1 << wlan_emu_msg_type_frm80211)) {
+                        if (frame_capture_req.frm80211_ops &
+                                (1 << wlan_emu_frm80211_ops_type_assoc_req) ||
+                            (frame_capture_req.frm80211_ops &
+                                (1 << wlan_emu_frm80211_ops_type_auth))) {
+                            // update the fc_request_summary
+                            step_config->u.sta_test->station_prototype->fc_request_summary
+                                .msg_type |= (1 << wlan_emu_msg_type_frm80211);
+                            step_config->u.sta_test->station_prototype->fc_request_summary
+                                .frm80211_ops |= frame_capture_req.frm80211_ops;
+                            // Next push to the queue
+
+                            tmp_station_prototype_pcap = (station_prototype_pcaps_t *)calloc(1,
+                                sizeof(station_prototype_pcaps_t));
+                            if (tmp_station_prototype_pcap == NULL) {
+                                wlan_emu_print(wlan_emu_log_level_err,
+                                    "%s:%d tmp_station_prototype_pcap is null\n", __func__,
+                                    __LINE__);
+                                return RETURN_ERR;
+                            }
+                            memcpy(&tmp_station_prototype_pcap->fc_request, &frame_capture_req,
+                                sizeof(frame_capture_request_t));
+                            decode_param_string(frame_type, "PcapLocation", param_loc);
+                            snprintf(tmp_station_prototype_pcap->file_location,
+                                sizeof(tmp_station_prototype_pcap->file_location), "%s",
+                                param_loc->valuestring);
+                            wlan_emu_print(wlan_emu_log_level_dbg,
+                                "%s:%d pcap_location : %s frm80211_ops : 0x%x\n", __func__,
+                                __LINE__, tmp_station_prototype_pcap->file_location,
+                                tmp_station_prototype_pcap->fc_request.frm80211_ops);
+                            queue_push(step_config->u.sta_test->station_prototype->fc_prototype_q,
+                                tmp_station_prototype_pcap);
+                        }
+                    }
+                }
+            }
+        }
+    }
     return RETURN_OK;
 }
 
@@ -2223,6 +2293,30 @@ int wlan_emu_ui_mgr_t::download_step_param_config(test_step_params_t *step)
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n", __func__,
                 __LINE__, step->u.sta_test->test_station_config);
             return RETURN_ERR;
+        }
+        if ((step->u.sta_test->is_station_prototype_enabled == true) &&
+            step->u.sta_test->station_prototype->fc_prototype_q) {
+            queue_t *fc_prototype_q = step->u.sta_test->station_prototype->fc_prototype_q;
+            element_t *current = fc_prototype_q->head;
+
+            while (current != NULL) {
+                station_prototype_pcaps_t *station_prototype_pcap =
+                    (station_prototype_pcaps_t *)current->data;
+
+                if (station_prototype_pcap != NULL) {
+                    if ((download_file(station_prototype_pcap->file_location,
+                            sizeof(station_prototype_pcap->file_location))) != RETURN_OK) {
+                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n",
+                            __func__, __LINE__, station_prototype_pcap->file_location);
+                        return RETURN_ERR;
+                    } else {
+                        wlan_emu_print(wlan_emu_log_level_dbg,
+                            "%s:%d: Download of %s is succesful\n", __func__, __LINE__,
+                            station_prototype_pcap->file_location);
+                    }
+                }
+                current = current->next;
+            }
         }
     } else if (step->param_type == step_param_type_stats_set) {
         if (step->u.wifi_stats_set && step->u.wifi_stats_set->stats_set_q) {
