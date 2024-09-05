@@ -2,28 +2,27 @@
 #define WLAN_EMU_COMMON_H
 
 #include "collection.h"
-#include <pthread.h>
-#include <new> // For std::nothrow
-#include <rbus.h>
-#include "wifi_webconfig.h"
 #include "wifi_base.h"
+#include "wifi_webconfig.h"
+#include <new> // For std::nothrow
+#include <pthread.h>
+#include <rbus.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 #define MAX_EMU_DEVICES 256
-#define UINT_BITS_SZ    32
-#define DEV_STATUS_ARR_SZ   MAX_EMU_DEVICES/UINT_BITS_SZ
+#define UINT_BITS_SZ 32
+#define DEV_STATUS_ARR_SZ MAX_EMU_DEVICES / UINT_BITS_SZ
 
 #define HEART_BEAT_TIME 5
-#define RETURN_OK   0
+#define RETURN_OK 0
 #define RETURN_ERR -1
 #define RETURN_UNHANDLED RETURN_ERR
-#define RETURN_HANDLED  RETURN_OK
+#define RETURN_HANDLED RETURN_OK
 #define CURRENT_CONFIGURATION "PRESENT"
-#define ARRAY_SIZE(x)       ((unsigned int)(sizeof(x) / sizeof(x[0])))
+#define ARRAY_SIZE(x) ((unsigned int)(sizeof(x) / sizeof(x[0])))
 
 typedef enum {
     wlan_emu_msg_type_none,
@@ -44,7 +43,7 @@ typedef enum {
     wlan_emu_frm80211_ops_type_disassoc,
     wlan_emu_frm80211_ops_type_eapol,
     wlan_emu_frm80211_ops_type_reassoc_req,
-    wlan_emu_frm80211_ops_type_reassoc_resp, //Not implemented in hal
+    wlan_emu_frm80211_ops_type_reassoc_resp, // Not implemented in hal
     wlan_emu_frm80211_ops_type_action
 } wlan_emu_frm80211_ops_type_t;
 
@@ -103,10 +102,10 @@ typedef enum {
     wlan_emu_tests_state_cmd_none,
     wlan_emu_tests_state_cmd_wait,
     wlan_emu_tests_state_cmd_request,
-    wlan_emu_tests_state_cmd_start =    0x000000A0,
-    wlan_emu_tests_state_cmd_results =  0x000000B0,
-    wlan_emu_tests_state_cmd_continue =  0x000000C0,
-    wlan_emu_tests_state_cmd_abort =    0x0000F000
+    wlan_emu_tests_state_cmd_start = 0x000000A0,
+    wlan_emu_tests_state_cmd_results = 0x000000B0,
+    wlan_emu_tests_state_cmd_continue = 0x000000C0,
+    wlan_emu_tests_state_cmd_abort = 0x0000F000
 } wlan_emu_tests_state_t;
 
 typedef enum {
@@ -118,7 +117,6 @@ typedef enum {
 
 typedef char configurator_t[32];
 typedef char reference_t[8][32];
-
 
 typedef enum {
     sta_model_type_iphone,
@@ -148,10 +146,11 @@ typedef enum {
 } sta_test_type_t;
 
 typedef unsigned char oui_t[3];
+
 typedef struct {
-    unsigned char   type;
-    unsigned char   len;
-    unsigned char   val[30];
+    unsigned char type;
+    unsigned char len;
+    unsigned char val[30];
 } __attribute__((packed)) sta_tlv_t;
 
 typedef enum {
@@ -191,7 +190,7 @@ typedef struct {
 } log_redirect_t;
 
 typedef struct {
-    wifi_mon_stats_type_t  data_type;
+    wifi_mon_stats_type_t data_type;
     wifi_neighborScanMode_t scan_mode;
     log_operation_type_t log_operation;
     int timeout;
@@ -199,20 +198,20 @@ typedef struct {
     int vap_index;
     char output_file_name[128];
     int stop_log_step_number;
-    queue_t   *get_stats_queue;
-}wifi_stats_get_t;
+    queue_t *get_stats_queue;
+} wifi_stats_get_t;
 
 typedef struct {
-  int stats_duration; //Duration of the particular instance/list of a step
-  char input_file_json[128];
+    int stats_duration; // Duration of the particular instance/list of a step
+    char input_file_json[128];
 } stat_set_config_t;
 
 typedef struct {
-    wifi_mon_stats_type_t  data_type;
+    wifi_mon_stats_type_t data_type;
     wifi_neighborScanMode_t scan_mode;
-    queue_t *stats_set_q; //stat_set_config_t;
-    int current_stats_set_count; //number of instances/lists of a step
-    int total_duration; //Total duration of a particular step
+    queue_t *stats_set_q; // stat_set_config_t;
+    int current_stats_set_count; // number of instances/lists of a step
+    int total_duration; // Total duration of a particular step
     int radio_index;
     int vap_index;
     int set_exec_duration;
@@ -238,7 +237,7 @@ typedef enum {
 typedef struct {
     int rssi;
     unsigned int duration;
-    unsigned int  counter;
+    unsigned int counter;
     test_state_t test_state;
 } station_connectivity_profile_t;
 
@@ -247,13 +246,13 @@ typedef struct {
     unsigned int duration;
 } mgmt_frame_capture_t;
 
-//Connectivity is called as management
+// Connectivity is called as management
 typedef struct {
     char ap_vap_name[32];
     //	char ap_profile[1024];
     //	sta_management_profile_type_t manage_type;
     unsigned int test_duration;
-    queue_t *connectivity_q; //station_configuration_t
+    queue_t *connectivity_q; // station_configuration_t
     unsigned int current_profile_count;
     bool is_sta_management_timer;
 } sta_management_t;
@@ -262,7 +261,7 @@ typedef struct {
     char file_location[128];
     char file_pattern[128];
     bool delete_pattern_files;
-    queue_t   *get_pattern_files_queue;//char *
+    queue_t *get_pattern_files_queue; // char *
 } get_pattern_files_t;
 
 typedef struct {
@@ -276,32 +275,34 @@ typedef struct {
     sta_test_type_t sta_test_type;
     wifi_vap_info_t *sta_vap_config;
     wifi_radio_operationParam_t *radio_oper_param;
-    sta_profile_t  profile;
+    sta_profile_t profile;
     bool is_station_associated;
+
     union {
         sta_management_t sta_management;
-        //sta_mobility_t
+        // sta_mobility_t
     } u;
 } sta_test_t;
 
 typedef struct {
     wlan_emu_msg_type_t type;
+
     union {
-         wlan_emu_frm80211_ops_type_t frm80211_ops;
-         wlan_emu_cfg80211_ops_type_t cfg80211_ops;
+        wlan_emu_frm80211_ops_type_t frm80211_ops;
+        wlan_emu_cfg80211_ops_type_t cfg80211_ops;
     } u;
+
     char pcap_file[128];
 } wlan_emu_pcap_captures;
 
-
 typedef struct {
     wlan_emu_test_coverage_t coverage_type;
-    wlan_emu_test_type_t  test_type;
+    wlan_emu_test_type_t test_type;
     char test_json[128];
     wlan_emu_tests_state_t test_state;
     char test_case_name[64];
     char test_case_id[8];
-    queue_t *test_steps_q; //struct test_step_params_t
+    queue_t *test_steps_q; // struct test_step_params_t
     int current_test_step;
     unsigned int pending_steps;
 } wlan_emu_test_case_config;
@@ -318,14 +319,14 @@ typedef struct {
 } mac_update_t;
 
 typedef struct {
-    unsigned int msg_type; //wlan_emu_msg_type_t
-    unsigned int frm80211_ops;//wlan_emu_frm80211_ops_type_t
-    unsigned int cfg80211_ops;//wlan_emu_cfg80211_ops_type_t
-    webconfig_subdoc_type_t subdoc_type;//webconfig_subdoc_type_t
+    unsigned int msg_type; // wlan_emu_msg_type_t
+    unsigned int frm80211_ops; // wlan_emu_frm80211_ops_type_t
+    unsigned int cfg80211_ops; // wlan_emu_cfg80211_ops_type_t
+    webconfig_subdoc_type_t subdoc_type; // webconfig_subdoc_type_t
 } frame_capture_request_t;
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif //WLAN_EMU_COMMON_H
+#endif // WLAN_EMU_COMMON_H

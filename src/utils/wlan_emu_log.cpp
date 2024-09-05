@@ -1,10 +1,10 @@
+#include "wlan_emu_log.h"
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdarg.h>
-#include <unistd.h>
 #include <sys/time.h>
 #include <time.h>
-#include "wlan_emu_log.h"
+#include <unistd.h>
 
 char *get_formatted_time(char *time)
 {
@@ -28,8 +28,7 @@ void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
     FILE *log_fp = NULL;
     char *dbg_file = "/nvram/cciDbg";
     char *log_file = "/tmp/cciLog";
-    char buff[256] = {0};
-
+    char buff[256] = { 0 };
 
     log_fp = fopen(log_file, "a+");
     if (log_fp == NULL) {
@@ -37,25 +36,24 @@ void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
     }
 
     switch (level) {
-        case wlan_emu_log_level_dbg:
-            if ((access(dbg_file, R_OK)) != 0) {
-                return;
-            }
+    case wlan_emu_log_level_dbg:
+        if ((access(dbg_file, R_OK)) != 0) {
+            return;
+        }
         break;
 
-        case wlan_emu_log_level_info:
-        case wlan_emu_log_level_err:
+    case wlan_emu_log_level_info:
+    case wlan_emu_log_level_err:
         break;
-        default:
-            return;
+    default:
+        return;
     }
     get_formatted_time(&buff[strlen(buff)]);
 
-    static const char *level_marker[wlan_emu_log_level_max] =
-    {
-        [wlan_emu_log_level_dbg]  = "<D>",
+    static const char *level_marker[wlan_emu_log_level_max] = {
+        [wlan_emu_log_level_dbg] = "<D>",
         [wlan_emu_log_level_info] = "<I>",
-        [wlan_emu_log_level_err]  = "<E>",
+        [wlan_emu_log_level_err] = "<E>",
     };
     if (level < wlan_emu_log_level_max)
         snprintf(&buff[strlen(buff)], sizeof(buff) - strlen(buff), "%s ", level_marker[level]);
@@ -70,4 +68,3 @@ void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
     fclose(log_fp);
     return;
 }
-

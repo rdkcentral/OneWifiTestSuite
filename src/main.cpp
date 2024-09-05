@@ -1,8 +1,8 @@
+#include "wlan_emu.h"
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "wlan_emu.h"
-#include <signal.h>
 
 int start()
 {
@@ -22,17 +22,19 @@ int start()
     return RETURN_OK;
 }
 
-void kill_previous_instances(const char *process_name) {
+void kill_previous_instances(const char *process_name)
+{
     FILE *cmd_output;
-    char buffer[128] = {0};
-    char cmd[256] = {0};
+    char buffer[128] = { 0 };
+    char cmd[256] = { 0 };
     int curr_pid = getpid();
 
     snprintf(cmd, sizeof(cmd), "pgrep %s", process_name);
 
     cmd_output = popen(cmd, "r");
     if (cmd_output == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error running pgrep cmd : %s\n", __func__, __LINE__, cmd);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error running pgrep cmd : %s\n", __func__,
+            __LINE__, cmd);
         exit(EXIT_FAILURE);
     }
 
@@ -41,9 +43,11 @@ void kill_previous_instances(const char *process_name) {
 
         if ((pid > 0) && (pid != curr_pid)) {
             if (kill(pid, SIGTERM) == 0) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Previous instance with PID %d killed.\n", __func__, __LINE__, pid);
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: Previous instance with PID %d killed.\n", __func__, __LINE__, pid);
             } else {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error killing process PID : %d\n", __func__, __LINE__, pid);
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error killing process PID : %d\n",
+                    __func__, __LINE__, pid);
             }
         }
     }
@@ -51,7 +55,8 @@ void kill_previous_instances(const char *process_name) {
     pclose(cmd_output);
 }
 
-int main(int argc, const char * argv[]) {
+int main(int argc, const char *argv[])
+{
     // wifi_platform_type_t type;
     kill_previous_instances(argv[0]);
     if (start() == RETURN_ERR) {

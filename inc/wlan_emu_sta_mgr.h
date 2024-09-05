@@ -2,33 +2,28 @@
 #define _WLAN_EMU_STA_MGR_H
 
 #include "collection.h"
-#include "wifi_hal.h"
 #include "wifi_base.h"
+#include "wifi_hal.h"
 #include "wlan_emu_common.h"
 
-typedef enum {
-    sta_state_free = 0,
-    sta_state_in_use
-} sta_state_t;
-
+typedef enum { sta_state_free = 0, sta_state_in_use } sta_state_t;
 
 typedef struct {
-    unsigned int     phy_index;           /**< actual index of the phy device */
-    unsigned int     rdk_radio_index;     /**< radio index of upper layer */
-    wifi_interface_name_t  interface_name;
-    wifi_interface_name_t  bridge_name;
-    int              vlan_id;
-    unsigned int     index;
-    wifi_vap_name_t  vap_name;
-    mac_address_t   mac;
+    unsigned int phy_index; /**< actual index of the phy device */
+    unsigned int rdk_radio_index; /**< radio index of upper layer */
+    wifi_interface_name_t interface_name;
+    wifi_interface_name_t bridge_name;
+    int vlan_id;
+    unsigned int index;
+    wifi_vap_name_t vap_name;
+    mac_address_t mac;
     sta_state_t status;
 } sta_info_t;
 
-
 class wlan_emu_sta_mgr_t {
-    hash_map_t              *m_sta_map;
-    wifi_hal_capability_t   *m_cap;
-    queue_t *m_sta_info_map; //sta_info_t
+    hash_map_t *m_sta_map;
+    wifi_hal_capability_t *m_cap;
+    queue_t *m_sta_info_map; // sta_info_t
     unsigned int m_sta_info_count;
     unsigned int m_dev_status[DEV_STATUS_ARR_SZ];
     int find_first_free_dev();

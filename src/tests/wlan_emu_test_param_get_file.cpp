@@ -1,6 +1,6 @@
-#include <assert.h>
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include <assert.h>
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -13,25 +13,28 @@ int test_step_param_get_file::step_execute()
 
     test_step_params_t *step = this;
 
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n",
-            __func__, __LINE__, step->step_number);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n", __func__,
+        __LINE__, step->step_number);
 
     if (access(step->u.get_file->source_file, F_OK) == -1) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: File %s is not present for step : %d\n",
-                __func__, __LINE__, step->u.get_file->source_file, step->step_number);
+            __func__, __LINE__, step->u.get_file->source_file, step->step_number);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
 
-    if (step->m_ui_mgr->copy_file(step->u.get_file->source_file, step->u.get_file->dest_filename) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: File copy failed from src %s to dest %s step : %d\n",
-                __func__, __LINE__, step->u.get_file->source_file, step->u.get_file->dest_filename, step->step_number);
+    if (step->m_ui_mgr->copy_file(step->u.get_file->source_file, step->u.get_file->dest_filename) !=
+        RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: File copy failed from src %s to dest %s step : %d\n", __func__, __LINE__,
+            step->u.get_file->source_file, step->u.get_file->dest_filename, step->step_number);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
 
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: File copy succesful from src %s to dest %s step : %d\n",
-            __func__, __LINE__, step->u.get_file->source_file, step->u.get_file->dest_filename, step->step_number);
+    wlan_emu_print(wlan_emu_log_level_err,
+        "%s:%d: File copy succesful from src %s to dest %s step : %d\n", __func__, __LINE__,
+        step->u.get_file->source_file, step->u.get_file->dest_filename, step->step_number);
 
     if (step->u.get_file->delete_source_file == true) {
         try {
@@ -40,10 +43,10 @@ int test_step_param_get_file::step_execute()
                 fs::remove(step->u.get_file->source_file);
             }
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Deleted the src file : %s step : %d\n",
-                    __func__, __LINE__, step->u.get_file->source_file, step->step_number);
-        } catch (const fs::filesystem_error& ex) {
+                __func__, __LINE__, step->u.get_file->source_file, step->step_number);
+        } catch (const fs::filesystem_error &ex) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error deleting the file %s for %d\n",
-                    __func__, __LINE__, step->u.get_file->source_file, step->step_number);
+                __func__, __LINE__, step->u.get_file->source_file, step->step_number);
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
@@ -59,7 +62,7 @@ int test_step_param_get_file::step_timeout()
     test_step_params_t *step = this;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test Step Num : %d timeout_count : %d\n",
-            __func__, __LINE__, step->step_number, step->timeout_count);
+        __func__, __LINE__, step->step_number, step->timeout_count);
 
     if (step->test_state != wlan_emu_tests_state_cmd_results) {
         step->test_state = wlan_emu_tests_state_cmd_abort;
@@ -67,11 +70,10 @@ int test_step_param_get_file::step_timeout()
     return RETURN_OK;
 }
 
-
 int test_step_param_get_file::step_upload_files(FILE *output_file, bool *update_to_tda)
 {
     char *temp_res_file = NULL;
-    char res_file_name[128] = {0};
+    char res_file_name[128] = { 0 };
     char *remote_test_results_loc = NULL;
     test_step_params_t *step = this;
 
@@ -79,34 +81,39 @@ int test_step_param_get_file::step_upload_files(FILE *output_file, bool *update_
 
         remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
 
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__, step->u.get_file->dest_filename);
-        if (step->m_ui_mgr->upload_file_to_server(step->u.get_file->dest_filename, remote_test_results_loc) != RETURN_OK) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__, __LINE__, step->u.get_file->dest_filename);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__,
+            step->u.get_file->dest_filename);
+        if (step->m_ui_mgr->upload_file_to_server(step->u.get_file->dest_filename,
+                remote_test_results_loc) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
+                __LINE__, step->u.get_file->dest_filename);
             return RETURN_ERR;
         } else {
-            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__, step->u.get_file->dest_filename);
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
+                step->u.get_file->dest_filename);
             *update_to_tda = true;
             temp_res_file = strdup(step->u.get_file->dest_filename);
-            if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name, sizeof(res_file_name)) != RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_last_substring_after_slash failed for str : %s\n",
-                        __func__, __LINE__, temp_res_file);
+            if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name,
+                    sizeof(res_file_name)) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
+                    __LINE__, temp_res_file);
                 free(temp_res_file);
                 return RETURN_ERR;
             }
             fprintf(output_file, "%s\n", res_file_name);
             free(temp_res_file);
         }
-
     }
 
     return RETURN_OK;
 }
 
-
 void test_step_param_get_file::step_remove()
 {
     test_step_param_get_file *step = dynamic_cast<test_step_param_get_file *>(this);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Destructor for command called\n", __func__, __LINE__);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Destructor for command called\n", __func__,
+        __LINE__);
 
     if (step == NULL) {
         return;
@@ -123,16 +130,18 @@ void test_step_param_get_file::step_remove()
 int test_step_param_get_file::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__, step->step_number);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
+        step->step_number);
     if (msg == NULL) {
         return RETURN_UNHANDLED;
     }
     switch (msg->get_msg_type()) {
-        case wlan_emu_msg_type_webconfig://onewifi_webconfig
-        case wlan_emu_msg_type_cfg80211: //beacon
-        case wlan_emu_msg_type_frm80211: //mgmt
-        default:
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__, __LINE__, msg->get_msg_type());
+    case wlan_emu_msg_type_webconfig: // onewifi_webconfig
+    case wlan_emu_msg_type_cfg80211: // beacon
+    case wlan_emu_msg_type_frm80211: // mgmt
+    default:
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__,
+            __LINE__, msg->get_msg_type());
         break;
     }
     return RETURN_UNHANDLED;
@@ -142,10 +151,11 @@ test_step_param_get_file::test_step_param_get_file()
 {
     test_step_params_t *step = this;
     step->is_step_initialized = true;
-    step->u.get_file = new(std::nothrow) get_file_t;
+    step->u.get_file = new (std::nothrow) get_file_t;
     if (step->u.get_file == nullptr) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory for get_file failed for %d\n",
-                __func__, __LINE__, step->step_number);
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: allocation of memory for get_file failed for %d\n", __func__, __LINE__,
+            step->step_number);
         step->is_step_initialized = false;
     }
     memset(step->u.get_file, 0, sizeof(get_file_t));
@@ -157,5 +167,6 @@ test_step_param_get_file::test_step_param_get_file()
 
 test_step_param_get_file::~test_step_param_get_file()
 {
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Destructor for command called\n", __func__, __LINE__);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Destructor for command called\n", __func__,
+        __LINE__);
 }

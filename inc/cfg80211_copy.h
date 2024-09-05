@@ -1,19 +1,17 @@
 #ifndef __NET_CFG80211_H
 #define __NET_CFG80211_H
 
-
 #include "nl80211_copy.h"
-#include <stdint.h>
 #include <linux/types.h>
+#include <stdint.h>
 
 #define IEEE80211_HT_MCS_MASK_LEN 10
 #define ETH_ALEN 6
 
-typedef uint8_t  u8;
+typedef uint8_t u8;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint16_t u16;
-
 
 struct mac_address {
     u8 addr[ETH_ALEN];
@@ -56,21 +54,21 @@ struct cfg80211_crypto_settings {
 };
 
 struct cfg80211_beacon_data {
-  const u8 *head, *tail;
-  const u8 *beacon_ies;
-  const u8 *proberesp_ies;
-  const u8 *assocresp_ies;
-  const u8 *probe_resp;
-  const u8 *lci;
-  const u8 *civicloc;
-  u8     ftm_responder;
-  size_t head_len, tail_len;
-  size_t beacon_ies_len;
-  size_t proberesp_ies_len;
-  size_t assocresp_ies_len;
-  size_t probe_resp_len;
-  size_t lci_len;
-  size_t civicloc_len;
+    const u8 *head, *tail;
+    const u8 *beacon_ies;
+    const u8 *proberesp_ies;
+    const u8 *assocresp_ies;
+    const u8 *probe_resp;
+    const u8 *lci;
+    const u8 *civicloc;
+    u8 ftm_responder;
+    size_t head_len, tail_len;
+    size_t beacon_ies_len;
+    size_t proberesp_ies_len;
+    size_t assocresp_ies_len;
+    size_t probe_resp_len;
+    size_t lci_len;
+    size_t civicloc_len;
 };
 
 /**
@@ -112,7 +110,6 @@ struct ieee80211_ht_cap {
     u8 antenna_selection_info;
 } __attribute__((packed));
 
-
 /**
  * struct ieee80211_vht_mcs_info - VHT MCS information
  * @rx_mcs_map: RX MCS map 2 bits for each stream, total 8 streams
@@ -151,7 +148,6 @@ struct ieee80211_vht_cap {
     struct ieee80211_vht_mcs_info supp_mcs;
 } __attribute__((packed));
 
-
 /**
  * struct ieee80211_he_cap_elem - HE capabilities element
  *
@@ -164,12 +160,12 @@ struct ieee80211_he_cap_elem {
 } __attribute__((packed));
 
 enum ieee80211_edmg_bw_config {
-    IEEE80211_EDMG_BW_CONFIG_4  = 4,
-    IEEE80211_EDMG_BW_CONFIG_5  = 5,
-    IEEE80211_EDMG_BW_CONFIG_6  = 6,
-    IEEE80211_EDMG_BW_CONFIG_7  = 7,
-    IEEE80211_EDMG_BW_CONFIG_8  = 8,
-    IEEE80211_EDMG_BW_CONFIG_9  = 9,
+    IEEE80211_EDMG_BW_CONFIG_4 = 4,
+    IEEE80211_EDMG_BW_CONFIG_5 = 5,
+    IEEE80211_EDMG_BW_CONFIG_6 = 6,
+    IEEE80211_EDMG_BW_CONFIG_7 = 7,
+    IEEE80211_EDMG_BW_CONFIG_8 = 8,
+    IEEE80211_EDMG_BW_CONFIG_9 = 9,
     IEEE80211_EDMG_BW_CONFIG_10 = 10,
     IEEE80211_EDMG_BW_CONFIG_11 = 11,
     IEEE80211_EDMG_BW_CONFIG_12 = 12,

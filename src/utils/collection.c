@@ -17,11 +17,11 @@
   limitations under the License.
 **************************************************************************/
 
+#include "collection.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include "collection.h"
 
 queue_t *queue_create(void)
 {
@@ -89,7 +89,7 @@ void *queue_pop(queue_t *q)
 
 void *queue_remove(queue_t *q, uint32_t index)
 {
-    element_t   *e, *tmp = NULL;
+    element_t *e, *tmp = NULL;
     void *data;
     uint32_t i = 0;
 
@@ -123,7 +123,7 @@ void *queue_remove(queue_t *q, uint32_t index)
 
 void *queue_peek(queue_t *q, uint32_t index)
 {
-    element_t   *e;
+    element_t *e;
     uint32_t i = 0;
 
     if (index > (queue_count(q) - 1)) {
@@ -167,7 +167,7 @@ uint32_t queue_count(queue_t *q)
 
 void queue_destroy(queue_t *q)
 {
-    element_t   *e, *tmp;
+    element_t *e, *tmp;
 
     e = q->head;
 
@@ -254,7 +254,8 @@ void *hash_map_remove(hash_map_t *map, const char *key)
     assert(tmp == e);
 
     data = e->data;
-    //Setting unused pointers to NULL is a defensive style, protecting against dangling pointer bugs
+    // Setting unused pointers to NULL is a defensive style, protecting against dangling pointer
+    // bugs
     free(e->key);
     e->key = NULL;
     free(e);
@@ -262,7 +263,6 @@ void *hash_map_remove(hash_map_t *map, const char *key)
 
     return data;
 }
-
 
 void *hash_map_get_first(hash_map_t *map)
 {
@@ -310,7 +310,7 @@ uint32_t hash_map_count(hash_map_t *map)
 
 hash_map_t *hash_map_create()
 {
-    hash_map_t  *map;
+    hash_map_t *map;
 
     map = (hash_map_t *)malloc(sizeof(hash_map_t));
     if (map == NULL) {

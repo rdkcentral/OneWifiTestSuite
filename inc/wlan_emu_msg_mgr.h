@@ -1,11 +1,11 @@
 #ifndef _WLAN_EMU_MSG_MGR_H
 #define _WLAN_EMU_MSG_MGR_H
 
-#include <stdbool.h>
 #include "collection.h"
-#include "wlan_emu_msg_hdlr.h"
 #include "wlan_emu_msg.h"
+#include "wlan_emu_msg_hdlr.h"
 #include "wlan_emu_tests.h"
+#include <stdbool.h>
 
 class wlan_emu_tests_t;
 

@@ -1,11 +1,11 @@
-#include <stdio.h>
-#include <sys/time.h>
+#include "wlan_emu_msg_mgr.h"
+#include "wlan_emu_log.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <stdio.h>
+#include <sys/time.h>
 #include <unistd.h>
-#include "wlan_emu_msg_mgr.h"
-#include "wlan_emu_log.h"
 
 void wlan_emu_msg_mgr_t::subscribe(wlan_emu_tests_t *test)
 {

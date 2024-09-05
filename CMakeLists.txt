@@ -11,8 +11,6 @@ file(GLOB_RECURSE SOURCES
     "src/utils/*.c"
     "src/*.cpp"
     "src/tests/*.cpp"
-    "src/radio/*.cpp"
-    "src/vap/*.cpp"
     "src/messages/*.cpp"
     "src/utils/*.cpp"
     "src/utils/*.hpp"

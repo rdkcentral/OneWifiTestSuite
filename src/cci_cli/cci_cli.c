@@ -5,9 +5,10 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define MAX_BUFFER_SIZE 8192             // Adjust buffer size as needed
+#define MAX_BUFFER_SIZE 8192 // Adjust buffer size as needed
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     if (argc != 3) {
         printf("Usage: %s <sock_file ><file_name>\n", argv[0]);
         exit(EXIT_FAILURE);
@@ -40,8 +41,6 @@ int main(int argc, char *argv[]) {
     server_addr.sun_family = AF_UNIX;
     strncpy(server_addr.sun_path, socket_file_path, sizeof(server_addr.sun_path) - 1);
 
-
-
     // Open the file for reading
     file = fopen(file_name, "rb");
     if (file == NULL) {
@@ -51,7 +50,8 @@ int main(int argc, char *argv[]) {
     }
 
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-        ssize_t bytes_sent = sendto(sockfd, buffer, bytes_read, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
+        ssize_t bytes_sent = sendto(sockfd, buffer, bytes_read, 0, (struct sockaddr *)&server_addr,
+            sizeof(server_addr));
         if (bytes_sent == -1) {
             perror("Sendto failed");
             fclose(file);
