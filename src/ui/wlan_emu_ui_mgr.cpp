@@ -6,7 +6,6 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <rbus.h>
@@ -19,8 +18,10 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
+#include <experimental/filesystem>
 
-namespace fs = std::filesystem;
+namespace fs = std::experimental::filesystem;
+
 unsigned char cci_test_dir[] = "cci_res";
 
 extern "C" {

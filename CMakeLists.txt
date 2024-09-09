@@ -19,7 +19,7 @@ file(GLOB_RECURSE SOURCES
 
 add_executable(cci ${SOURCES})
 target_link_libraries(cci 
-       pcap rdk_wifiemulatorhal wifi_webconfig)
+       pcap rdk_wifiemulatorhal wifi_webconfig stdc++fs cjson pthread rbus curl)
 
 install(TARGETS cci DESTINATION bin)
 
