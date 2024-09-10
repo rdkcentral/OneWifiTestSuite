@@ -80,12 +80,13 @@ int wlan_emu_t::run()
                 m_ui_mgr.signal_downloaded_test_data();
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: analyze_request succesful\n",
                     __func__, __LINE__);
+                dml_state = wlan_emu_dml_tests_state_running;
             } else {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: analyze_request failed\n", __func__,
                     __LINE__);
-                m_ui_mgr.cci_report_failure_to_tda();
+                m_ui_mgr.signal_report_test_fail();
+                dml_state = wlan_emu_dml_tests_state_complete_failure;
             }
-            dml_state = wlan_emu_dml_tests_state_running;
             break;
         case wlan_emu_tests_state_cmd_start:
             // here the execution of the test cases happend
@@ -93,15 +94,16 @@ int wlan_emu_t::run()
                 "%s:%d: in case wlan_emu_tests_state_cmd_start\n", __func__, __LINE__);
             if (start_test() == RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: start_test succesful\n", __func__,
-                    __LINE__);
+                        __LINE__);
+                m_state = wlan_emu_tests_state_cmd_wait;
+                dml_state = wlan_emu_dml_tests_state_running;
             } else {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: start_test failed\n", __func__,
                     __LINE__);
-                m_ui_mgr.cci_report_failure_to_tda();
+                m_ui_mgr.signal_report_test_fail();
+                dml_state = wlan_emu_dml_tests_state_complete_failure;
             }
             // Irrespective of success (or) failed the testcase needs to wait
-            m_state = wlan_emu_tests_state_cmd_wait;
-            dml_state = wlan_emu_dml_tests_state_running;
             break;
         case wlan_emu_tests_state_cmd_results:
             if (m_ui_mgr.upload_results() == RETURN_OK) {
@@ -248,7 +250,7 @@ void wlan_emu_t::abort_test()
     test_v->stop();
     delete test_v;
     test_v = NULL;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: VAP Test stopped\n", __func__, __LINE__);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test stopped\n", __func__, __LINE__);
 }
 
 #define STR_LEN 128
@@ -268,8 +270,14 @@ rbusError_t wlan_emu_t::set_cci_handler(rbusHandle_t handle, rbusProperty_t prop
     value = rbusProperty_GetValue(property);
     type = rbusValue_GetType(value);
 
+    if (get_dml_state() == wlan_emu_dml_tests_state_running) {
+        wlan_emu_print(wlan_emu_log_level_info,
+            "%s: Execution not allowed as test case is in running state\n", __FUNCTION__);
+        return RBUS_ERROR_INVALID_INPUT;
+    }
+
     if (!name) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s: Invalid Rbus property\n", __func__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
@@ -277,28 +285,28 @@ rbusError_t wlan_emu_t::set_cci_handler(rbusHandle_t handle, rbusProperty_t prop
     sscanf(name, "Device.WiFi.Tests.%200s", parameter);
     if (strstr(parameter, "TestConfigURL")) {
         if (type != RBUS_STRING) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s: Invalid Rbus property\n", __func__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
             return RBUS_ERROR_INVALID_INPUT;
         }
         pTmp = rbusValue_GetString(value, &len);
         strncpy(m_ui_mgr.get_tda_url(), pTmp, STR_LEN);
     } else if (strstr(parameter, "ResultsFileName")) {
         if (type != RBUS_STRING) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s: Invalid Rbus property\n", __func__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
             return RBUS_ERROR_INVALID_INPUT;
         }
         pTmp = rbusValue_GetString(value, &len);
         strncpy(m_ui_mgr.get_tda_output_file(), pTmp, STR_LEN);
     } else if (strstr(parameter, "Interface")) {
         if (type != RBUS_STRING) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s: Invalid Rbus property\n", __func__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
             return RBUS_ERROR_INVALID_INPUT;
         }
         pTmp = rbusValue_GetString(value, &len);
         strncpy(m_ui_mgr.get_tda_interface(), pTmp, STR_LEN);
     } else if (strstr(parameter, "SimulatedClientDevices")) {
         if (type != RBUS_UINT32) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s: Invalid Rbus property\n", __func__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
             return RBUS_ERROR_INVALID_INPUT;
         }
         int count = rbusValue_GetUInt32(value);
@@ -308,7 +316,7 @@ rbusError_t wlan_emu_t::set_cci_handler(rbusHandle_t handle, rbusProperty_t prop
         memcpy(m_ui_mgr.get_simulated_client_count(), &count, sizeof(int));
     } else if (strstr(parameter, "Start")) {
         if (type != RBUS_BOOLEAN) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s: Invalid Rbus property\n", __func__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
             return RBUS_ERROR_INVALID_INPUT;
         }
         bool start = rbusValue_GetBoolean(value);
@@ -327,12 +335,6 @@ rbusError_t wlan_emu_t::get_cci_handler(rbusHandle_t handle, rbusProperty_t prop
     char null_string[3] = { 0 };
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: Rbus property=%s\n", __FUNCTION__, name);
-
-    if (get_dml_state() == wlan_emu_dml_tests_state_running) {
-        wlan_emu_print(wlan_emu_log_level_info,
-            "%s: Execution not allowed as test case is in running state\n", __FUNCTION__);
-        return RBUS_ERROR_SUCCESS;
-    }
 
     char extension[64] = { 0 };
     sscanf(name, "Device.WiFi.Tests.%s", extension);

@@ -252,6 +252,10 @@ int test_step_param_sta_management::step_timeout()
             wlan_emu_print(wlan_emu_log_level_info,
                 "%s:%d: Test duration of %d  completed for step %d\n", __func__, __LINE__,
                 step->execution_time, step->step_number);
+            if (step->u.sta_test->is_station_associated == true) {
+                step->m_sta_mgr->remove_sta(step->u.sta_test);
+                step->u.sta_test->is_station_associated = false;
+            }
             return RETURN_OK;
         }
 
@@ -466,7 +470,7 @@ int test_step_param_sta_management::step_upload_files(FILE *output_file, bool *u
         free(temp_res_file);
     }
 
-    if (remove(sta_connect_info) == 0) {
+    if (remove(sta_connect_info) != 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error Removing the file : %s\n", __func__,
             __LINE__, sta_connect_info);
     }
@@ -528,10 +532,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
     // expect only wlan_emu_msg_type_cfg80211 or  wlan_emu_msg_type_webconfig
     switch (msg->get_msg_type()) {
     case wlan_emu_msg_type_frm80211: // mgmt
-        if ((step->capture_frames != true) ||
-            (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
-            return RETURN_UNHANDLED;
-        }
 
         // irrespective of capture_frames check for eapol-3 to confirm whether the client is
         // associated or not
@@ -544,8 +544,14 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 if (msg->get_msgname_from_msgtype() == RETURN_OK) {
                     if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
                         step->u.sta_test->is_station_associated = true;
+                        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: captured eapol-msg3\n",
+                            __func__, __LINE__);
                     }
                 }
+            }
+            if ((step->capture_frames != true) ||
+                (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
+                return RETURN_UNHANDLED;
             }
 
             if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
