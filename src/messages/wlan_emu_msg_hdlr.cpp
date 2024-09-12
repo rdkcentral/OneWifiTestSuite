@@ -409,6 +409,7 @@ void wlan_emu_msg_hdlr_t::msg_hdlr_thread_func()
     wlan_emu_msg_data_t f_data;
     wlan_emu_msg_t *msg;
     char *f_tmp = (char *)malloc(2048);
+    char *p_f_tmp;
 
     if (f_tmp == NULL) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: NULL Pointer Exiting hdlr thread\n",
@@ -443,23 +444,25 @@ void wlan_emu_msg_hdlr_t::msg_hdlr_thread_func()
             continue;
         }
 
-        memcpy(&(f_data.type), f_tmp, sizeof(wlan_emu_msg_type_t));
-        f_tmp += sizeof(wlan_emu_msg_type_t);
+        p_f_tmp = f_tmp;
+
+        memcpy(&(f_data.type), p_f_tmp, sizeof(wlan_emu_msg_type_t));
+        p_f_tmp += sizeof(wlan_emu_msg_type_t);
 
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: f_data.type : %d \n", __func__, __LINE__,
             f_data.type);
         switch (f_data.type) {
         case wlan_emu_msg_type_cfg80211:
-            handle_cfg80211_msg(f_tmp, &f_data);
+            handle_cfg80211_msg(p_f_tmp, &f_data);
             break;
         case wlan_emu_msg_type_emu80211:
-            handle_emu80211_msg(f_tmp, &f_data);
+            handle_emu80211_msg(p_f_tmp, &f_data);
             break;
         case wlan_emu_msg_type_frm80211:
-            handle_frm80211_msg(f_tmp, &f_data);
+            handle_frm80211_msg(p_f_tmp, &f_data);
             break;
         case wlan_emu_msg_type_webconfig:
-            handle_webconfig_msg(f_tmp, &f_data);
+            handle_webconfig_msg(p_f_tmp, &f_data);
             break;
         default:
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not handling any other messages\n",

@@ -229,10 +229,12 @@ void wlan_emu_sta_mgr_t::remove_sta(sta_test_t *sta_test)
     }
 
     // Disconnect the device
-    wlan_emu_print(wlan_emu_log_level_dbg,
-        "%s:%d: Disconnect sta vap %d Freeing the device : %d \n", __func__, __LINE__,
-        sta_test->sta_vap_config->vap_index, sta->get_dev_id());
-    wifi_hal_disconnect(sta_test->sta_vap_config->vap_index);
+    if (sta_test->is_station_associated  == true) {
+        wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: Disconnect sta vap %d Freeing the device : %d \n", __func__, __LINE__,
+                sta_test->sta_vap_config->vap_index, sta->get_dev_id());
+        wifi_hal_disconnect(sta_test->sta_vap_config->vap_index);
+    }
 
     sta_info = get_devid_sta_info(sta->get_dev_id());
     if (sta_info == NULL) {

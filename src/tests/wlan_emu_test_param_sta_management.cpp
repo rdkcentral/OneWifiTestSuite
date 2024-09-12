@@ -252,9 +252,11 @@ int test_step_param_sta_management::step_timeout()
             wlan_emu_print(wlan_emu_log_level_info,
                 "%s:%d: Test duration of %d  completed for step %d\n", __func__, __LINE__,
                 step->execution_time, step->step_number);
+            // Here if its associated only remove it if not will be handled by step_remove
             if (step->u.sta_test->is_station_associated == true) {
                 step->m_sta_mgr->remove_sta(step->u.sta_test);
                 step->u.sta_test->is_station_associated = false;
+                step->u.sta_test->is_decoded = false;
             }
             return RETURN_OK;
         }
@@ -493,9 +495,10 @@ void test_step_param_sta_management::step_remove()
             wlan_emu_print(wlan_emu_log_level_info,
                 "%s:%d: Disconnecting the client at vap index : %d\n", __func__, __LINE__,
                 step->u.sta_test->sta_vap_config->vap_index);
-            if (step->u.sta_test->is_station_associated == true) {
+            if (step->u.sta_test->is_decoded == true) {
                 step->m_sta_mgr->remove_sta(step->u.sta_test);
                 step->u.sta_test->is_station_associated = false;
+                step->u.sta_test->is_decoded = false;
             }
 
             delete step->u.sta_test->sta_vap_config;
@@ -522,6 +525,8 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
     wlan_emu_msg_data_t *f_data = NULL;
+    char client_macaddr[32] = { 0 };
+    char macaddr[32] = { 0 };
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
         step->step_number);
 
@@ -537,31 +542,57 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
         // associated or not
         f_data = msg->get_msg();
 
-        if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
+        uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.client_macaddr, client_macaddr);
+        uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.macaddr, macaddr);
 
-            if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
-                if (msg->get_msgname_from_msgtype() == RETURN_OK) {
+        if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                 f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
+            (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                 f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0)) {
+            if (msg->get_msgname_from_msgtype() != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: invalid msgname received from macaddr : %s client_macaddr : %s\n",
+                    __func__, __LINE__, macaddr, client_macaddr);
+                return RETURN_UNHANDLED;
+            }
+
+            if ((wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type()) ||
+                (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
+                wlan_emu_print(wlan_emu_log_level_info,
+                    "%s:%d: received %s from macaddr : %s client_macaddr : %s\n", __func__,
+                    __LINE__, msg->get_msg_name(), macaddr, client_macaddr);
+                step->u.sta_test->is_station_associated = false;
+                step->m_sta_mgr->remove_sta(step->u.sta_test);
+                step->u.sta_test->is_decoded = false;
+            }
+
+            if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                    f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
+
+                if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
                     if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
                         step->u.sta_test->is_station_associated = true;
-                        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: captured eapol-msg3\n",
-                            __func__, __LINE__);
+                        wlan_emu_print(wlan_emu_log_level_dbg,
+                            "%s:%d: captured eapol-msg3 for %s\n", __func__, __LINE__,
+                            client_macaddr);
                     }
                 }
-            }
-            if ((step->capture_frames != true) ||
-                (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
-                return RETURN_UNHANDLED;
-            }
 
-            if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
-                return RETURN_UNHANDLED;
+                if ((step->capture_frames != true) ||
+                    (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
+                    return RETURN_UNHANDLED;
+                }
+
+                if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
+                    return RETURN_UNHANDLED;
+                }
+                msg->unload_frm80211_msg(step);
+                return RETURN_HANDLED;
             }
-            msg->unload_frm80211_msg(step);
-            return RETURN_HANDLED;
         } else {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not matching with sta mac address\n",
-                __func__, __LINE__);
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
+                __func__, __LINE__, macaddr, client_macaddr);
         }
         break;
     case wlan_emu_msg_type_cfg80211: // beacon
