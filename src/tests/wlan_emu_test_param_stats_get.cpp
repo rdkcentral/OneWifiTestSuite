@@ -132,6 +132,17 @@ char *test_step_param_get_stats_t::get_scanmode_str()
     }
 }
 
+char *test_step_param_get_stats_t::get_stats_response_type()
+{
+    test_step_params_t *step = this;
+
+    if (step->u.wifi_stats_get->is_stat_response_type_set == true) {
+        return "SET";
+    }
+
+    return "GET";
+}
+
 int test_step_param_get_stats_t::update_output_file_name()
 {
     test_step_params_t *step = this;
@@ -145,8 +156,8 @@ int test_step_param_get_stats_t::update_output_file_name()
             return RETURN_ERR;
         }
         snprintf(step->u.wifi_stats_get->output_file_name,
-            sizeof(step->u.wifi_stats_get->output_file_name), "GET_RadioChannelStats_r%d_%s",
-            step->u.wifi_stats_get->radio_index, scan_mode);
+            sizeof(step->u.wifi_stats_get->output_file_name), "%s_RadioChannelStats_r%d_%s",
+            get_stats_response_type(), step->u.wifi_stats_get->radio_index, scan_mode);
         return RETURN_OK;
     case wifi_mon_stats_type_t::mon_stats_type_neighbor_stats:
         scan_mode = get_scanmode_str();
@@ -156,23 +167,23 @@ int test_step_param_get_stats_t::update_output_file_name()
             return RETURN_ERR;
         }
         snprintf(step->u.wifi_stats_get->output_file_name,
-            sizeof(step->u.wifi_stats_get->output_file_name), "GET_NeighborStats_r%d_%s",
-            step->u.wifi_stats_get->radio_index, scan_mode);
+            sizeof(step->u.wifi_stats_get->output_file_name), "%s_NeighborStats_r%d_%s",
+            get_stats_response_type(), step->u.wifi_stats_get->radio_index, scan_mode);
         return RETURN_OK;
     case wifi_mon_stats_type_t::mon_stats_type_associated_device_stats:
         snprintf(step->u.wifi_stats_get->output_file_name,
-            sizeof(step->u.wifi_stats_get->output_file_name), "GET_AssocClientStats_v%d",
-            step->u.wifi_stats_get->vap_index);
+            sizeof(step->u.wifi_stats_get->output_file_name), "%s_AssocClientStats_v%d",
+            get_stats_response_type(), step->u.wifi_stats_get->vap_index);
         return RETURN_OK;
     case wifi_mon_stats_type_t::mon_stats_type_radio_diagnostic_stats:
         snprintf(step->u.wifi_stats_get->output_file_name,
-            sizeof(step->u.wifi_stats_get->output_file_name), "GET_RadioDiagStats_r%d",
-            step->u.wifi_stats_get->radio_index);
+            sizeof(step->u.wifi_stats_get->output_file_name), "%s_RadioDiagStats_r%d",
+            get_stats_response_type(), step->u.wifi_stats_get->radio_index);
         return RETURN_OK;
     case wifi_mon_stats_type_t::mon_stats_type_radio_temperature:
         snprintf(step->u.wifi_stats_get->output_file_name,
-            sizeof(step->u.wifi_stats_get->output_file_name), "GET_RadioTempStats_r%d",
-            step->u.wifi_stats_get->radio_index);
+            sizeof(step->u.wifi_stats_get->output_file_name), "%s_RadioTempStats_r%d",
+            get_stats_response_type(), step->u.wifi_stats_get->radio_index);
         return RETURN_OK;
     default:
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown data type %d\n", __func__, __LINE__,

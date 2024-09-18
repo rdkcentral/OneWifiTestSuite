@@ -808,6 +808,9 @@ int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, test_step_par
             return RETURN_ERR;
         }
     } else {
+        decode_param_bool(step, "StatResponseType", config);
+        wifi_stats_get->is_stat_response_type_set = (config->type & cJSON_True) ? true :
+          false;
         wifi_stats_get->get_stats_queue = queue_create();
         if (wifi_stats_get->get_stats_queue == NULL) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_stats_queue failed\n", __func__,

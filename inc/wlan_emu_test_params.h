@@ -206,6 +206,7 @@ public:
     static void stats_get_event_handler(rbusHandle_t handle, rbusEvent_t const *event,
         rbusEventSubscription_t *subscription);
     int step_frame_filter(wlan_emu_msg_t *msg);
+    char *get_stats_response_type();
 };
 
 class test_step_param_get_radio_channel_stats : public test_step_param_get_stats_t {

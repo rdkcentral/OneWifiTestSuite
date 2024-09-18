@@ -199,6 +199,7 @@ typedef struct {
     char output_file_name[128];
     int stop_log_step_number;
     queue_t *get_stats_queue;
+    bool is_stat_response_type_set;
 } wifi_stats_get_t;
 
 typedef struct {
