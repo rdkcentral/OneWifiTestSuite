@@ -275,9 +275,13 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
         if (get_msgname_from_msgtype() == RETURN_ERR) {
             return RETURN_ERR;
         }
+
+        step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.cfg80211.u.start_ap.macaddr,
+            &radio_index);
+
         snprintf(fname, sizeof(fname), "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
             step->test_case_id, step->step_number, timestamp, mac_str, "NA", step->test_case_name,
-            get_msg_name(), f_data->u.cfg80211.u.start_ap.phy_index);
+            get_msg_name(), radio_index);
 
         head = (struct ieee80211_mgmt *)f_data->u.cfg80211.u.start_ap.ap_params.beacon.head;
 
