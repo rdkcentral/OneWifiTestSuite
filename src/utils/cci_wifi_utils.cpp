@@ -261,3 +261,13 @@ unsigned int ieee_frame_hdr_len(__le16 fc)
 out:
     return hdrlen;
 }
+
+bool is_zero_mac(mac_address_t mac)
+{
+    for (int i = 0; i < MAC_ADDR_LEN; i++) {
+        if (mac[i] != 0x00) {
+            return false; // If any byte is not zero, return false
+        }
+    }
+    return true; // All bytes are zero
+}

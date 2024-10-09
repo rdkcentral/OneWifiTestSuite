@@ -55,6 +55,7 @@ class test_step_param_set_radio_temperature_stats;
 class test_step_param_get_file;
 class test_step_param_mgmt_frame_capture;
 class test_step_param_get_pattern_files;
+class test_step_param_timed_wait;
 
 class wlan_emu_ui_mgr_t {
     static unsigned int m_token;
@@ -80,6 +81,7 @@ class wlan_emu_ui_mgr_t {
     wifi_hal_capability_t *m_sta_hal_cap;
     char ssl_cert[128];
     char ssl_key[64];
+    int  cci_error_code;
 
 private:
     int io_prep(void);
@@ -124,11 +126,12 @@ private:
     int download_file(char *input_file_name, unsigned int input_file_name_len);
     int download_step_param_config(test_step_params_t *step);
     int download_step_common_config(test_step_params_t *step);
-    int cci_post_result_to_tda(bool result);
+    int cci_post_result_to_tda(unsigned int type, char *str);
     int get_mlts_configuration();
     int decode_step_get_file(cJSON *step, test_step_params_t *step_config);
     int decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config);
     int decode_step_get_pattern_files(cJSON *step, test_step_params_t *step_config);
+    int decode_step_timed_wait(cJSON *step, test_step_params_t *step_config);
 
 public:
     int init(void);
@@ -172,6 +175,8 @@ public:
 
     int cci_report_failure_to_tda(void);
     int cci_report_complete_to_tda(void);
+    int cci_report_reboot_to_tda(void);
+    int cci_report_heartbeat_to_tda(void);
 
     inline queue_t *get_test_cov_cases_queue(void)
     {
@@ -267,6 +272,17 @@ public:
 
     void send_webconfig_ctrl_msg(webconfig_subdoc_type_t subdoc_type);
     int copy_file(const char *source_path, const char *destination_path);
+
+    inline int get_cci_error_code()
+    {
+        return cci_error_code;
+    }
+
+    inline void set_cci_error_code(int error_code)
+    {
+        cci_error_code = error_code;
+        return;
+    }
 
     wlan_emu_ui_mgr_t();
     ~wlan_emu_ui_mgr_t();

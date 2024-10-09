@@ -323,4 +323,15 @@ public:
     test_step_param_get_pattern_files();
     ~test_step_param_get_pattern_files();
 };
+
+class test_step_param_timed_wait : public test_step_params_t {
+public:
+    int step_execute();
+    int step_timeout();
+    int step_upload_files(FILE *output_file, bool *update_to_tda);
+    void step_remove();
+    int step_frame_filter(wlan_emu_msg_t *msg);
+    test_step_param_timed_wait();
+    ~test_step_param_timed_wait();
+};
 #endif

@@ -5,6 +5,7 @@
 #include <curl/curl.h>
 #include <dirent.h>
 #include <errno.h>
+#include <experimental/filesystem>
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
@@ -18,7 +19,6 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
-#include <experimental/filesystem>
 
 namespace fs = std::experimental::filesystem;
 
@@ -633,8 +633,8 @@ int wlan_emu_ui_mgr_t::decode_step_command_config(cJSON *step, test_step_params_
 
     param = cJSON_GetObjectItem(step, "CmdResultFileName");
     if (param != NULL) {
-        snprintf(cmd->cmd_exec_log_filename, sizeof(cmd->cmd_exec_log_filename), "%s/%s",
-            test_results_dir_path, param->valuestring);
+        snprintf(cmd->cmd_exec_log_filename, sizeof(cmd->cmd_exec_log_filename), "%s",
+            param->valuestring);
     } else {
         memset(cmd->cmd_exec_log_filename, 0, sizeof(cmd->cmd_exec_log_filename));
     }
@@ -772,6 +772,21 @@ int wlan_emu_ui_mgr_t::decode_step_get_pattern_files(cJSON *step, test_step_para
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::decode_step_timed_wait(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *config;
+    cJSON *param;
+    step_config->param_type = step_param_type_timed_wait;
+
+    decode_param_integer(step, "WaitTimeInSeconds", param);
+    step_config->u.timed_wait->seconds = param->valuedouble;
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: wait for seconds : %d\n", __func__, __LINE__,
+        step_config->u.timed_wait->seconds);
+
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::decode_step_get_file(cJSON *step, test_step_params_t *step_config)
 {
     cJSON *config;
@@ -880,8 +895,7 @@ int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, test_step_par
         }
     } else {
         decode_param_bool(step, "StatResponseType", config);
-        wifi_stats_get->is_stat_response_type_set = (config->type & cJSON_True) ? true :
-          false;
+        wifi_stats_get->is_stat_response_type_set = (config->type & cJSON_True) ? true : false;
         wifi_stats_get->get_stats_queue = queue_create();
         if (wifi_stats_get->get_stats_queue == NULL) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_stats_queue failed\n", __func__,
@@ -1774,6 +1788,22 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
         }
         if (decode_step_get_pattern_files(step, *step_config) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_get_pattern_files failed\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        return RETURN_OK;
+    }
+
+    config = cJSON_GetObjectItem(step, "WaitTimeInSeconds");
+    if (config != NULL) {
+        *step_config = new (std::nothrow) test_step_param_timed_wait;
+        if ((*step_config)->is_step_initialized == false) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Failed allocating memory for timed wait step\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        if (decode_step_timed_wait(step, *step_config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_timed_wait failed\n",
                 __func__, __LINE__);
             return RETURN_ERR;
         }
@@ -2776,6 +2806,8 @@ int wlan_emu_ui_mgr_t::init()
 
     is_local_host_enabled = false;
 
+    cci_report_reboot_to_tda();
+
     return 0;
 }
 
@@ -2821,19 +2853,50 @@ int wlan_emu_ui_mgr_t::io_prep()
 
 int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
 {
-    char remote_node[] = "/test_fail";
-    char local_node[] = "/tmp/test_fail_log";
-    char url[128] = { 0 };
     unsigned int count = 0, i = 0;
     wlan_emu_test_case_config *test;
     unsigned int steps_count = 0;
+    cJSON *json;
+    char value[64] = { 0 };
+    char timestamp[24] = { 0 };
+    char *str;
 
     if (is_local_host_enabled == false) {
-        if (cci_post_result_to_tda(false) != RETURN_OK) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
+        cJSON *json;
+        char value[64] = { 0 };
+        char timestamp[24] = { 0 };
+        char *str;
+        json = cJSON_CreateObject();
+
+        get_cm_mac_address(value);
+        value[strcspn(value, "\n")] = '\0';
+
+        cJSON_AddStringToObject(json, "cm_mac", value);
+        cJSON_AddStringToObject(json, "result_file", "NA");
+        cJSON_AddStringToObject(json, "status", "fail");
+        // NOTE : Need to read the different error codes
+        // use get_cci_error_code() to get the error code
+        // use set_cci_error_code for setting error code
+        cJSON_AddStringToObject(json, "error_code", "2");
+
+        if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
                 __func__, __LINE__);
             return RETURN_ERR;
         }
+
+        cJSON_AddStringToObject(json, "timestamp", timestamp);
+        str = cJSON_Print(json);
+
+        cJSON_Delete(json);
+
+        if (cci_post_result_to_tda(tc_endpoint_type_fail, str) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
+                __func__, __LINE__);
+            cJSON_free(str);
+            return RETURN_ERR;
+        }
+        cJSON_free(str);
     }
 
     if (test_cov_cases_q == NULL) {
@@ -2890,43 +2953,150 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
 
 int wlan_emu_ui_mgr_t::cci_report_complete_to_tda()
 {
-    char remote_node[] = "/test_complete";
-    char local_node[] = "/tmp/test_complete_log";
-    char url[128] = { 0 };
+    cJSON *json;
+    char value[64] = { 0 };
+    char timestamp[24] = { 0 };
+    char *str;
 
     if (is_local_host_enabled == false) {
-        if (cci_post_result_to_tda(true) != RETURN_OK) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
+        json = cJSON_CreateObject();
+
+        get_cm_mac_address(value);
+        value[strcspn(value, "\n")] = '\0';
+
+        cJSON_AddStringToObject(json, "cm_mac", value);
+        cJSON_AddStringToObject(json, "result_file", cci_out_file_list);
+        cJSON_AddStringToObject(json, "status", "complete");
+        cJSON_AddStringToObject(json, "error_code", "0");
+
+        if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
                 __func__, __LINE__);
             return RETURN_ERR;
         }
+
+        cJSON_AddStringToObject(json, "timestamp", timestamp);
+        str = cJSON_Print(json);
+
+        cJSON_Delete(json);
+
+        if (cci_post_result_to_tda(tc_endpoint_type_complete, str) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
+                __func__, __LINE__);
+            cJSON_free(str);
+            return RETURN_ERR;
+        }
+        cJSON_free(str);
     }
 
     return RETURN_OK;
 }
 
-int wlan_emu_ui_mgr_t::cci_post_result_to_tda(bool result)
+int wlan_emu_ui_mgr_t::cci_report_heartbeat_to_tda()
 {
     cJSON *json;
-    json = cJSON_CreateObject();
-    FILE *fp = NULL;
     char value[64] = { 0 };
+    char timestamp[24] = { 0 };
     char *str;
-    char result_url[128] = { 0 };
-    char post_res_file[] = "/tmp/cci_post_file.json";
-    get_cm_mac_address(value);
-    value[strcspn(value, "\n")] = '\0';
-    cJSON_AddStringToObject(json, "cm_mac", value);
 
-    if (result == true) { // pass
-        cJSON_AddStringToObject(json, "result_file", cci_out_file_list);
-        snprintf(result_url, sizeof(result_url), "%s/complete", server_address);
-    } else {
-        cJSON_AddStringToObject(json, "result_file", "FAIL");
-        snprintf(result_url, sizeof(result_url), "%s/fail", server_address);
+    if (is_local_host_enabled == false) {
+        json = cJSON_CreateObject();
+
+        get_cm_mac_address(value);
+        value[strcspn(value, "\n")] = '\0';
+
+        cJSON_AddStringToObject(json, "cm_mac", value);
+        cJSON_AddStringToObject(json, "result_file", "NA");
+        cJSON_AddStringToObject(json, "status", "heartbeat");
+        cJSON_AddStringToObject(json, "error_code", "0");
+
+        if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        cJSON_AddStringToObject(json, "timestamp", timestamp);
+        str = cJSON_Print(json);
+
+        cJSON_Delete(json);
+
+        if (cci_post_result_to_tda(tc_endpoint_type_heartbeat, str) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
+                __func__, __LINE__);
+            cJSON_free(str);
+            return RETURN_ERR;
+        }
+        cJSON_free(str);
     }
 
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::cci_report_reboot_to_tda()
+{
+    cJSON *json;
+    char value[64] = { 0 };
+    char timestamp[24] = { 0 };
+    char *str;
+
+    json = cJSON_CreateObject();
+
+    get_cm_mac_address(value);
+    value[strcspn(value, "\n")] = '\0';
+
+    cJSON_AddStringToObject(json, "cm_mac", value);
+    cJSON_AddStringToObject(json, "result_file", "NA");
+    cJSON_AddStringToObject(json, "status", "running");
+    cJSON_AddStringToObject(json, "error_code", "1");
+
+    if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    cJSON_AddStringToObject(json, "timestamp", timestamp);
     str = cJSON_Print(json);
+
+    cJSON_Delete(json);
+
+    if (cci_post_result_to_tda(tc_endpoint_type_reboot, str) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n", __func__,
+            __LINE__);
+        cJSON_free(str);
+        return RETURN_ERR;
+    }
+    cJSON_free(str);
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *str)
+{
+    char result_url[128] = { 0 };
+    char post_res_file[] = "/tmp/cci_post_file.json";
+    FILE *fp = NULL;
+
+    if (str == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: str is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: str is %s\n", __func__, __LINE__, str);
+
+    if (endpoint_type == tc_endpoint_type_heartbeat) {
+        snprintf(result_url, sizeof(result_url), "%s/heartbeat", server_address);
+    } else if (endpoint_type == tc_endpoint_type_complete) {
+        snprintf(result_url, sizeof(result_url), "%s/complete", server_address);
+    } else if (endpoint_type == tc_endpoint_type_fail) {
+        snprintf(result_url, sizeof(result_url), "%s/fail", server_address);
+    } else if (endpoint_type == tc_endpoint_type_reboot) {
+        snprintf(result_url, sizeof(result_url),
+            "https://primary.vbautobot.comcast.com:7916/reboot");
+    } else {
+        return RETURN_ERR;
+    }
 
     fp = fopen(post_res_file, "wb");
     if (fp == NULL) {
@@ -2936,10 +3106,7 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(bool result)
     }
 
     fputs(str, fp);
-
     fclose(fp);
-    cJSON_free(str);
-    cJSON_Delete(json);
 
     if (http_post(result_url, post_res_file) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
@@ -2947,7 +3114,6 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(bool result)
             post_res_file);
         return RETURN_ERR;
     }
-
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Result post Done\n", __func__, __LINE__);
     return RETURN_OK;
 }
@@ -3852,6 +4018,7 @@ int wlan_emu_ui_mgr_t::rbus_init()
 
 wlan_emu_ui_mgr_t::wlan_emu_ui_mgr_t()
 {
+    memset(server_address, 0, sizeof(server_address));
     test_cov_cases_q = queue_create();
 }
 

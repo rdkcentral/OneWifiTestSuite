@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <unistd.h>
+#define HEART_BEAT_TRIGGER_TIME 15
 
 test_step_params_t *wlan_emu_tests_t::get_step_from_index(int index)
 {
@@ -128,6 +129,8 @@ void *wlan_emu_tests_t::test_function(void *arg)
     struct timespec time_to_wait;
     int rc, nbytes;
     struct timeval tv_now;
+    struct timeval tv_ref;
+    unsigned int tv_sec = 0;
     int ret;
 
     wlan_emu_tests_t *test = (wlan_emu_tests_t *)arg;
@@ -156,6 +159,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
     }
 
     pthread_mutex_lock(&test->m_lock);
+    gettimeofday(&tv_ref, NULL);
     while (test->should_exit() == false) {
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: step_number : %d test_state  : %d step_count : %d \n", __func__, __LINE__,
@@ -188,6 +192,16 @@ void *wlan_emu_tests_t::test_function(void *arg)
         gettimeofday(&tv_now, NULL);
         time_to_wait.tv_sec = tv_now.tv_sec + 1; // wait for 1 seconds
         time_to_wait.tv_nsec = 0;
+
+        tv_sec = (tv_now.tv_sec - tv_ref.tv_sec);
+        if ((tv_now.tv_sec - tv_ref.tv_sec) >= (HEART_BEAT_TRIGGER_TIME)) {
+            // send an heartbeat to controller
+            tmp_ui_mgr->cci_report_heartbeat_to_tda();
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Sent Heartbeat\n", __func__, __LINE__,
+                tv_sec);
+            gettimeofday(&tv_ref, NULL);
+        }
+
         rc = test->test_wait(&time_to_wait);
         if (rc == 0) {
             switch (step->test_state) {
@@ -200,7 +214,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
                     test->run(msg);
                     delete msg;
                 }
-                wlan_emu_print(wlan_emu_log_level_dbg,
+                wlan_emu_print(wlan_emu_log_level_info,
                     "%s:%d: step_number : %d test_state  : %d step_count : %d \n", __func__,
                     __LINE__, step->step_number, step->test_state, test_config->current_test_step);
                 continue;
@@ -290,7 +304,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
 
             } else if ((step->test_state == wlan_emu_tests_state_cmd_wait)) {
                 // Here wait means get the available next step
-                wlan_emu_print(wlan_emu_log_level_dbg,
+                wlan_emu_print(wlan_emu_log_level_info,
                     "%s:%d: wait for step_number : %d test_state  : %d step_count : %d \n",
                     __func__, __LINE__, step->step_number, step->test_state,
                     test_config->current_test_step);
@@ -325,7 +339,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
                 continue;
             } else if ((step->test_state == wlan_emu_tests_state_cmd_continue)) {
                 // continue executing the same step
-                wlan_emu_print(wlan_emu_log_level_dbg,
+                wlan_emu_print(wlan_emu_log_level_info,
                     "%s:%d: continue for step_number : %d test_state  : %d step_count : %d \n",
                     __func__, __LINE__, step->step_number, step->test_state,
                     test_config->current_test_step);

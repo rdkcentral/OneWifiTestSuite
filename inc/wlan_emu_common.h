@@ -166,7 +166,8 @@ typedef enum {
     step_param_type_stats_set,
     step_param_type_get_file,
     step_param_type_mgmt_frame_capture,
-    step_param_type_get_pattern_files
+    step_param_type_get_pattern_files,
+    step_param_type_timed_wait
 } step_param_type_t;
 
 typedef struct {
@@ -179,6 +180,13 @@ typedef enum {
     log_operation_type_timer,
     log_operation_type_invalid,
 } log_operation_type_t;
+
+typedef enum {
+    tc_endpoint_type_heartbeat = 0,
+    tc_endpoint_type_complete,
+    tc_endpoint_type_fail,
+    tc_endpoint_type_reboot
+} tc_endpoint_type_t;
 
 typedef struct {
     log_operation_type_t log_operation;
@@ -298,7 +306,7 @@ typedef struct {
     bool is_station_prototype_enabled;
     station_prototype_t *station_prototype;
     bool capture_sta_requests;
-
+    mac_address_t custom_mac;
     union {
         sta_management_t sta_management;
         // sta_mobility_t

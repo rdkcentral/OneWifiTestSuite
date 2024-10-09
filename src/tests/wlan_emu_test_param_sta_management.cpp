@@ -149,6 +149,12 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     step_config->u.sta_test->radio_oper_param =
         step_config->m_ui_mgr->cci_get_radio_operation_param(ap_vap_info->radio_index);
 
+    param = cJSON_GetObjectItem(sta_root_json, "CustomStationMac");
+    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
+        ((WiFi_IsValidMacAddr(param->valuestring) == TRUE))) {
+        string_mac_to_uint8_mac(step_config->u.sta_test->custom_mac, param->valuestring);
+    }
+
     param = cJSON_GetObjectItem(sta_root_json, "TestDuration");
     if ((param == NULL) || (cJSON_IsNumber(param) == false)) {
         step_config->u.sta_test->u.sta_management.test_duration = 0;
@@ -598,12 +604,12 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 
             if (step->u.sta_test->capture_sta_requests == true) {
                 wlan_emu_print(wlan_emu_log_level_dbg,
-                    "%s:%d: capture_sta_requests in macaddr : %s client_macaddr : %s\n",
-                    __func__, __LINE__, macaddr, client_macaddr);
+                    "%s:%d: capture_sta_requests in macaddr : %s client_macaddr : %s\n", __func__,
+                    __LINE__, macaddr, client_macaddr);
                 if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                            f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) {
+                        f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) {
                     if ((step->capture_frames != true) ||
-                            (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
+                        (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
                         return RETURN_UNHANDLED;
                     }
 
@@ -612,7 +618,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     }
                     msg->unload_frm80211_msg(step);
                     return RETURN_HANDLED;
-
                 }
             }
         } else {
@@ -688,6 +693,7 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->is_station_associated = false;
     step->u.sta_test->is_station_prototype_enabled = false;
     step->u.sta_test->capture_sta_requests = false;
+    memset(step->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
 }
 
 test_step_param_sta_management::~test_step_param_sta_management()

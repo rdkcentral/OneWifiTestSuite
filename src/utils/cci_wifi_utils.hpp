@@ -39,6 +39,7 @@ char *mac_str_without_colon(mac_address_t mac, mac_addr_str_t key);
 int send_raw_packet(const void *data, size_t data_len, uint32_t source_nip, int source_port,
     uint32_t dest_nip, int dest_port, const uint8_t *dest_arp, int ifindex);
 unsigned int ieee_frame_hdr_len(__le16 fc);
+bool is_zero_mac(mac_address_t mac);
 
 const uint8_t MAC_BCAST_ADDR[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 

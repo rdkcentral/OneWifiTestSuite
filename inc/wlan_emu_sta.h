@@ -76,7 +76,7 @@ public:
     int get_dev_mac(unsigned int dev_id, uint8_t *mac);
 
     wlan_emu_sta_iphone_t(unsigned int dev_id, unsigned int test_id, wifi_vap_info_t *vap,
-        sta_profile_t *profile);
+        sta_profile_t *profile, bool is_custom_mac_enabled);
     ~wlan_emu_sta_iphone_t();
 };
 
@@ -86,7 +86,7 @@ public:
     int get_dev_mac(unsigned int dev_id, uint8_t *mac);
 
     wlan_emu_sta_pixel_t(unsigned int dev_id, unsigned int test_id, wifi_vap_info_t *vap,
-        sta_profile_t *profile);
+        sta_profile_t *profile, bool is_custom_mac_enabled);
     ~wlan_emu_sta_pixel_t();
 };
 

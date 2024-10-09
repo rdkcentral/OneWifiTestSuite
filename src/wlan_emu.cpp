@@ -27,7 +27,7 @@ void StationDisconnectHandler(int signal) {
 
 void wlan_emu_t::update_state_io_wait_done(wlan_emu_sig_type_t val)
 {
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Received signal: %d m_state : %d\n", __func__,
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Received signal: %d m_state : 0x%x\n", __func__,
         __LINE__, val, m_state);
     //    assert(m_state != wlan_emu_tests_state_cmd_wait);
 
@@ -94,7 +94,7 @@ int wlan_emu_t::run()
                 "%s:%d: in case wlan_emu_tests_state_cmd_start\n", __func__, __LINE__);
             if (start_test() == RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: start_test succesful\n", __func__,
-                        __LINE__);
+                    __LINE__);
                 m_state = wlan_emu_tests_state_cmd_wait;
                 dml_state = wlan_emu_dml_tests_state_running;
             } else {

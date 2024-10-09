@@ -93,11 +93,10 @@ void wlan_emu_sta_t::send_mac_update(mac_update_t *mac_update)
     memcpy(&char_buf[byte_count], &mac_update->bridge_name, sizeof(mac_update->bridge_name));
     byte_count += sizeof(mac_update->bridge_name);
     /*
-        for (count = 0; count < byte_count; count++) {
-            wlan_emu_print(wlan_emu_log_level_info, " %02X", char_buf[count]);
-        }
+      for (count = 0; count < byte_count; count++) {
+      wlan_emu_print(wlan_emu_log_level_info, " %02X", char_buf[count]);
+      }
     */
-
     msg.send_ctrl_msg(char_buf, byte_count, wlan_emu_emu80211_cmd_mac_update);
 
     return;
@@ -118,7 +117,7 @@ int wlan_emu_sta_iphone_t::get_dev_mac(unsigned int dev_id, uint8_t *mac)
 }
 
 wlan_emu_sta_iphone_t::wlan_emu_sta_iphone_t(unsigned int dev_id, unsigned int test_id,
-    wifi_vap_info_t *vap, sta_profile_t *profile)
+    wifi_vap_info_t *vap, sta_profile_t *profile, bool is_custom_mac_enabled)
 {
     unsigned char val[8] = { 0x0a, 0x00, 0x01, 0x04, 0x00, 0x00, 0x00, 0x00 };
     m_model = sta_model_type_iphone;
@@ -131,7 +130,9 @@ wlan_emu_sta_iphone_t::wlan_emu_sta_iphone_t(unsigned int dev_id, unsigned int t
     memcpy(m_vedor_specific.val, &m_oui, sizeof(m_oui));
     memcpy(&m_vedor_specific.val[sizeof(m_oui)], val, sizeof(val));
 
-    get_dev_mac(dev_id, vap->u.sta_info.mac);
+    if (is_custom_mac_enabled == false) {
+        get_dev_mac(dev_id, vap->u.sta_info.mac);
+    }
 
     set_dev_id(dev_id);
     set_test_id(test_id);
@@ -165,7 +166,7 @@ int wlan_emu_sta_pixel_t::get_dev_mac(unsigned int dev_id, uint8_t *mac)
 }
 
 wlan_emu_sta_pixel_t::wlan_emu_sta_pixel_t(unsigned int dev_id, unsigned int test_id,
-    wifi_vap_info_t *vap, sta_profile_t *profile)
+    wifi_vap_info_t *vap, sta_profile_t *profile, bool is_custom_mac_enabled)
 {
     m_model = sta_model_type_pixel;
     m_oui[0] = 0xc8;
@@ -178,7 +179,10 @@ wlan_emu_sta_pixel_t::wlan_emu_sta_pixel_t(unsigned int dev_id, unsigned int tes
     memcpy(m_vedor_specific.val, &m_oui, sizeof(m_oui));
     memcpy(&m_vedor_specific.val[sizeof(m_oui)], val, sizeof(val));
 
-    get_dev_mac(dev_id, vap->u.sta_info.mac);
+    if (is_custom_mac_enabled == false) {
+        get_dev_mac(dev_id, vap->u.sta_info.mac);
+    }
+
     set_dev_id(dev_id);
     set_test_id(test_id);
 

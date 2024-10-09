@@ -7,6 +7,8 @@ int test_step_param_command::step_execute()
 
     FILE *fp, *destination_file;
     char *buff;
+    char log_file[128] = { 0 };
+    char timestamp[24] = { 0 };
 
     bool is_file_capture_required = false;
 
@@ -25,6 +27,19 @@ int test_step_param_command::step_execute()
 
     if (step->u.cmd->cmd_exec_log_filename[0] != '\0') {
         is_file_capture_required = true;
+
+        if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        snprintf(log_file, sizeof(log_file), "%s/%s_%d_%s_%s",
+            step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number,
+            timestamp, step->u.cmd->cmd_exec_log_filename);
+
+        snprintf(step->u.cmd->cmd_exec_log_filename, sizeof(step->u.cmd->cmd_exec_log_filename),
+            "%s", log_file);
 
         destination_file = fopen(step->u.cmd->cmd_exec_log_filename, "w");
         if (destination_file == NULL) {

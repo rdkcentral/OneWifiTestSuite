@@ -472,6 +472,7 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     wifi_bss_info_t bss;
     sta_info_t *sta_info = NULL;
     mac_update_t mac_update;
+    bool is_custom_mac_enabled = false;
 
     if ((dev_id = find_first_free_dev()) == -1) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: could not find free device\n", __func__,
@@ -497,15 +498,21 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     add_to_bridge(sta_info->interface_name, sta_test_config->sta_vap_config->bridge_name);
     set_bridge_mac(sta_test_config->sta_vap_config->bridge_name);
 
+    if (is_zero_mac(sta_test_config->custom_mac) == false) {
+        memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, sta_test_config->custom_mac,
+            sizeof(mac_address_t));
+        is_custom_mac_enabled = true;
+    }
+
     switch (sta_test_config->sta_type) {
     case sta_model_type_iphone:
         sta = new wlan_emu_sta_iphone_t(dev_id, sta_test_config->test_id,
-            sta_test_config->sta_vap_config, &sta_test_config->profile);
+            sta_test_config->sta_vap_config, &sta_test_config->profile, is_custom_mac_enabled);
         break;
 
     case sta_model_type_pixel:
         sta = new wlan_emu_sta_pixel_t(dev_id, sta_test_config->test_id,
-            sta_test_config->sta_vap_config, &sta_test_config->profile);
+            sta_test_config->sta_vap_config, &sta_test_config->profile, is_custom_mac_enabled);
         break;
 
     default:
@@ -514,6 +521,7 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
 
     map.num_vaps = 1;
     memcpy(&map.vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
+
     if (wifi_hal_createVAP(dev_id, &map) == RETURN_OK) {
         sta->set_vap(sta_test_config->sta_vap_config);
     } else {
