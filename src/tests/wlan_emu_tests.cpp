@@ -447,37 +447,55 @@ void wlan_emu_tests_t::run(wlan_emu_msg_t *msg)
             step_index_number = step_total - step_seq_number - 1;
             step = get_step_from_index(step_index_number);
             if (step == NULL) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step NULL at index %d\n", __func__,
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step NULL at index %d\n", __func__,
                     __LINE__, step_index_number);
                 return;
             }
 
-            ret = step->step_frame_filter(msg);
-            if (ret == RETURN_UNHANDLED) {
-                // frame is not handled
+            // Instead of going through all the steps, Check the state
+            if ((step->test_state == wlan_emu_tests_state_cmd_continue) ||
+                (step->test_state == wlan_emu_tests_state_cmd_wait)) {
+
+                ret = step->step_frame_filter(msg);
+                if (ret == RETURN_UNHANDLED) {
+                    // frame is not handled
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: Frame unhandled by step_index_number : %d step_number : %d "
+                        "step_seq_num : %d pending_steps : %d step_seq_number : %d\n",
+                        __func__, __LINE__, step_index_number, step->step_number,
+                        step->step_seq_num, pending_steps, step_seq_number);
+                    step_seq_number++;
+                    pending_steps >>= 1;
+                    continue;
+                } else if (ret == RETURN_HANDLED) {
+                    // frame is handled
+                    wlan_emu_print(wlan_emu_log_level_info,
+                        "%s:%d: Frame handled by step_index_number : %d step_number : %d "
+                        "step_seq_num "
+                        ": %d\n",
+                        __func__, __LINE__, step_index_number, step->step_number,
+                        step->step_seq_num);
+                    return;
+                }
+
                 wlan_emu_print(wlan_emu_log_level_dbg,
-                    "%s:%d: Frame unhandled by step_index_number : %d step_number : %d "
-                    "step_seq_num : %d pending_steps : %d step_seq_number : %d\n",
+                    "%s:%d: step_index_number : %d step_number : %d step_seq_num : %d "
+                    "pending_steps : "
+                    "%d step_seq_number : %d\n",
                     __func__, __LINE__, step_index_number, step->step_number, step->step_seq_num,
                     pending_steps, step_seq_number);
+                //            step_seq_number++; //This might not be required
+                //            pending_steps >>= 1; //This might not be required
+            } else {
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: In state %d for  step_index_number : %d step_number : %d "
+                    "step_seq_num : %d pending_steps : %d step_seq_number : %d\n",
+                    __func__, __LINE__, step->test_state, step_index_number, step->step_number,
+                    step->step_seq_num, pending_steps, step_seq_number);
+                step_seq_number++;
                 pending_steps >>= 1;
                 continue;
-            } else if (ret == RETURN_HANDLED) {
-                // frame is handled
-                wlan_emu_print(wlan_emu_log_level_info,
-                    "%s:%d: Frame handled by step_index_number : %d step_number : %d step_seq_num "
-                    ": %d\n",
-                    __func__, __LINE__, step_index_number, step->step_number, step->step_seq_num);
-                return;
             }
-
-            wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: step_index_number : %d step_number : %d step_seq_num : %d pending_steps : "
-                "%d step_seq_number : %d\n",
-                __func__, __LINE__, step_index_number, step->step_number, step->step_seq_num,
-                pending_steps, step_seq_number);
-            //            step_seq_number++; //This might not be required
-            //            pending_steps >>= 1; //This might not be required
         }
     }
 }

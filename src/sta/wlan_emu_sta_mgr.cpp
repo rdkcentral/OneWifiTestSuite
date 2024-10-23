@@ -225,6 +225,12 @@ void wlan_emu_sta_mgr_t::remove_sta(sta_test_t *sta_test)
         return;
     }
 
+    if (strlen(sta_test->key) == 0) {
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d:Received key with length 0\n", __func__, __LINE__);
+        return;
+    }
+
     // key
     wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Request to remove the sta with key : %s\n",
         __func__, __LINE__, sta_test->key);
@@ -473,6 +479,7 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     sta_info_t *sta_info = NULL;
     mac_update_t mac_update;
     bool is_custom_mac_enabled = false;
+    heart_beat_data_t *heart_beat_data;
 
     if ((dev_id = find_first_free_dev()) == -1) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: could not find free device\n", __func__,
@@ -522,6 +529,28 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     map.num_vaps = 1;
     memcpy(&map.vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
 
+    pre_station_connectivity_profile_t *pre_connect_profile =
+        sta_test_config->u.sta_management.pre_assoc_stats;
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Rssi : %d Noise : %d Bitrate : %d\n", __func__,
+        __LINE__, pre_connect_profile->pre_assoc_rssi, pre_connect_profile->pre_assoc_noise,
+        pre_connect_profile->pre_assoc_bitrate);
+    // create the heart beat data
+    heart_beat_data = new (std::nothrow) heart_beat_data_t;
+    if (heart_beat_data == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memcpy(heart_beat_data->mac, sta_test_config->sta_vap_config->u.sta_info.mac,
+        sizeof(mac_address_t));
+    heart_beat_data->rssi = pre_connect_profile->pre_assoc_rssi;
+    heart_beat_data->noise = pre_connect_profile->pre_assoc_noise;
+    heart_beat_data->bitrate = pre_connect_profile->pre_assoc_bitrate;
+
+    sta->handle_heart_beat(heart_beat_data);
+    delete (heart_beat_data);
+    delete (pre_connect_profile);
+
     if (wifi_hal_createVAP(dev_id, &map) == RETURN_OK) {
         sta->set_vap(sta_test_config->sta_vap_config);
     } else {
@@ -535,6 +564,8 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     memcpy(sta_info->mac, map.vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
     memcpy(mac_update.new_mac, sta_info->mac, sizeof(mac_address_t));
     memcpy(mac_update.bridge_name, map.vap_array[0].bridge_name, sizeof(mac_update.bridge_name));
+    mac_update.op_modes = sta_test_config->u.sta_management.op_modes; 
+
     sta->send_mac_update(&mac_update);
 
     if (sta_test_config->is_station_prototype_enabled == true) {

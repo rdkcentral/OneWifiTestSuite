@@ -148,10 +148,8 @@ int send_raw_packet(const void *data, size_t data_len, uint32_t source_nip, int 
     struct sockaddr_ll dest_sll;
     int fd;
     int res = -1;
-    char *buf;
+    char *buf = NULL;
     size_t sz;
-    struct iphdr *ip;
-    struct udphdr *udp;
 
     fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP));
     if (fd < 0) {
@@ -159,17 +157,13 @@ int send_raw_packet(const void *data, size_t data_len, uint32_t source_nip, int 
         return res;
     }
 
-    sz = sizeof(struct iphdr) + sizeof(struct udphdr) + data_len;
+    sz = data_len;
     buf = (char *)malloc(sz);
 
     if (buf == NULL)
         goto ret_close;
 
-    ip = (struct iphdr *)buf;
-    udp = (struct udphdr *)(ip + sizeof(iphdr));
-
     memset(&dest_sll, 0, sizeof(dest_sll));
-    memcpy(buf + sizeof(struct iphdr) + sizeof(struct udphdr), data, data_len);
 
     dest_sll.sll_family = AF_PACKET;
     dest_sll.sll_protocol = htons(ETH_P_IP);
@@ -182,20 +176,6 @@ int send_raw_packet(const void *data, size_t data_len, uint32_t source_nip, int 
         printf("%s:%d: Failed to bind\n", __func__, __LINE__);
         goto ret_close;
     }
-
-    ip->protocol = IPPROTO_UDP;
-    ip->saddr = source_nip;
-    ip->daddr = dest_nip;
-    udp->source = htons(source_port);
-    udp->dest = htons(dest_port);
-    udp->len = htons(sz);
-    ip->tot_len = udp->len;
-    udp->check = inet_csum(buf, sz);
-    ip->tot_len = htons(sz);
-    ip->ihl = sizeof(iphdr) >> 2;
-    ip->version = IPVERSION;
-    ip->ttl = IPDEFTTL;
-    ip->check = inet_csum(ip, sizeof(iphdr));
 
     res = sendto(fd, buf, sz, 0, (struct sockaddr *)&dest_sll, sizeof(dest_sll));
 

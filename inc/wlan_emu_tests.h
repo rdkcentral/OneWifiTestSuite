@@ -342,6 +342,280 @@ public:
     ~wlan_emu_tests_cli_auth();
 };
 
+class wlan_emu_tests_connection_admission : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_connection_admission(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_connection_admission) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
+                "CC2-Conn-Admsn");
+        }
+    }
+
+    wlan_emu_tests_connection_admission()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_connection_admission();
+};
+
+class wlan_emu_tests_access_control : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_access_control(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_access_control) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
+                "CC2-Access-Cntrl");
+        }
+    }
+
+    wlan_emu_tests_access_control()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_access_control();
+};
+
+class wlan_emu_tests_stats_manager : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_stats_manager(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_stats_manager) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
+                "CC2-Stats-Mngr");
+        }
+    }
+
+    wlan_emu_tests_stats_manager()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_stats_manager();
+};
+
+class wlan_emu_tests_steering_manager : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_steering_manager(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_steering_manager) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
+                "CC2-Steering-Mngr");
+        }
+    }
+
+    wlan_emu_tests_steering_manager()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_steering_manager();
+};
+
+class wlan_emu_tests_optimization : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_optimization(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_optimization) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
+                "CC2-Optimization");
+        }
+    }
+
+    wlan_emu_tests_optimization()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_optimization();
+};
+
+class wlan_emu_tests_grey_listing : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_grey_listing(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_grey_listing) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
+                "CC2-Greylisting");
+        }
+    }
+
+    wlan_emu_tests_grey_listing()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_grey_listing();
+};
+
+class wlan_emu_tests_active_passive_msrmt : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_active_passive_msrmt(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_active_passive_msrmnts) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
+                "CC2-Act-Psv-Msrmt");
+        }
+    }
+
+    wlan_emu_tests_active_passive_msrmt()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_active_passive_msrmt();
+};
+
+class wlan_emu_tests_whix : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_whix(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_whix) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s", "CC2-Whix");
+        }
+    }
+
+    wlan_emu_tests_whix()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_whix();
+};
+
+class wlan_emu_tests_blaster : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_blaster(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_blaster) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s", "CC2-Blaster");
+        }
+    }
+
+    wlan_emu_tests_blaster()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_blaster();
+};
+
+class wlan_emu_tests_motion : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_motion(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_motion) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s", "CC2-Motion");
+        }
+    }
+
+    wlan_emu_tests_motion()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_motion();
+};
+
+class wlan_emu_tests_finger_printing : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_finger_printing(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_finger_printing) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
+                "CC2-Fingerprint");
+        }
+    }
+
+    wlan_emu_tests_finger_printing()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_finger_printing();
+};
+
+class wlan_emu_tests_tr_181 : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_tr_181(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_tr_181) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s", "CC2-TR-181");
+        }
+    }
+
+    wlan_emu_tests_tr_181()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_tr_181();
+};
+
+class wlan_emu_tests_webconfig : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_webconfig(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_webconfig) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s", "CC2-webconfig");
+        }
+    }
+
+    wlan_emu_tests_webconfig()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_webconfig();
+};
+
+class wlan_emu_tests_webpa : public wlan_emu_tests_t {
+public:
+    wlan_emu_tests_webpa(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
+        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, config)
+    {
+        if (config->test_type == wlan_emu_test_2_subtype_af_webpa) {
+            snprintf(config->test_case_name, sizeof(config->test_case_name), "%s", "CC2-Webpa");
+        }
+    }
+
+    wlan_emu_tests_webpa()
+    {
+        remove_msg_mgr();
+    }
+
+    ~wlan_emu_tests_webpa();
+};
+
 class wlan_emu_tests_stats_get : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_stats_get(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,

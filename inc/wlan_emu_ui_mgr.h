@@ -56,6 +56,7 @@ class test_step_param_get_file;
 class test_step_param_mgmt_frame_capture;
 class test_step_param_get_pattern_files;
 class test_step_param_timed_wait;
+class test_step_param_config_onewifi;
 
 class wlan_emu_ui_mgr_t {
     static unsigned int m_token;
@@ -81,7 +82,7 @@ class wlan_emu_ui_mgr_t {
     wifi_hal_capability_t *m_sta_hal_cap;
     char ssl_cert[128];
     char ssl_key[64];
-    int  cci_error_code;
+    int cci_error_code;
 
 private:
     int io_prep(void);
@@ -93,6 +94,7 @@ private:
     int decode_config_file(void);
     int decode_json_config(char *json_str);
     int decode_coverage_1_config(cJSON *conf);
+    int decode_coverage_2_config(cJSON *conf);
     int decode_coverage_3_config(cJSON *conf);
     int decode_coverage_config(cJSON *config_entry, wlan_emu_test_coverage_t coverage_type,
         wlan_emu_test_type_t type, wlan_emu_test_case_config **config);
@@ -132,6 +134,7 @@ private:
     int decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config);
     int decode_step_get_pattern_files(cJSON *step, test_step_params_t *step_config);
     int decode_step_timed_wait(cJSON *step, test_step_params_t *step_config);
+    int decode_step_config_onewifi(cJSON *step, test_step_params_t *step_config);
 
 public:
     int init(void);

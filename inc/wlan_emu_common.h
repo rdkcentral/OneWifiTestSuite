@@ -71,6 +71,20 @@ typedef enum {
     wlan_emu_test_1_subtype_ns_managed_mesh_client,
     wlan_emu_test_1_subtype_cc_probe_response,
     wlan_emu_test_1_subtype_cc_authentication,
+    wlan_emu_test_2_subtype_af_connection_admission,
+    wlan_emu_test_2_subtype_af_access_control,
+    wlan_emu_test_2_subtype_af_stats_manager,
+    wlan_emu_test_2_subtype_af_steering_manager,
+    wlan_emu_test_2_subtype_af_optimization,
+    wlan_emu_test_2_subtype_af_grey_listing,
+    wlan_emu_test_2_subtype_af_active_passive_msrmnts,
+    wlan_emu_test_2_subtype_af_whix,
+    wlan_emu_test_2_subtype_af_blaster,
+    wlan_emu_test_2_subtype_af_motion,
+    wlan_emu_test_2_subtype_af_finger_printing,
+    wlan_emu_test_2_subtype_af_tr_181,
+    wlan_emu_test_2_subtype_af_webconfig,
+    wlan_emu_test_2_subtype_af_webpa,
     wlan_emu_test_3_subtype_pm_stats_get,
     wlan_emu_test_3_subtype_pm_stats_set,
     wlan_emu_test_1_subtype_max
@@ -167,7 +181,8 @@ typedef enum {
     step_param_type_get_file,
     step_param_type_mgmt_frame_capture,
     step_param_type_get_pattern_files,
-    step_param_type_timed_wait
+    step_param_type_timed_wait,
+    step_param_type_config_onewifi
 } step_param_type_t;
 
 typedef struct {
@@ -245,15 +260,29 @@ typedef enum {
 
 typedef struct {
     int rssi;
+    int noise;
     unsigned int duration;
     unsigned int counter;
     test_state_t test_state;
 } station_connectivity_profile_t;
 
 typedef struct {
+    int pre_assoc_rssi;
+    int pre_assoc_noise;
+    int pre_assoc_bitrate;
+} pre_station_connectivity_profile_t;
+
+typedef struct {
     unsigned int radio_index;
     unsigned int duration;
 } mgmt_frame_capture_t;
+
+typedef enum {
+    wlan_emu_mode_ht   = 1,
+    wlan_emu_mode_vht  = 2,
+    wlan_emu_mode_he   = 4,
+    wlan_emu_mode_eht  = 8,
+} wlan_emu_op_modes;
 
 // Connectivity is called as management
 typedef struct {
@@ -262,8 +291,10 @@ typedef struct {
     //	sta_management_profile_type_t manage_type;
     unsigned int test_duration;
     queue_t *connectivity_q; // station_configuration_t
+    pre_station_connectivity_profile_t *pre_assoc_stats;
     unsigned int current_profile_count;
     bool is_sta_management_timer;
+    int op_modes;
 } sta_management_t;
 
 typedef struct {
@@ -306,7 +337,9 @@ typedef struct {
     bool is_station_prototype_enabled;
     station_prototype_t *station_prototype;
     bool capture_sta_requests;
+    bool wait_connection;
     mac_address_t custom_mac;
+
     union {
         sta_management_t sta_management;
         // sta_mobility_t
@@ -339,11 +372,14 @@ typedef struct {
 typedef struct {
     mac_address_t mac;
     int rssi;
+    int noise;
+    int bitrate;
 } heart_beat_data_t;
 
 typedef struct {
     mac_address_t old_mac;
     mac_address_t new_mac;
+    int op_modes;
     char bridge_name[32];
 } mac_update_t;
 

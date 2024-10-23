@@ -400,7 +400,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
     }
 
     for (neighbor_count = 0; neighbor_count < (unsigned int)response->stat_array_size;
-         neighbor_count++) {
+        neighbor_count++) {
         strncpy(neighbor_stats[neighbor_count].ap_SSID, neighbor_data[neighbor_count].ap_SSID,
             sizeof(neighbor_stats[neighbor_count].ap_SSID) - 1);
         neighbor_stats[neighbor_count].ap_SSID[sizeof(neighbor_stats[neighbor_count].ap_SSID) - 1] =
@@ -856,7 +856,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
     }
 
     for (radiodiag_count = 0; radiodiag_count < (unsigned int)response->stat_array_size;
-         radiodiag_count++) {
+        radiodiag_count++) {
         strncpy(radiodiag_stats[radiodiag_count].frequency_band,
             radio_data[radiodiag_count].frequency_band,
             sizeof(radiodiag_stats[radiodiag_count].frequency_band) - 1);
@@ -1089,7 +1089,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
     }
 
     for (radiotemp_count = 0; radiotemp_count < (unsigned int)response->stat_array_size;
-         radiotemp_count++) {
+        radiotemp_count++) {
         radiotemp_stats[radiotemp_count].radio_Temperature =
             radio_data[radiotemp_count].radio_Temperature;
     }
@@ -1145,25 +1145,6 @@ int test_step_param_set_stats_t::webconfig_stats_set_instance()
                 wlan_emu_print(wlan_emu_log_level_dbg,
                     "%s:%d: webconfig_stats_set_execute_start success\n", __func__, __LINE__);
             }
-
-            if (step->u.wifi_stats_set->set_exec_duration == reference->stats_duration) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Moving to next instance\n", __func__,
-                    __LINE__);
-                stat_set_config_t *reference = (stat_set_config_t *)queue_pop(
-                    step->u.wifi_stats_set->stats_set_q);
-                if (reference == NULL) {
-                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_pop failed\n", __func__,
-                        __LINE__);
-                    step->test_state = wlan_emu_tests_state_cmd_abort;
-                    return RETURN_ERR;
-                }
-                int count = queue_count(step->u.wifi_stats_set->stats_set_q);
-                step->u.wifi_stats_set->current_stats_set_count = count - 1;
-                step->u.wifi_stats_set->set_exec_duration = 0;
-                wlan_emu_print(wlan_emu_log_level_dbg,
-                    "%s:%d: Next instance for step number : %d\n", __func__, __LINE__,
-                    step->step_number);
-            }
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q is NULL\n", __func__, __LINE__);
@@ -1205,25 +1186,16 @@ int test_step_param_set_stats_t::step_execute()
         step->u.wifi_stats_set->current_stats_set_count = count - 1;
         step->execution_time = step->u.wifi_stats_set->total_duration;
         step->u.wifi_stats_set->set_exec_duration = 0;
-        if ((queue_count(step->u.wifi_stats_set->stats_set_q) > 0) &&
-            (step->u.wifi_stats_set->current_stats_set_count >= 0)) {
-            stat_set_config_t *reference = (stat_set_config_t *)queue_peek(
-                step->u.wifi_stats_set->stats_set_q,
-                step->u.wifi_stats_set->current_stats_set_count);
-            if (reference == NULL) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_peek failed\n", __func__,
-                    __LINE__);
-                step->test_state = wlan_emu_tests_state_cmd_abort;
-                return RETURN_ERR;
-            }
-            if (step->u.wifi_stats_set->set_exec_duration < reference->stats_duration) {
-                wlan_emu_print(wlan_emu_log_level_dbg,
-                    "%s:%d: First instance should wait for the duration before webconfig_decode & "
-                    "hal api trigger\n",
-                    __func__, __LINE__);
-                return RETURN_OK; // First instance should wait for the duration before
-                                  // webconfig_decode & hal api trigger
-            }
+        ret = webconfig_stats_set_instance();
+        if (ret != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_stats_set_instance failed\n",
+                __func__, __LINE__);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_stats_set_instance success\n",
+                __func__, __LINE__);
+            return RETURN_OK;
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q is NULL\n", __func__, __LINE__);
@@ -1272,6 +1244,23 @@ int test_step_param_set_stats_t::step_timeout()
                 wlan_emu_print(wlan_emu_log_level_dbg,
                     "%s:%d: Timeout reached stats duration of -> %d for current instance\n",
                     __func__, __LINE__, reference->stats_duration);
+
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Moving to next instance\n", __func__,
+                    __LINE__);
+                stat_set_config_t *new_reference = (stat_set_config_t *)queue_pop(
+                    step->u.wifi_stats_set->stats_set_q);
+                if (new_reference == NULL) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_pop failed\n", __func__,
+                        __LINE__);
+                    step->test_state = wlan_emu_tests_state_cmd_abort;
+                    return RETURN_ERR;
+                }
+                int count = queue_count(step->u.wifi_stats_set->stats_set_q);
+                step->u.wifi_stats_set->current_stats_set_count = count - 1;
+                step->u.wifi_stats_set->set_exec_duration = 0;
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: Next instance for step number : %d\n", __func__, __LINE__,
+                    step->step_number);
                 ret = webconfig_stats_set_instance();
                 if (ret != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err,

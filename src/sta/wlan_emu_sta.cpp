@@ -62,8 +62,17 @@ void wlan_emu_sta_t::send_radio_tap_header(heart_beat_data_t *heart_beat_data)
     memcpy(&char_buf[byte_count], &heart_beat_data->rssi, sizeof(heart_beat_data->rssi));
     byte_count += sizeof(heart_beat_data->rssi);
 
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: mac_str : %s rssi : %d\n", __func__, __LINE__,
-        to_mac_str(heart_beat_data->mac, mac_str), heart_beat_data->rssi);
+    memcpy(&char_buf[byte_count], &heart_beat_data->noise, sizeof(heart_beat_data->noise));
+    byte_count += sizeof(heart_beat_data->noise);
+
+    memcpy(&char_buf[byte_count], &heart_beat_data->bitrate, sizeof(heart_beat_data->bitrate));
+    byte_count += sizeof(heart_beat_data->bitrate);
+
+
+    wlan_emu_print(wlan_emu_log_level_dbg,
+        "%s:%d: mac_str : %s rssi : %d noise : %d bitrate : %d\n",
+        __func__, __LINE__, to_mac_str(heart_beat_data->mac, mac_str), heart_beat_data->rssi,
+        heart_beat_data->noise, heart_beat_data->bitrate);
     /*
         for (count = 0; count < byte_count; count++) {
             wlan_emu_print(wlan_emu_log_level_dbg, " %02X", char_buf[count]);
@@ -89,6 +98,9 @@ void wlan_emu_sta_t::send_mac_update(mac_update_t *mac_update)
 
     memcpy(&char_buf[byte_count], &mac_update->new_mac, sizeof(mac_update->new_mac));
     byte_count += sizeof(mac_update->new_mac);
+
+    memcpy(&char_buf[byte_count], &mac_update->op_modes, sizeof(mac_update->op_modes));
+    byte_count += sizeof(mac_update->op_modes);
 
     memcpy(&char_buf[byte_count], &mac_update->bridge_name, sizeof(mac_update->bridge_name));
     byte_count += sizeof(mac_update->bridge_name);

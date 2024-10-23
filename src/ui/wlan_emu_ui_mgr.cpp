@@ -554,6 +554,11 @@ int wlan_emu_ui_mgr_t::decode_step_station_management_config(cJSON *step,
         step_config->u.sta_test->capture_sta_requests = (param->type & cJSON_True) ? true : false;
     }
 
+    param = cJSON_GetObjectItem(step, "WaitConnection");
+    if (param != NULL && cJSON_IsBool(param)) {
+        step_config->u.sta_test->wait_connection = (param->type & cJSON_True) ? true : false;
+    }
+
     param = cJSON_GetObjectItem(step, "StationPrototypes");
 
     if (param != NULL && cJSON_IsBool(param)) {
@@ -783,6 +788,18 @@ int wlan_emu_ui_mgr_t::decode_step_timed_wait(cJSON *step, test_step_params_t *s
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: wait for seconds : %d\n", __func__, __LINE__,
         step_config->u.timed_wait->seconds);
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::decode_step_config_onewifi(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *param;
+
+    step_config->param_type = step_param_type_config_onewifi;
+    decode_param_string(step, "OneWiFiSubdoc", param);
+    snprintf(step_config->u.test_onewifi_subdoc,
+            sizeof(step_config->u.test_onewifi_subdoc), "%s", param->valuestring);
 
     return RETURN_OK;
 }
@@ -1810,6 +1827,22 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
         return RETURN_OK;
     }
 
+    config = cJSON_GetObjectItem(step, "OneWiFiSubdoc");
+    if (config != NULL) {
+        *step_config = new (std::nothrow) test_step_param_config_onewifi;
+        if ((*step_config)->is_step_initialized == false) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Failed allocating memory for config set step\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        if (decode_step_config_onewifi(step, *step_config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_config_onewifi failed\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        return RETURN_OK;
+    }
+
     wlan_emu_print(wlan_emu_log_level_err, "%s:%d Invalid step param\n\n", __func__, __LINE__);
     return RETURN_ERR;
 }
@@ -2035,6 +2068,199 @@ int wlan_emu_ui_mgr_t::decode_coverage_1_config(cJSON *test_coverage_entry)
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::decode_coverage_2_config(cJSON *test_coverage_entry)
+{
+    cJSON *test = NULL, *list = NULL, *config_entry = NULL;
+    wlan_emu_test_case_config *config = NULL;
+    cJSON *conf, *param;
+
+    conf = cJSON_GetObjectItem(test_coverage_entry, "ApplicationFeatures");
+
+    if ((test = cJSON_GetObjectItem(conf, "ConnectionAdmission")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - ConnectionAdmission\n",
+            __func__, __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_connection_admission, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for ConnectionAdmission\n", __func__,
+                __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for ConnectionAdmission\n", __func__,
+                __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "AccessControl")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - AccessControl\n",
+            __func__, __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_access_control, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for AccessControl\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for AccessControl\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "StatsManager")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - StatsManager\n",
+            __func__, __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_stats_manager, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for StatsManager\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for StatsManager\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "SteeringManager")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - SteeringManager\n",
+            __func__, __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_steering_manager, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for SteeringManager\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for SteeringManager\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "Optimization")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - Optimization\n",
+            __func__, __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_optimization, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for Optimization\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for Optimization\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "GreyListing")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - GreyListing\n",
+            __func__, __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_grey_listing, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for GreyListing\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for GreyListing\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "ActivePassiveMeasurements")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d: ApplicationFeatures - ActivePassiveMeasurements\n", __func__, __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_active_passive_msrmnts, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for ActivePassiveMeasurements\n", __func__,
+                __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for ActivePassiveMeasurements\n", __func__,
+                __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "Whix")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - Whix\n", __func__,
+            __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2, wlan_emu_test_2_subtype_af_whix,
+                &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for Whix\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for Whix\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "Blaster")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - Blaster\n", __func__,
+            __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_blaster, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for Blaster\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for Blaster\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "Motion")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - Motion\n", __func__,
+            __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_motion, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for Motion\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for Motion\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "FingerPrinting")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - FingerPrinting\n",
+            __func__, __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_finger_printing, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for FingerPrinting\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for FingerPrinting\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "TR-181")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - TR-181\n", __func__,
+            __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_tr_181, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for TR-181\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for TR-181\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "Webconfig")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - Webconfig\n", __func__,
+            __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2,
+                wlan_emu_test_2_subtype_af_webconfig, &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for Webconfig\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for Webconfig\n", __func__, __LINE__);
+        }
+    } else if ((test = cJSON_GetObjectItem(conf, "Webpa")) != NULL) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ApplicationFeatures - Webpa\n", __func__,
+            __LINE__);
+        if (decode_coverage_config(test, wlan_emu_test_coverage_2, wlan_emu_test_2_subtype_af_webpa,
+                &config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: decode_coverage_config failed for Webpa\n", __func__, __LINE__);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: decode_coverage_config success for Webpa\n", __func__, __LINE__);
+        }
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid ApplicationFeatures\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(config->test_case_id, 0, sizeof(config->test_case_id));
+    decode_param_string(test_coverage_entry, "TestCaseId", param);
+    snprintf(config->test_case_id, sizeof(config->test_case_id), "%s", param->valuestring);
+    push_config_to_queue(config);
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::decode_coverage_3_config(cJSON *test_coverage_entry)
 {
     cJSON *test = NULL, *list = NULL, *config_entry = NULL;
@@ -2144,8 +2370,13 @@ int wlan_emu_ui_mgr_t::decode_json_config(char *raw_data)
         switch (atoi(param->valuestring)) {
         case wlan_emu_test_coverage_1:
             decode_param_object(sub_entry, "Configuration", test);
-            // ret = decode_coverage_1_config(test);
             ret = decode_coverage_1_config(sub_entry);
+            break;
+        case wlan_emu_test_coverage_2:
+            decode_param_object(sub_entry, "ApplicationFeatures", test);
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: TestCoverageCategory = ApplicationFeatures\n", __func__, __LINE__);
+            ret = decode_coverage_2_config(sub_entry);
             break;
         case wlan_emu_test_coverage_3:
             decode_param_object(sub_entry, "PerformanceMonitor", test);
@@ -2372,7 +2603,15 @@ int wlan_emu_ui_mgr_t::download_step_param_config(test_step_params_t *step)
                 __func__, __LINE__);
             return RETURN_ERR;
         }
+    } else if (step->param_type == step_param_type_config_onewifi) {
+        if ((download_file(step->u.test_onewifi_subdoc, sizeof(step->u.test_onewifi_subdoc))) !=
+                RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n", __func__,
+                    __LINE__, step->u.test_onewifi_subdoc);
+            return RETURN_ERR;
+        }
     }
+
     return RETURN_OK;
 }
 
@@ -2888,15 +3127,15 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
         cJSON_AddStringToObject(json, "timestamp", timestamp);
         str = cJSON_Print(json);
 
-        cJSON_Delete(json);
-
         if (cci_post_result_to_tda(tc_endpoint_type_fail, str) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
                 __func__, __LINE__);
             cJSON_free(str);
+            cJSON_Delete(json);
             return RETURN_ERR;
         }
         cJSON_free(str);
+        cJSON_Delete(json);
     }
 
     if (test_cov_cases_q == NULL) {
@@ -2978,15 +3217,15 @@ int wlan_emu_ui_mgr_t::cci_report_complete_to_tda()
         cJSON_AddStringToObject(json, "timestamp", timestamp);
         str = cJSON_Print(json);
 
-        cJSON_Delete(json);
-
         if (cci_post_result_to_tda(tc_endpoint_type_complete, str) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
                 __func__, __LINE__);
             cJSON_free(str);
+            cJSON_Delete(json);
             return RETURN_ERR;
         }
         cJSON_free(str);
+        cJSON_Delete(json);
     }
 
     return RETURN_OK;
@@ -3019,15 +3258,15 @@ int wlan_emu_ui_mgr_t::cci_report_heartbeat_to_tda()
         cJSON_AddStringToObject(json, "timestamp", timestamp);
         str = cJSON_Print(json);
 
-        cJSON_Delete(json);
-
         if (cci_post_result_to_tda(tc_endpoint_type_heartbeat, str) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
                 __func__, __LINE__);
             cJSON_free(str);
+            cJSON_Delete(json);
             return RETURN_ERR;
         }
         cJSON_free(str);
+        cJSON_Delete(json);
     }
 
     return RETURN_OK;
@@ -3059,15 +3298,15 @@ int wlan_emu_ui_mgr_t::cci_report_reboot_to_tda()
     cJSON_AddStringToObject(json, "timestamp", timestamp);
     str = cJSON_Print(json);
 
-    cJSON_Delete(json);
-
     if (cci_post_result_to_tda(tc_endpoint_type_reboot, str) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n", __func__,
             __LINE__);
         cJSON_free(str);
+        cJSON_Delete(json);
         return RETURN_ERR;
     }
     cJSON_free(str);
+    cJSON_Delete(json);
 
     return RETURN_OK;
 }
@@ -3753,6 +3992,48 @@ webconfig_error_t wlan_emu_ui_mgr_t::update_vap_security_object(cJSON *security,
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d failed to decode encryption method: %s\n",
                 __func__, __LINE__, param->valuestring);
             return webconfig_error_decode;
+        }
+    }
+
+    if (update_vap_param_string(security, "RadiusIdentity", &param) == RETURN_OK) {
+        if ((security_info->mode == wifi_security_mode_wpa2_enterprise) ||
+            (security_info->mode == wifi_security_mode_wpa3_enterprise)) {
+            strncpy(security_info->u.radius.identity, param->valuestring,
+                sizeof(security_info->u.radius.identity) - 1);
+        }
+    }
+
+    if (update_vap_param_string(security, "RadiusPassword", &param) == RETURN_OK) {
+        if ((security_info->mode == wifi_security_mode_wpa2_enterprise) ||
+            (security_info->mode == wifi_security_mode_wpa3_enterprise)) {
+            strncpy(security_info->u.radius.key, param->valuestring,
+                sizeof(security_info->u.radius.key) - 1);
+        }
+    }
+
+    if (update_vap_param_string(security, "RadiusPhase2", &param) == RETURN_OK) {
+        if ((security_info->mode == wifi_security_mode_wpa2_enterprise) ||
+            (security_info->mode == wifi_security_mode_wpa3_enterprise)) {
+            if (strstr(param->valuestring, "PAP")) {
+                security_info->u.radius.phase2 = WIFI_EAP_PHASE2_PAP;
+            } else {
+                // Defaulting it to PAP as Radius server only support TTLS/PAP.
+                security_info->u.radius.phase2 = WIFI_EAP_PHASE2_PAP;
+            }
+        }
+    }
+
+    if (update_vap_param_string(security, "RadiusEAPMethod", &param) == RETURN_OK) {
+        if ((security_info->mode == wifi_security_mode_wpa2_enterprise) ||
+            (security_info->mode == wifi_security_mode_wpa3_enterprise)) {
+            if (strstr(param->valuestring, "TTLS")) {
+                security_info->u.radius.eap_type = WIFI_EAP_TYPE_TTLS;
+            } else if (strstr(param->valuestring, "TLS")) {
+                security_info->u.radius.eap_type = WIFI_EAP_TYPE_TLS;
+                // Defaulting it to TTLS as of now.
+            } else {
+                security_info->u.radius.eap_type = WIFI_EAP_TYPE_TTLS;
+            }
         }
     }
 

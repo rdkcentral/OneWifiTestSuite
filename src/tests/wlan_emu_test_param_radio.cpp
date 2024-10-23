@@ -11,6 +11,7 @@ int test_step_param_radio::step_execute()
     char file_to_read[128] = { 0 };
     char *json_data;
     int ret = 0;
+    cJSON *root_json = NULL;
 
     test_step_params_t *step = this;
     webconfig_cci_t *cci_webconfig;
@@ -38,9 +39,10 @@ int test_step_param_radio::step_execute()
         }
 
         cci_webconfig = step->m_ui_mgr->get_webconfig_data();
+        root_json = cJSON_Parse(json_data);
         step->frame_request.msg_type |= 1 << wlan_emu_msg_type_webconfig;
         step->frame_request.subdoc_type = find_subdoc_type(&cci_webconfig->webconfig,
-            cJSON_Parse(json_data));
+            root_json);
 
         // wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: subdoc_type : %d\n", __func__, __LINE__,
         // step->subdoc_type);
@@ -50,9 +52,11 @@ int test_step_param_radio::step_execute()
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: rbus_send failed\n", __func__, __LINE__);
             step->test_state = wlan_emu_tests_state_cmd_abort;
             free(json_data);
+            cJSON_Delete(root_json);
             return RETURN_ERR;
         }
         free(json_data);
+        cJSON_Delete(root_json);
 
         if (step->capture_frames == true) {
             step->test_state = wlan_emu_tests_state_cmd_continue;

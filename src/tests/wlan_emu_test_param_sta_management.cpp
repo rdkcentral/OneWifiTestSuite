@@ -65,12 +65,31 @@ int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_co
     sta_vap_config->u.sta_info.scan_params.period = 10;
     snprintf(sta_vap_config->u.sta_info.ssid, sizeof(sta_vap_config->u.sta_info.ssid), "%s",
         ap_vap_config->u.bss_info.ssid);
+    // since station does not support wifi_security_mode_wpa3_transition,
+    // So changing the security mode to wifi_security_mode_wpa3_personal
+    if (ap_vap_config->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+        sta_vap_config->u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+    }
     sta_vap_config->u.sta_info.security.mode = ap_vap_config->u.bss_info.security.mode;
     sta_vap_config->u.sta_info.security.encr = ap_vap_config->u.bss_info.security.encr;
     sta_vap_config->u.sta_info.security.mfp = ap_vap_config->u.bss_info.security.mfp;
-    snprintf(sta_vap_config->u.sta_info.security.u.key.key,
-        sizeof(sta_vap_config->u.sta_info.security.u.key.key), "%s",
-        ap_vap_config->u.bss_info.security.u.key.key);
+    if ((sta_vap_config->u.sta_info.security.mode == wifi_security_mode_wpa3_enterprise) ||
+        (sta_vap_config->u.sta_info.security.mode == wifi_security_mode_wpa2_enterprise)) {
+        snprintf(sta_vap_config->u.sta_info.security.u.radius.identity,
+            sizeof(ap_vap_config->u.bss_info.security.u.radius.identity), "%s",
+            ap_vap_config->u.bss_info.security.u.radius.identity);
+        snprintf(sta_vap_config->u.sta_info.security.u.radius.key,
+            sizeof(sta_vap_config->u.sta_info.security.u.radius.key), "%s",
+            ap_vap_config->u.bss_info.security.u.radius.key);
+        sta_vap_config->u.sta_info.security.u.radius.eap_type =
+            ap_vap_config->u.bss_info.security.u.radius.eap_type;
+        sta_vap_config->u.sta_info.security.u.radius.phase2 =
+            ap_vap_config->u.bss_info.security.u.radius.phase2;
+    } else {
+        snprintf(sta_vap_config->u.sta_info.security.u.key.key,
+            sizeof(sta_vap_config->u.sta_info.security.u.key.key), "%s",
+            ap_vap_config->u.bss_info.security.u.key.key);
+    }
     // snprintf((char *)sta_vap_config->u.sta_info.bssid, sizeof(sta_vap_config->u.sta_info.bssid),
     // "%s", ap_vap_config->u.bss_info.bssid);
     memcpy(sta_vap_config->u.sta_info.bssid, ap_vap_config->u.bss_info.bssid,
@@ -85,6 +104,42 @@ int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_co
     return RETURN_OK;
 }
 
+bool is_op_mode_supported(const char *op_mode)
+{
+    const char *supported_op_modes[] = { "HT", "VHT", "HE", "EHT" };
+    for (int i = 0; i < (sizeof(supported_op_modes) / sizeof(supported_op_modes[0])); i++) {
+        if (strcmp(supported_op_modes[i], op_mode) == 0)
+            return true;
+    }
+    return false;
+}
+
+int get_op_mode(const char *op_mode)
+{
+    if (strcmp(op_mode, "HT") == 0) {
+        return wlan_emu_mode_ht;
+    } else if (strcmp(op_mode, "VHT") == 0) {
+        return wlan_emu_mode_vht;
+    } else if (strcmp(op_mode, "HE") == 0) {
+        return wlan_emu_mode_he;
+    } else if (strcmp(op_mode, "EHT") == 0) {
+        return wlan_emu_mode_eht;
+    }
+
+    return 0;
+}
+
+bool is_bitrate_supported(const char *bitrate)
+{
+    const char *supported_bitrates[] = { "1.0", "2.0", "5.5", "6.0", "9.0", "11.0", "12.0", "18.0",
+        "24.0", "36.0", "48.0", "54.0" };
+    for (int i = 0; i < (sizeof(supported_bitrates) / sizeof(supported_bitrates[0])); i++) {
+        if (strcmp(supported_bitrates[i], bitrate) == 0)
+            return true;
+    }
+    return false;
+}
+
 int test_step_param_sta_management::decode_step_sta_management_config()
 {
     cJSON *param = NULL;
@@ -92,8 +147,11 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     cJSON *pattern = NULL;
     cJSON *ap_json_config = NULL;
     cJSON *sta_root_json = NULL;
+    cJSON *op_mode = NULL;
+    cJSON *op_modes = NULL;
     char *json_data;
     int rc;
+    wifi_radio_operationParam_t *radio_oper_param = NULL;
 
     test_step_params_t *step_config = this;
     wifi_vap_info_t *ap_vap_info = NULL;
@@ -146,8 +204,10 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     step_config->u.sta_test->profile.mob = sta_mobility_profile_type_static;
     step_config->u.sta_test->profile.conn = sta_management_profile_type_connected;
     update_sta_config(ap_vap_info);
-    step_config->u.sta_test->radio_oper_param =
-        step_config->m_ui_mgr->cci_get_radio_operation_param(ap_vap_info->radio_index);
+
+    memcpy(step_config->u.sta_test->radio_oper_param,
+        step_config->m_ui_mgr->cci_get_radio_operation_param(ap_vap_info->radio_index),
+        sizeof(wifi_radio_operationParam_t));
 
     param = cJSON_GetObjectItem(sta_root_json, "CustomStationMac");
     if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
@@ -174,6 +234,7 @@ int test_step_param_sta_management::decode_step_sta_management_config()
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: Invalid valuestring for clienttype : %s\n", __func__, __LINE__,
                     param->valuestring);
+                cJSON_Delete(sta_root_json);
                 return RETURN_ERR;
             }
 
@@ -184,15 +245,30 @@ int test_step_param_sta_management::decode_step_sta_management_config()
                 if (connect_profile == NULL) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: allocation for connect profile failed\n", __func__, __LINE__);
+                    cJSON_Delete(sta_root_json);
                     return RETURN_ERR;
                 }
 
                 decode_param_string(pattern, "Rssi", param);
                 connect_profile->rssi = atoi(param->valuestring);
+                /*
+                                decode_param_string(pattern, "Noise", param);
+                                connect_profile->noise = atoi(param->valuestring);
+                */
+                // This is a temporary change, As controller team might take time to do add noise so
+                // making Noise as optional
+                param = cJSON_GetObjectItem(pattern, "Noise");
+                if (param != NULL && (cJSON_IsString(param) == true) &&
+                    (param->valuestring != NULL)) {
+                    connect_profile->noise = atoi(param->valuestring);
+                } else {
+                    connect_profile->noise = -85;
+                }
                 decode_param_string(pattern, "Duration", param);
                 connect_profile->duration = atoi(param->valuestring);
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Rssi : %d Duration : %d\n", __func__,
-                    __LINE__, connect_profile->rssi, connect_profile->duration);
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: Rssi : %d Duration : %d Noise : %d\n", __func__, __LINE__,
+                    connect_profile->rssi, connect_profile->duration, connect_profile->noise);
                 connect_profile->test_state = test_state_pending;
                 connect_profile->counter = 0;
                 queue_push(step_config->u.sta_test->u.sta_management.connectivity_q,
@@ -204,7 +280,79 @@ int test_step_param_sta_management::decode_step_sta_management_config()
                 step_config->u.sta_test->u.sta_management.current_profile_count);
         }
     }
+    step_config->u.sta_test->u.sta_management.pre_assoc_stats = new (std::nothrow)
+        pre_station_connectivity_profile_t;
+    if (step_config->u.sta_test->u.sta_management.pre_assoc_stats == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation for pre_assoc_stats failed\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(step_config->u.sta_test->u.sta_management.pre_assoc_stats, 0,
+        sizeof(pre_station_connectivity_profile_t));
+    pre_station_connectivity_profile_t *pre_connect_profile = new (std::nothrow)
+        pre_station_connectivity_profile_t;
+    if (pre_connect_profile == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation for connect profile failed\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    pattern = cJSON_GetObjectItem(sta_root_json, "PreAssociationSignalPattern");
+    if (pattern == NULL) {
+        pre_connect_profile->pre_assoc_rssi = -25;
+        pre_connect_profile->pre_assoc_noise = -85;
+        pre_connect_profile->pre_assoc_bitrate = 2;
+    } else {
 
+        decode_param_string(pattern, "Rssi", param);
+        pre_connect_profile->pre_assoc_rssi = atoi(param->valuestring);
+        decode_param_string(pattern, "Noise", param);
+        pre_connect_profile->pre_assoc_noise = atoi(param->valuestring);
+        decode_param_string(pattern, "Bitrate", param);
+        if (!is_bitrate_supported(param->valuestring)) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d The given bitrate %d is not supported\n",
+                __func__, __LINE__, atoi(param->valuestring));
+            return RETURN_ERR;
+        }
+        pre_connect_profile->pre_assoc_bitrate = atoi(param->valuestring) * 2;
+    }
+
+    param = cJSON_GetObjectItem(sta_root_json, "OperatingModes");
+
+    if (param != NULL) {
+        cJSON_ArrayForEach(op_modes, param)
+        {
+            op_mode = cJSON_GetObjectItem(op_modes, "OperatingMode");
+            if (!is_op_mode_supported(op_mode->valuestring)) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d Unable to decode operating mode: %s\n", __func__, __LINE__,
+                    param->valuestring);
+            } else {
+                step_config->u.sta_test->u.sta_management.op_modes |= get_op_mode(
+                    op_mode->valuestring);
+            }
+        }
+    } else {
+        if (step_config->u.sta_test->radio_oper_param->variant & WIFI_80211_VARIANT_N) {
+            step_config->u.sta_test->u.sta_management.op_modes |= wlan_emu_mode_ht;
+        }
+        if (step_config->u.sta_test->radio_oper_param->variant & WIFI_80211_VARIANT_AC) {
+            step_config->u.sta_test->u.sta_management.op_modes |= wlan_emu_mode_vht;
+        }
+        if (step_config->u.sta_test->radio_oper_param->variant & WIFI_80211_VARIANT_AX) {
+            step_config->u.sta_test->u.sta_management.op_modes |= wlan_emu_mode_he;
+        }
+        if (step_config->u.sta_test->radio_oper_param->variant & WIFI_80211_VARIANT_BE) {
+            step_config->u.sta_test->u.sta_management.op_modes |= wlan_emu_mode_eht;
+        }
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg,
+        "%s:%d: Rssi : %d Noise : %d Bitrate : %d op_modes : 0x%x\n", __func__, __LINE__,
+        pre_connect_profile->pre_assoc_rssi, pre_connect_profile->pre_assoc_noise,
+        pre_connect_profile->pre_assoc_bitrate, step_config->u.sta_test->u.sta_management.op_modes);
+    step_config->u.sta_test->u.sta_management.pre_assoc_stats = pre_connect_profile;
+
+    cJSON_Delete(sta_root_json);
     return RETURN_OK;
 }
 
@@ -300,6 +448,8 @@ int test_step_param_sta_management::step_timeout()
                             step->u.sta_test->sta_vap_config->u.sta_info.mac,
                             sizeof(mac_address_t));
                         heart_beat_data->rssi = connect_profile->rssi;
+                        heart_beat_data->noise = connect_profile->noise;
+
                         step->m_sta_mgr->send_heart_beat(step->u.sta_test->key, heart_beat_data);
                         delete (heart_beat_data);
                         if (connect_profile->counter == connect_profile->duration) {
@@ -328,27 +478,31 @@ int test_step_param_sta_management::step_timeout()
                 memcpy(heart_beat_data->mac, step->u.sta_test->sta_vap_config->u.sta_info.mac,
                     sizeof(mac_address_t));
                 heart_beat_data->rssi = -25;
+                heart_beat_data->noise = -85;
+
                 step->m_sta_mgr->send_heart_beat(step->u.sta_test->key, heart_beat_data);
                 delete (heart_beat_data);
             }
         }
 
         if (step->fork == true) {
-            if ((step->timeout_count % STATION_STEP_EXEC_TIMEOUT) == 0) {
-                step->test_state = wlan_emu_tests_state_cmd_continue;
-                wlan_emu_print(wlan_emu_log_level_dbg,
-                    "%s:%d: Continue for test Step Num : %d execution_time : %d timeout_count %d\n",
-                    __func__, __LINE__, step->step_number, step->execution_time,
-                    step->timeout_count);
-            } else {
-                step->test_state = wlan_emu_tests_state_cmd_wait;
-                // execute next available step
-                wlan_emu_print(wlan_emu_log_level_dbg,
-                    "%s:%d: wait for test Step Num : %d execution_time : %d timeout_count %d\n",
-                    __func__, __LINE__, step->step_number, step->execution_time,
-                    step->timeout_count);
+            if (step->u.sta_test->wait_connection == true) {
+                // Dont go to next step until station is connected.
+                if (step->u.sta_test->is_station_associated == false) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: Waiting for STA to Associate for step %d\n", __func__, __LINE__,
+                        step->step_number);
+                    step->test_state = wlan_emu_tests_state_cmd_continue;
+                    return RETURN_OK; // Exit and wait for the next timeout
+                }
             }
+            // execute next available step
+            step->test_state = wlan_emu_tests_state_cmd_wait;
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: wait for test Step Num : %d execution_time : %d timeout_count %d\n",
+                __func__, __LINE__, step->step_number, step->execution_time, step->timeout_count);
         } else { // step->fork == false
+            /*Until the execution is done remain in the same step*/
             if (step->execution_time > step->timeout_count) {
                 step->test_state = wlan_emu_tests_state_cmd_continue;
                 wlan_emu_print(wlan_emu_log_level_dbg,
@@ -510,6 +664,8 @@ void test_step_param_sta_management::step_remove()
             delete step->u.sta_test->sta_vap_config;
         }
 
+        delete step->u.sta_test->radio_oper_param;
+
         // Below check to remove on error cases
         if (step->capture_frames == true) {
             if (step->test_results_queue != nullptr) {
@@ -570,23 +726,35 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 
             if ((wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type()) ||
                 (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
-                wlan_emu_print(wlan_emu_log_level_info,
-                    "%s:%d: received %s from macaddr : %s client_macaddr : %s\n", __func__,
-                    __LINE__, msg->get_msg_name(), macaddr, client_macaddr);
-                step->u.sta_test->is_station_associated = false;
-                step->m_sta_mgr->remove_sta(step->u.sta_test);
-                step->u.sta_test->is_decoded = false;
+                // Added this check to make sure the Station MAC is present as part of frame
+                // received.
+                if (step->u.sta_test->is_station_associated == true) {
+                    step->u.sta_test->is_station_associated = false;
+                    step->m_sta_mgr->remove_sta(step->u.sta_test);
+                    step->u.sta_test->is_decoded = false;
+                }
             }
 
             if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
                     f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
 
-                if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
-                    if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
+                if (step->u.sta_test->sta_vap_config->u.sta_info.security.mode ==
+                    wifi_security_mode_none) {
+                    if (wlan_emu_frm80211_ops_type_assoc_resp == msg->get_frm80211_ops_type()) {
                         step->u.sta_test->is_station_associated = true;
                         wlan_emu_print(wlan_emu_log_level_dbg,
-                            "%s:%d: captured eapol-msg3 for %s\n", __func__, __LINE__,
-                            client_macaddr);
+                            "%s:%d: captured assoc response for open security for mac %s\n",
+                            __func__, __LINE__, client_macaddr);
+                    }
+
+                } else {
+                    if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
+                        if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
+                            step->u.sta_test->is_station_associated = true;
+                            wlan_emu_print(wlan_emu_log_level_dbg,
+                                "%s:%d: captured eapol-msg3 for %s\n", __func__, __LINE__,
+                                client_macaddr);
+                        }
                     }
                 }
 
@@ -650,18 +818,32 @@ test_step_param_sta_management::test_step_param_sta_management()
             "%s:%d: allocation of memory for sta_test failed for %d\n", __func__, __LINE__,
             step->step_number);
         step->is_step_initialized = false;
+        return;
     }
 
     step->u.sta_test->is_decoded = false;
     step->u.sta_test->sta_vap_config = new (std::nothrow) wifi_vap_info_t;
     if (step->u.sta_test->sta_vap_config == nullptr) {
         wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: allocation of memory for sta failed for %d\n", __func__, __LINE__,
-            step->step_number);
+            "%s:%d: allocation of sta_vap_config  memory for sta failed for %d\n", __func__,
+            __LINE__, step->step_number);
         delete step->u.sta_test;
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.sta_test->sta_vap_config, 0, sizeof(wifi_vap_info_t));
+
+    step->u.sta_test->radio_oper_param = new (std::nothrow) wifi_radio_operationParam_t;
+    if (step->u.sta_test->radio_oper_param == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: allocation of radio_oper_param memory for sta failed for %d\n", __func__,
+            __LINE__, step->step_number);
+        delete step->u.sta_test;
+        delete step->u.sta_test->sta_vap_config;
+        step->is_step_initialized = false;
+        return;
+    }
+    memset(step->u.sta_test->radio_oper_param, 0, sizeof(wifi_radio_operationParam_t));
 
     step->u.sta_test->station_prototype = new (std::nothrow) station_prototype_t;
     if (step->u.sta_test->station_prototype == nullptr) {
@@ -669,8 +851,10 @@ test_step_param_sta_management::test_step_param_sta_management()
             "%s:%d: allocation of memory for station_prototype failed for %d\n", __func__, __LINE__,
             step->step_number);
         delete step->u.sta_test->sta_vap_config;
+        delete step->u.sta_test->radio_oper_param;
         delete step->u.sta_test;
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.sta_test->station_prototype, 0, sizeof(station_prototype_t));
 
@@ -679,9 +863,11 @@ test_step_param_sta_management::test_step_param_sta_management()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Queue create failed for fc_prototype_q\n",
             __func__, __LINE__);
         delete step->u.sta_test->sta_vap_config;
+        delete step->u.sta_test->radio_oper_param;
         delete step->u.sta_test->station_prototype;
         delete step->u.sta_test;
         step->is_step_initialized = false;
+        return;
     }
 
     step->execution_time = 3;
@@ -693,7 +879,9 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->is_station_associated = false;
     step->u.sta_test->is_station_prototype_enabled = false;
     step->u.sta_test->capture_sta_requests = false;
+    step->u.sta_test->wait_connection = false;
     memset(step->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
+    step->u.sta_test->u.sta_management.op_modes = 0;
 }
 
 test_step_param_sta_management::~test_step_param_sta_management()

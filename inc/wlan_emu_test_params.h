@@ -41,6 +41,7 @@ public:
         // Based on type : wlan_emu_test_param_type.
         // test_json will be applicable for  test_param_type_radio, test_param_type_vap,
         char test_webconfig_json[128]; // location
+        char test_onewifi_subdoc[128];
 
         sta_test_t *sta_test;
         timed_wait_t *timed_wait;
@@ -333,5 +334,16 @@ public:
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_timed_wait();
     ~test_step_param_timed_wait();
+};
+
+class test_step_param_config_onewifi : public test_step_params_t {
+public:
+    int step_execute();
+    int step_timeout();
+    int step_upload_files(FILE *output_file, bool *update_to_tda);
+    int step_frame_filter(wlan_emu_msg_t *msg);
+    void step_remove();
+    test_step_param_config_onewifi();
+    ~test_step_param_config_onewifi();
 };
 #endif
