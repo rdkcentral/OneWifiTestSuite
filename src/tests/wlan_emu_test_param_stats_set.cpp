@@ -14,6 +14,16 @@ extern "C" {
 int wifi_hal_emu_set_radio_channel_stats(unsigned int radio_index, bool emu_state,
     wifi_channelStats_t *chan_stat, unsigned int count, unsigned int phy_index,
     unsigned int interface_index);
+int wifi_hal_emu_set_neighbor_stats(unsigned int radio_index, bool emu_state,
+    wifi_neighbor_ap2_t *neighbor_stats, unsigned int count);
+int wifi_hal_emu_set_assoc_clients_stats(unsigned int vap_index, bool emu_state,
+    wifi_associated_dev3_t *assoc_cli_stat, unsigned int count, unsigned int phy_index,
+    unsigned int interface_index);
+int wifi_hal_emu_set_radio_diag_stats(unsigned int radio_index, bool emu_state,
+    wifi_radioTrafficStats2_t *radio_diag_stat, unsigned int count, unsigned int phy_index,
+    unsigned int interface_index);
+int wifi_hal_emu_set_radio_temp(unsigned int radio_index, bool emu_state, int temperature,
+    unsigned int phy_index, unsigned int interface_index);
 void copy_chanstats_to_chandata(radio_chan_data_t *chan_data, wifi_channelStats_t *chan_stats);
 }
 
@@ -75,23 +85,21 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_stop()
 
     emu_state = false;
     int radio_index = step->u.wifi_stats_set->radio_index;
-    int phy_index = webconfig_data->hal_cap.wifi_prop.radio_interface_map[radio_index].phy_index;
-    int interface_index = if_nametoindex(
-        webconfig_data->hal_cap.wifi_prop.radio_interface_map[radio_index].interface_name);
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop hal api for Neighbor_Stats\n", __func__,
         __LINE__);
 
-    // if (wifi_hal_emu_set_neighbor_stats(radio_index, emu_state, NULL, 0, phy_index,
-    // interface_index) != RETURN_OK) {
-    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Stop for Neighbor_Stats failed. Radio
-    //     index : %d, Step number : %d\n", __func__, __LINE__, radio_index, step->step_number);
-    //     step->test_state = wlan_emu_tests_state_cmd_abort;
-    //     return RETURN_ERR;
-    // } else {
-    //     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop for Neighbor_Stats success. Radio
-    //     index : %d, Step number : %d\n", __func__, __LINE__, radio_index, step->step_number);
-    // }
+    if (wifi_hal_emu_set_neighbor_stats(radio_index, emu_state, NULL, 0) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Stop for Neighbor_Stats failed. Radio index : %d, Step number : %d\n", __func__,
+            __LINE__, radio_index, step->step_number);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d: Stop for Neighbor_Stats success. Radio index : %d, Step number : %d\n",
+            __func__, __LINE__, radio_index, step->step_number);
+    }
 
     return RETURN_OK;
 }
@@ -112,16 +120,18 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_stop()
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop hal api for Assoc_Clients_Stats\n",
         __func__, __LINE__);
 
-    // if (wifi_hal_emu_set_assoc_clients_stats(vap_index, emu_state, NULL, 0, phy_index,
-    // interface_index) != RETURN_OK) {
-    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Stop for Assoc_Clients_Stats failed. VAP
-    //     index : %d, Step number : %d\n", __func__, __LINE__, vap_index, step->step_number);
-    //     step->test_state = wlan_emu_tests_state_cmd_abort;
-    //     return RETURN_ERR;
-    // } else {
-    //     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop for Assoc_Clients_Stats success. VAP
-    //     index : %d, Step number : %d\n", __func__, __LINE__, vap_index, step->step_number);
-    // }
+    if (wifi_hal_emu_set_assoc_clients_stats(vap_index, emu_state, NULL, 0, phy_index,
+            interface_index) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Stop for Assoc_Clients_Stats failed. VAP index : %d, Step number : %d\n",
+            __func__, __LINE__, vap_index, step->step_number);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d: Stop for Assoc_Clients_Stats success. VAP index : %d, Step number : %d\n",
+            __func__, __LINE__, vap_index, step->step_number);
+    }
 
     return RETURN_OK;
 }
@@ -142,16 +152,18 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_stop()
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop hal api for Radio_Diag_Stats\n", __func__,
         __LINE__);
 
-    // if (wifi_hal_emu_set_radio_diag_stats(radio_index, emu_state, NULL, 0, phy_index,
-    // interface_index) != RETURN_OK) {
-    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Stop for Radio_Diag_Stats failed. Radio
-    //     index : %d, Step number : %d\n", __func__, __LINE__, radio_index, step->step_number);
-    //     step->test_state = wlan_emu_tests_state_cmd_abort;
-    //     return RETURN_ERR;
-    // } else {
-    //     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop for Radio_Diag_Stats success. Radio
-    //     index : %d, Step number : %d\n", __func__, __LINE__, radio_index, step->step_number);
-    // }
+    if (wifi_hal_emu_set_radio_diag_stats(radio_index, emu_state, NULL, 0, phy_index,
+            interface_index) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Stop for Radio_Diag_Stats failed. Radio index : %d, Step number : %d\n",
+            __func__, __LINE__, radio_index, step->step_number);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d: Stop for Radio_Diag_Stats success. Radio index : %d, Step number : %d\n",
+            __func__, __LINE__, radio_index, step->step_number);
+    }
 
     return RETURN_OK;
 }
@@ -168,20 +180,23 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sto
     int phy_index = webconfig_data->hal_cap.wifi_prop.radio_interface_map[radio_index].phy_index;
     int interface_index = if_nametoindex(
         webconfig_data->hal_cap.wifi_prop.radio_interface_map[radio_index].interface_name);
+    int temperature = 0;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop hal api for Radio_Temperature_Stats\n",
         __func__, __LINE__);
 
-    // if (wifi_hal_emu_set_radio_temperature_stats(radio_index, emu_state, NULL, 0, phy_index,
-    // interface_index) != RETURN_OK) {
-    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Stop for Radio_Temperature_Stats failed.
-    //     Radio index : %d, Step number : %d\n", __func__, __LINE__, radio_index,
-    //     step->step_number); step->test_state = wlan_emu_tests_state_cmd_abort; return RETURN_ERR;
-    // } else {
-    //     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop for Radio_Temperature_Stats success.
-    //     Radio index : %d, Step number : %d\n", __func__, __LINE__, radio_index,
-    //     step->step_number);
-    // }
+    if (wifi_hal_emu_set_radio_temp(radio_index, emu_state, temperature, phy_index,
+            interface_index) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Stop for Radio_Temperature_Stats failed. Radio index : %d, Step number : %d\n",
+            __func__, __LINE__, radio_index, step->step_number);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d: Stop for Radio_Temperature_Stats success. Radio index : %d, Step number : %d\n",
+            __func__, __LINE__, radio_index, step->step_number);
+    }
 
     return RETURN_OK;
 }
@@ -242,6 +257,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed\n", __func__,
             __LINE__);
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        free(json_data);
         return RETURN_ERR;
     }
 
@@ -258,6 +274,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        free(json_data);
         return RETURN_ERR;
     }
 
@@ -313,12 +330,17 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: wifi_hal_emu_set_radio_channel_stats failed\n", __func__, __LINE__);
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        delete[] chan_stat;
+        free(response->stat_pointer);
+        free(response);
+        free(json_data);
         return RETURN_ERR;
     }
 
     delete[] chan_stat;
     free(response->stat_pointer);
     free(response);
+    free(json_data);
 
     return RETURN_OK;
 }
@@ -378,25 +400,27 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n",
             __func__, __LINE__, file_to_read);
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        free(json_data);
         return RETURN_ERR;
     }
 
     radio_index = step->u.wifi_stats_set->radio_index;
     emu_state = true;
-    phy_index = webconfig_data->hal_cap.wifi_prop.radio_interface_map[radio_index].phy_index;
-    interface_index = if_nametoindex(
-        webconfig_data->hal_cap.wifi_prop.radio_interface_map[radio_index].interface_name);
     response = static_cast<wifi_provider_response_t *>((subdoc_data.u.decoded.collect_stats.stats));
 
     if ((response->stat_array_size == 0) || (response->stat_pointer == NULL)) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Neighbor stats count : %d\n", __func__,
             __LINE__, response->stat_array_size);
-        // if (wifi_hal_emu_set_neighbor_stats(radio_index, emu_state, response->stat_pointer,
-        // response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
-        //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_neighbor_stats
-        //     failed\n", __func__, __LINE__); step->test_state = wlan_emu_tests_state_cmd_abort;
-        //     return RETURN_ERR;
-        // }
+        if (wifi_hal_emu_set_neighbor_stats(radio_index, emu_state, neighbor_data,
+                response->stat_array_size) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: wifi_hal_emu_set_neighbor_stats failed\n", __func__, __LINE__);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            free(response->stat_pointer);
+            free(response);
+            free(json_data);
+            return RETURN_ERR;
+        }
         free(response->stat_pointer);
         free(response);
         return RETURN_OK;
@@ -411,12 +435,13 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
             __func__, __LINE__, step->step_number);
         free(response->stat_pointer);
         free(response);
+        free(json_data);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
 
     for (neighbor_count = 0; neighbor_count < (unsigned int)response->stat_array_size;
-        neighbor_count++) {
+         neighbor_count++) {
         strncpy(neighbor_stats[neighbor_count].ap_SSID, neighbor_data[neighbor_count].ap_SSID,
             sizeof(neighbor_stats[neighbor_count].ap_SSID) - 1);
         neighbor_stats[neighbor_count].ap_SSID[sizeof(neighbor_stats[neighbor_count].ap_SSID) - 1] =
@@ -518,16 +543,22 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
             neighbor_stats[i].ap_ChannelUtilization);
     }
 
-    // if (wifi_hal_emu_set_neighbor_stats(radio_index, emu_state, neighbor_stats,
-    // response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
-    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_neighbor_stats failed\n",
-    //     __func__, __LINE__); step->test_state = wlan_emu_tests_state_cmd_abort; return
-    //     RETURN_ERR;
-    // }
+    if (wifi_hal_emu_set_neighbor_stats(radio_index, emu_state, neighbor_stats,
+            response->stat_array_size) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_neighbor_stats failed\n",
+            __func__, __LINE__);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        delete[] neighbor_stats;
+        free(response->stat_pointer);
+        free(response);
+        free(json_data);
+        return RETURN_ERR;
+    }
 
     delete[] neighbor_stats;
     free(response->stat_pointer);
     free(response);
+    free(json_data);
 
     return RETURN_OK;
 }
@@ -588,6 +619,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n",
             __func__, __LINE__, file_to_read);
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        free(json_data);
         return RETURN_ERR;
     }
 
@@ -601,12 +633,16 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
     if ((response->stat_array_size == 0) || (response->stat_pointer == NULL)) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Assoc clients stats count : %d\n", __func__,
             __LINE__, response->stat_array_size);
-        // if (wifi_hal_emu_set_assoc_clients_stats(vap_index, emu_state, response->stat_pointer,
-        // response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
-        //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_assoc_clients_stats
-        //     failed\n", __func__, __LINE__); step->test_state = wlan_emu_tests_state_cmd_abort;
-        //     return RETURN_ERR;
-        // }
+        if (wifi_hal_emu_set_assoc_clients_stats(vap_index, emu_state, assoc_data,
+                response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: wifi_hal_emu_set_assoc_clients_stats failed\n", __func__, __LINE__);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            free(response->stat_pointer);
+            free(response);
+            free(json_data);
+            return RETURN_ERR;
+        }
         free(response->stat_pointer);
         free(response);
         return RETURN_OK;
@@ -621,6 +657,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
             __func__, __LINE__, step->step_number);
         free(response->stat_pointer);
         free(response);
+        free(json_data);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -743,12 +780,12 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_dbg, "SNR %d\n", assoc_stats[i].cli_SNR);
         wlan_emu_print(wlan_emu_log_level_dbg, "Interference Sources %s\n",
             assoc_stats[i].cli_InterferenceSources);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Data Frames Sent Ack %llu\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Data Frames Sent Ack %lu\n",
             assoc_stats[i].cli_DataFramesSentAck);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Data Frames Sent No Ack %llu\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Data Frames Sent No Ack %lu\n",
             assoc_stats[i].cli_DataFramesSentNoAck);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Bytes Sent %llu\n", assoc_stats[i].cli_BytesSent);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Bytes Received %llu\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Bytes Sent %lu\n", assoc_stats[i].cli_BytesSent);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Bytes Received %lu\n",
             assoc_stats[i].cli_BytesReceived);
         wlan_emu_print(wlan_emu_log_level_dbg, "RSSI %d\n", assoc_stats[i].cli_RSSI);
         wlan_emu_print(wlan_emu_log_level_dbg, "Min RSSI %d\n", assoc_stats[i].cli_MinRSSI);
@@ -759,20 +796,20 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
             assoc_stats[i].cli_AuthenticationFailures);
         wlan_emu_print(wlan_emu_log_level_dbg, "Associations %llu\n",
             assoc_stats[i].cli_Associations);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Sent %u\n", assoc_stats[i].cli_PacketsSent);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Received %u\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Sent %lu\n", assoc_stats[i].cli_PacketsSent);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Received %lu\n",
             assoc_stats[i].cli_PacketsReceived);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Errors Sent %u\n", assoc_stats[i].cli_ErrorsSent);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Retrans Count %u\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Errors Sent %lu\n", assoc_stats[i].cli_ErrorsSent);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Retrans Count %lu\n",
             assoc_stats[i].cli_RetransCount);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Failed Retrans Count %u\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Failed Retrans Count %lu\n",
             assoc_stats[i].cli_FailedRetransCount);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Retry Count %u\n", assoc_stats[i].cli_RetryCount);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Multiple Retry Count %u\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Retry Count %lu\n", assoc_stats[i].cli_RetryCount);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Multiple Retry Count %lu\n",
             assoc_stats[i].cli_MultipleRetryCount);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Max Downlink Rate %u\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Max Downlink Rate %lu\n",
             assoc_stats[i].cli_MaxDownlinkRate);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Max Uplink Rate %u\n",
+        wlan_emu_print(wlan_emu_log_level_dbg, "Max Uplink Rate %lu\n",
             assoc_stats[i].cli_MaxUplinkRate);
         wlan_emu_print(wlan_emu_log_level_dbg, "Active Num Spatial Streams %u\n",
             assoc_stats[i].cli_activeNumSpatialStreams);
@@ -781,16 +818,22 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_dbg, "Rx Errors %llu\n", assoc_stats[i].cli_RxErrors);
     }
 
-    // if (wifi_hal_emu_set_assoc_clients_stats(vap_index, emu_state, assoc_stats,
-    // response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
-    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_assoc_clients_stats
-    //     failed\n", __func__, __LINE__); step->test_state = wlan_emu_tests_state_cmd_abort; return
-    //     RETURN_ERR;
-    // }
+    if (wifi_hal_emu_set_assoc_clients_stats(vap_index, emu_state, assoc_stats,
+            response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: wifi_hal_emu_set_assoc_clients_stats failed\n", __func__, __LINE__);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        delete[] assoc_stats;
+        free(response->stat_pointer);
+        free(response);
+        free(json_data);
+        return RETURN_ERR;
+    }
 
     delete[] assoc_stats;
     free(response->stat_pointer);
     free(response);
+    free(json_data);
 
     return RETURN_OK;
 }
@@ -807,7 +850,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
     int phy_index;
     int interface_index;
     wifi_provider_response_t *response;
-    radio_data_t *radio_data;
+    radio_data_t *radiodiag_stats;
     unsigned int radiodiag_count = 0;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_radio_diag_stats\n",
@@ -850,6 +893,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n",
             __func__, __LINE__, file_to_read);
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        free(json_data);
         return RETURN_ERR;
     }
 
@@ -859,171 +903,136 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
     interface_index = if_nametoindex(
         webconfig_data->hal_cap.wifi_prop.radio_interface_map[radio_index].interface_name);
     response = static_cast<wifi_provider_response_t *>((subdoc_data.u.decoded.collect_stats.stats));
-    radio_data = static_cast<radio_data_t *>(response->stat_pointer);
+    radiodiag_stats = static_cast<radio_data_t *>(response->stat_pointer);
 
-    radio_data_t *radiodiag_stats = new (std::nothrow) radio_data_t[response->stat_array_size];
-    if (radiodiag_stats == nullptr) {
+    // Convert radio_data_t to wifi_radioTrafficStats2_t
+    wifi_radioTrafficStats2_t *radioTrafficStats = new (std::nothrow)
+        wifi_radioTrafficStats2_t[response->stat_array_size];
+    if (radioTrafficStats == nullptr) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
             __func__, __LINE__, step->step_number);
         free(response->stat_pointer);
         free(response);
+        free(json_data);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
 
-    for (radiodiag_count = 0; radiodiag_count < (unsigned int)response->stat_array_size;
-        radiodiag_count++) {
-        strncpy(radiodiag_stats[radiodiag_count].frequency_band,
-            radio_data[radiodiag_count].frequency_band,
-            sizeof(radiodiag_stats[radiodiag_count].frequency_band) - 1);
-        radiodiag_stats[radiodiag_count]
-            .frequency_band[sizeof(radiodiag_stats[radiodiag_count].frequency_band) - 1] = '\0';
+    for (unsigned int i = 0; i < response->stat_array_size; i++) {
 
-        strncpy(radiodiag_stats[radiodiag_count].ChannelsInUse,
-            radio_data[radiodiag_count].ChannelsInUse,
-            sizeof(radiodiag_stats[radiodiag_count].ChannelsInUse) - 1);
-        radiodiag_stats[radiodiag_count]
-            .ChannelsInUse[sizeof(radiodiag_stats[radiodiag_count].ChannelsInUse) - 1] = '\0';
+        radioTrafficStats[i].radio_ActivityFactor = radiodiag_stats[i].RadioActivityFactor;
 
-        radiodiag_stats[radiodiag_count].primary_radio_channel =
-            radio_data[radiodiag_count].primary_radio_channel;
+        radioTrafficStats[i].radio_CarrierSenseThreshold_Exceeded =
+            radiodiag_stats[i].CarrierSenseThreshold_Exceeded;
 
-        strncpy(radiodiag_stats[radiodiag_count].channel_bandwidth,
-            radio_data[radiodiag_count].channel_bandwidth,
-            sizeof(radiodiag_stats[radiodiag_count].channel_bandwidth) - 1);
-        radiodiag_stats[radiodiag_count]
-            .channel_bandwidth[sizeof(radiodiag_stats[radiodiag_count].channel_bandwidth) - 1] =
-            '\0';
+        radioTrafficStats[i].radio_NoiseFloor = radiodiag_stats[i].NoiseFloor;
 
-        radiodiag_stats[radiodiag_count].RadioActivityFactor =
-            radio_data[radiodiag_count].RadioActivityFactor;
+        radioTrafficStats[i].radio_ChannelUtilization = radiodiag_stats[i].channelUtil;
 
-        radiodiag_stats[radiodiag_count].CarrierSenseThreshold_Exceeded =
-            radio_data[radiodiag_count].CarrierSenseThreshold_Exceeded;
+        radioTrafficStats[i].radio_BytesSent = radiodiag_stats[i].radio_BytesSent;
 
-        radiodiag_stats[radiodiag_count].NoiseFloor = radio_data[radiodiag_count].NoiseFloor;
+        radioTrafficStats[i].radio_BytesReceived = radiodiag_stats[i].radio_BytesReceived;
 
-        radiodiag_stats[radiodiag_count].channelUtil = radio_data[radiodiag_count].channelUtil;
+        radioTrafficStats[i].radio_PacketsSent = radiodiag_stats[i].radio_PacketsSent;
 
-        radiodiag_stats[radiodiag_count].channelInterference =
-            radio_data[radiodiag_count].channelInterference;
+        radioTrafficStats[i].radio_PacketsReceived = radiodiag_stats[i].radio_PacketsReceived;
 
-        radiodiag_stats[radiodiag_count].radio_BytesSent =
-            radio_data[radiodiag_count].radio_BytesSent;
+        radioTrafficStats[i].radio_ErrorsSent = radiodiag_stats[i].radio_ErrorsSent;
 
-        radiodiag_stats[radiodiag_count].radio_BytesReceived =
-            radio_data[radiodiag_count].radio_BytesReceived;
+        radioTrafficStats[i].radio_ErrorsReceived = radiodiag_stats[i].radio_ErrorsReceived;
 
-        radiodiag_stats[radiodiag_count].radio_PacketsSent =
-            radio_data[radiodiag_count].radio_PacketsSent;
+        radioTrafficStats[i].radio_DiscardPacketsSent = radiodiag_stats[i].radio_DiscardPacketsSent;
 
-        radiodiag_stats[radiodiag_count].radio_PacketsReceived =
-            radio_data[radiodiag_count].radio_PacketsReceived;
+        radioTrafficStats[i].radio_DiscardPacketsReceived =
+            radiodiag_stats[i].radio_DiscardPacketsReceived;
 
-        radiodiag_stats[radiodiag_count].radio_ErrorsSent =
-            radio_data[radiodiag_count].radio_ErrorsSent;
+        radioTrafficStats[i].radio_InvalidMACCount = radiodiag_stats[i].radio_InvalidMACCount;
 
-        radiodiag_stats[radiodiag_count].radio_ErrorsReceived =
-            radio_data[radiodiag_count].radio_ErrorsReceived;
+        radioTrafficStats[i].radio_PacketsOtherReceived =
+            radiodiag_stats[i].radio_PacketsOtherReceived;
 
-        radiodiag_stats[radiodiag_count].radio_DiscardPacketsSent =
-            radio_data[radiodiag_count].radio_DiscardPacketsSent;
+        radioTrafficStats[i].radio_RetransmissionMetirc =
+            radiodiag_stats[i].radio_RetransmissionMetirc;
 
-        radiodiag_stats[radiodiag_count].radio_DiscardPacketsReceived =
-            radio_data[radiodiag_count].radio_DiscardPacketsReceived;
+        radioTrafficStats[i].radio_PLCPErrorCount = radiodiag_stats[i].radio_PLCPErrorCount;
 
-        radiodiag_stats[radiodiag_count].radio_InvalidMACCount =
-            radio_data[radiodiag_count].radio_InvalidMACCount;
+        radioTrafficStats[i].radio_FCSErrorCount = radiodiag_stats[i].radio_FCSErrorCount;
 
-        radiodiag_stats[radiodiag_count].radio_PacketsOtherReceived =
-            radio_data[radiodiag_count].radio_PacketsOtherReceived;
+        radioTrafficStats[i].radio_MaximumNoiseFloorOnChannel =
+            radiodiag_stats[i].radio_MaximumNoiseFloorOnChannel;
 
-        radiodiag_stats[radiodiag_count].radio_RetransmissionMetirc =
-            radio_data[radiodiag_count].radio_RetransmissionMetirc;
+        radioTrafficStats[i].radio_MinimumNoiseFloorOnChannel =
+            radiodiag_stats[i].radio_MinimumNoiseFloorOnChannel;
 
-        radiodiag_stats[radiodiag_count].radio_PLCPErrorCount =
-            radio_data[radiodiag_count].radio_PLCPErrorCount;
+        radioTrafficStats[i].radio_MedianNoiseFloorOnChannel =
+            radiodiag_stats[i].radio_MedianNoiseFloorOnChannel;
 
-        radiodiag_stats[radiodiag_count].radio_FCSErrorCount =
-            radio_data[radiodiag_count].radio_FCSErrorCount;
-
-        radiodiag_stats[radiodiag_count].radio_MaximumNoiseFloorOnChannel =
-            radio_data[radiodiag_count].radio_MaximumNoiseFloorOnChannel;
-
-        radiodiag_stats[radiodiag_count].radio_MinimumNoiseFloorOnChannel =
-            radio_data[radiodiag_count].radio_MinimumNoiseFloorOnChannel;
-
-        radiodiag_stats[radiodiag_count].radio_MedianNoiseFloorOnChannel =
-            radio_data[radiodiag_count].radio_MedianNoiseFloorOnChannel;
-
-        radiodiag_stats[radiodiag_count].radio_StatisticsStartTime =
-            radio_data[radiodiag_count].radio_StatisticsStartTime;
+        radioTrafficStats[i].radio_StatisticsStartTime =
+            radiodiag_stats[i].radio_StatisticsStartTime;
     }
 
     for (unsigned int i = 0; i < response->stat_array_size; i++) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Radio Diag %u\n", __func__, __LINE__, i);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Frequency Band %s\n",
-            radiodiag_stats[i].frequency_band);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Channels In Use %s\n",
-            radiodiag_stats[i].ChannelsInUse);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Primary Radio Channel %u\n",
-            radiodiag_stats[i].primary_radio_channel);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Channel Bandwidth %s\n",
-            radiodiag_stats[i].channel_bandwidth);
         wlan_emu_print(wlan_emu_log_level_dbg, "Radio Activity Factor %u\n",
-            radiodiag_stats[i].RadioActivityFactor);
+            radioTrafficStats[i].radio_ActivityFactor);
         wlan_emu_print(wlan_emu_log_level_dbg, "Carrier Sense Threshold Exceeded %u\n",
-            radiodiag_stats[i].CarrierSenseThreshold_Exceeded);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Noise Floor %d\n", radiodiag_stats[i].NoiseFloor);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Channel Util %d\n", radiodiag_stats[i].channelUtil);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Channel Interference %d\n",
-            radiodiag_stats[i].channelInterference);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Bytes Sent %llu\n",
-            radiodiag_stats[i].radio_BytesSent);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Bytes Received %llu\n",
-            radiodiag_stats[i].radio_BytesReceived);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Sent %llu\n",
-            radiodiag_stats[i].radio_PacketsSent);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Received %llu\n",
-            radiodiag_stats[i].radio_PacketsReceived);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Errors Sent %llu\n",
-            radiodiag_stats[i].radio_ErrorsSent);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Errors Received %llu\n",
-            radiodiag_stats[i].radio_ErrorsReceived);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Discard Packets Sent %llu\n",
-            radiodiag_stats[i].radio_DiscardPacketsSent);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Discard Packets Received %llu\n",
-            radiodiag_stats[i].radio_DiscardPacketsReceived);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Invalid MAC Count %llu\n",
-            radiodiag_stats[i].radio_InvalidMACCount);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Other Received %llu\n",
-            radiodiag_stats[i].radio_PacketsOtherReceived);
+            radioTrafficStats[i].radio_CarrierSenseThreshold_Exceeded);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Noise Floor %d\n",
+            radioTrafficStats[i].radio_NoiseFloor);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Channel Util %d\n",
+            radioTrafficStats[i].radio_ChannelUtilization);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Bytes Sent %lu\n",
+            radioTrafficStats[i].radio_BytesSent);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Bytes Received %lu\n",
+            radioTrafficStats[i].radio_BytesReceived);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Sent %lu\n",
+            radioTrafficStats[i].radio_PacketsSent);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Received %lu\n",
+            radioTrafficStats[i].radio_PacketsReceived);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Errors Sent %lu\n",
+            radioTrafficStats[i].radio_ErrorsSent);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Errors Received %lu\n",
+            radioTrafficStats[i].radio_ErrorsReceived);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Discard Packets Sent %lu\n",
+            radioTrafficStats[i].radio_DiscardPacketsSent);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Discard Packets Received %lu\n",
+            radioTrafficStats[i].radio_DiscardPacketsReceived);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Invalid MAC Count %lu\n",
+            radioTrafficStats[i].radio_InvalidMACCount);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Other Received %lu\n",
+            radioTrafficStats[i].radio_PacketsOtherReceived);
         wlan_emu_print(wlan_emu_log_level_dbg, "Retransmission Metric %d\n",
-            radiodiag_stats[i].radio_RetransmissionMetirc);
-        wlan_emu_print(wlan_emu_log_level_dbg, "PLCP Error Count %llu\n",
-            radiodiag_stats[i].radio_PLCPErrorCount);
-        wlan_emu_print(wlan_emu_log_level_dbg, "FCS Error Count %llu\n",
-            radiodiag_stats[i].radio_FCSErrorCount);
+            radioTrafficStats[i].radio_RetransmissionMetirc);
+        wlan_emu_print(wlan_emu_log_level_dbg, "PLCP Error Count %lu\n",
+            radioTrafficStats[i].radio_PLCPErrorCount);
+        wlan_emu_print(wlan_emu_log_level_dbg, "FCS Error Count %lu\n",
+            radioTrafficStats[i].radio_FCSErrorCount);
         wlan_emu_print(wlan_emu_log_level_dbg, "Maximum Noise Floor On Channel %d\n",
-            radiodiag_stats[i].radio_MaximumNoiseFloorOnChannel);
+            radioTrafficStats[i].radio_MaximumNoiseFloorOnChannel);
         wlan_emu_print(wlan_emu_log_level_dbg, "Minimum Noise Floor On Channel %d\n",
-            radiodiag_stats[i].radio_MinimumNoiseFloorOnChannel);
+            radioTrafficStats[i].radio_MinimumNoiseFloorOnChannel);
         wlan_emu_print(wlan_emu_log_level_dbg, "Median Noise Floor On Channel %d\n",
-            radiodiag_stats[i].radio_MedianNoiseFloorOnChannel);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Statistics Start Time %llu\n",
-            radiodiag_stats[i].radio_StatisticsStartTime);
+            radioTrafficStats[i].radio_MedianNoiseFloorOnChannel);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Statistics Start Time %lu\n",
+            radioTrafficStats[i].radio_StatisticsStartTime);
     }
 
-    // if (wifi_hal_emu_set_radio_diag_stats(radio_index, emu_state, radiodiag_stats,
-    // response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
-    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_radio_diag_stats
-    //     failed\n", __func__, __LINE__); step->test_state = wlan_emu_tests_state_cmd_abort; return
-    //     RETURN_ERR;
-    // }
+    if (wifi_hal_emu_set_radio_diag_stats(radio_index, emu_state, radioTrafficStats,
+            response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_radio_diag_stats failed\n",
+            __func__, __LINE__);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        delete[] radioTrafficStats;
+        free(response->stat_pointer);
+        free(response);
+        free(json_data);
+        return RETURN_ERR;
+    }
 
-    delete[] radiodiag_stats;
+    delete[] radioTrafficStats;
     free(response->stat_pointer);
     free(response);
+    free(json_data);
 
     return RETURN_OK;
 }
@@ -1042,6 +1051,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
     wifi_provider_response_t *response;
     radio_data_t *radio_data;
     unsigned int radiotemp_count = 0;
+    int radio_temp = 0;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_radio_temperature_stats\n",
         __func__, __LINE__);
@@ -1083,6 +1093,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n",
             __func__, __LINE__, file_to_read);
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        free(json_data);
         return RETURN_ERR;
     }
 
@@ -1100,12 +1111,13 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
             __func__, __LINE__, step->step_number);
         free(response->stat_pointer);
         free(response);
+        free(json_data);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
 
     for (radiotemp_count = 0; radiotemp_count < (unsigned int)response->stat_array_size;
-        radiotemp_count++) {
+         radiotemp_count++) {
         radiotemp_stats[radiotemp_count].radio_Temperature =
             radio_data[radiotemp_count].radio_Temperature;
     }
@@ -1113,18 +1125,25 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
     for (unsigned int i = 0; i < response->stat_array_size; i++) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Radio Temperature %u:\n", __func__, __LINE__,
             radiotemp_stats[i].radio_Temperature);
+        radio_temp = (unsigned int)radiotemp_stats[i].radio_Temperature;
     }
 
-    // if (wifi_hal_emu_set_radio_temperature_stats(radio_index, emu_state, radiotemp_stats,
-    // response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
-    //     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_radio_temperature_stats
-    //     failed\n", __func__, __LINE__); step->test_state = wlan_emu_tests_state_cmd_abort; return
-    //     RETURN_ERR;
-    // }
+    if (wifi_hal_emu_set_radio_temp(radio_index, emu_state, radio_temp, phy_index,
+            interface_index) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_radio_temp failed\n",
+            __func__, __LINE__);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        delete[] radiotemp_stats;
+        free(response->stat_pointer);
+        free(response);
+        free(json_data);
+        return RETURN_ERR;
+    }
 
     delete[] radiotemp_stats;
     free(response->stat_pointer);
     free(response);
+    free(json_data);
 
     return RETURN_OK;
 }
