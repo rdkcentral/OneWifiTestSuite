@@ -51,6 +51,12 @@ int test_step_param_vap::step_execute()
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: subdoc_type : %d\n", __func__, __LINE__,
             step->frame_request.subdoc_type);
 
+        if (step->frame_request.subdoc_type == webconfig_subdoc_type_xfinity) {
+            step->execution_time = 25;
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: new execution time : %d for xfinity\n", __func__, __LINE__,
+                    step->execution_time);
+        }
+
         ret = step->m_ui_mgr->rbus_send(json_data);
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: rbus_send failed\n", __func__, __LINE__);
