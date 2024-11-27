@@ -242,7 +242,7 @@ typedef struct {
 } wifi_stats_set_t;
 
 typedef struct {
-    char test_cmd[128];
+    char test_cmd[1024];
     char cmd_exec_log_filename[128];
 } command_t;
 

@@ -248,6 +248,7 @@ test_step_param_mgmt_frame_capture::test_step_param_mgmt_frame_capture()
             "%s:%d: allocation of memory for mgmt_frame_capture failed for %d\n", __func__,
             __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.mgmt_frame_capture, 0, sizeof(mgmt_frame_capture_t));
     step->execution_time = 5;

@@ -83,6 +83,7 @@ test_step_param_timed_wait::test_step_param_timed_wait()
             "%s:%d: allocation of memory for timed_wait failed for %d\n", __func__, __LINE__,
             step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.timed_wait, 0, sizeof(timed_wait_t));
     step->execution_time = 5;

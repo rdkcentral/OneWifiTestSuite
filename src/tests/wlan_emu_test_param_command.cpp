@@ -176,6 +176,7 @@ test_step_param_command::test_step_param_command()
             "%s:%d: allocation of memory for cmd failed for %d\n", __func__, __LINE__,
             step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.cmd, 0, sizeof(command_t));
     step->execution_time = 5;

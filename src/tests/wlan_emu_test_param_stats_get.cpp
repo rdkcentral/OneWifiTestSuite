@@ -530,6 +530,7 @@ test_step_param_get_radio_channel_stats::test_step_param_get_radio_channel_stats
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory for failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
     step->execution_time = 15;
@@ -556,6 +557,7 @@ test_step_param_get_neighbor_stats::test_step_param_get_neighbor_stats()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory for failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
     step->execution_time = 15;
@@ -582,6 +584,7 @@ test_step_param_get_assoc_clients_stats::test_step_param_get_assoc_clients_stats
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory for failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
     step->execution_time = 15;
@@ -608,6 +611,7 @@ test_step_param_get_radio_diag_stats::test_step_param_get_radio_diag_stats()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory for failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
     step->execution_time = 15;
@@ -635,6 +639,7 @@ test_step_param_get_radio_temperature_stats::test_step_param_get_radio_temperatu
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory for failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
 

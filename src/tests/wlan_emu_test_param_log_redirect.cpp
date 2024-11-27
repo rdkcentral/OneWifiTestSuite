@@ -240,6 +240,7 @@ test_step_param_logredirect::test_step_param_logredirect()
             "%s:%d: allocation of memory for log failed for %d\n", __func__, __LINE__,
             step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.log_capture, 0, sizeof(log_redirect_t));
     step->execution_time = 5;

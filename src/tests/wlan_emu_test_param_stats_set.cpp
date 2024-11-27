@@ -201,6 +201,8 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
     radio_chan_data_t *chan_data;
     wifi_channelStats_t *chan_stat;
     unsigned int chan_count = 0;
+    wifi_radio_operationParam_t *radio_op_params;
+    unsigned int on_channel_number;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d - test_step_param_set_radio_channel_stats\n",
         __func__, __LINE__);
@@ -259,10 +261,24 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
         return RETURN_ERR;
     }
 
+    if (response->args.scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
+        radio_op_params = step->m_ui_mgr->cci_get_radio_operation_param(radio_index);
+        on_channel_number = radio_op_params->channel;
+    }
+
     for (chan_count = 0; chan_count < (unsigned int)response->stat_array_size; chan_count++) {
         //        copy_chanstats_to_chandata(&chan_data[chan_count], &chan_stat[chan_count]);
         chan_stat[chan_count].ch_in_pool = chan_data[chan_count].ch_in_pool;
         chan_stat[chan_count].ch_radar_noise = chan_data[chan_count].ch_radar_noise;
+        if (response->args.scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
+            chan_stat[chan_count].ch_number = on_channel_number;
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: updating onchan channel number to %d for step : %d\n", __func__, __LINE__,
+                on_channel_number, step->step_number);
+        } else {
+            chan_stat[chan_count].ch_number = chan_data[chan_count].ch_number;
+        }
+
         chan_stat[chan_count].ch_number = chan_data[chan_count].ch_number;
         chan_stat[chan_count].ch_noise = chan_data[chan_count].ch_noise;
         chan_stat[chan_count].ch_max_80211_rssi = chan_data[chan_count].ch_max_80211_rssi;
@@ -1360,6 +1376,7 @@ test_step_param_set_radio_channel_stats::test_step_param_set_radio_channel_stats
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
     step->u.wifi_stats_set->stats_set_q = queue_create();
@@ -1368,6 +1385,7 @@ test_step_param_set_radio_channel_stats::test_step_param_set_radio_channel_stats
             __LINE__, step->step_number);
         delete step->u.wifi_stats_set;
         step->is_step_initialized = false;
+        return;
     }
     step->execution_time = 0;
     step->timeout_count = 0;
@@ -1390,6 +1408,7 @@ test_step_param_set_neighbor_stats::test_step_param_set_neighbor_stats()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
     step->u.wifi_stats_set->stats_set_q = queue_create();
@@ -1397,6 +1416,7 @@ test_step_param_set_neighbor_stats::test_step_param_set_neighbor_stats()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed for %d\n", __func__,
             __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     step->execution_time = 0;
     step->timeout_count = 0;
@@ -1419,13 +1439,16 @@ test_step_param_set_assoc_clients_stats::test_step_param_set_assoc_clients_stats
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
+
     memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
     step->u.wifi_stats_set->stats_set_q = queue_create();
     if (step->u.wifi_stats_set->stats_set_q == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed for %d\n", __func__,
             __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     step->execution_time = 0;
     step->timeout_count = 0;
@@ -1448,6 +1471,7 @@ test_step_param_set_radio_diag_stats::test_step_param_set_radio_diag_stats()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
 
@@ -1456,6 +1480,7 @@ test_step_param_set_radio_diag_stats::test_step_param_set_radio_diag_stats()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q failed for %d\n", __func__,
             __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
 
     step->execution_time = 0;
@@ -1479,6 +1504,7 @@ test_step_param_set_radio_temperature_stats::test_step_param_set_radio_temperatu
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
             __func__, __LINE__, step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
     step->execution_time = 0;

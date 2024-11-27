@@ -157,6 +157,7 @@ test_step_param_get_file::test_step_param_get_file()
             "%s:%d: allocation of memory for get_file failed for %d\n", __func__, __LINE__,
             step->step_number);
         step->is_step_initialized = false;
+        return;
     }
     memset(step->u.get_file, 0, sizeof(get_file_t));
     step->execution_time = 5;
