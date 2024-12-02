@@ -13,7 +13,7 @@ test_step_params_t *wlan_emu_tests_t::get_step_from_index(int index)
     wlan_emu_test_case_config *test_config = this->get_test_config();
     int step_total = queue_count(test_config->test_steps_q);
 
-    if ((index >= step_total) || (step_total < 0)) {
+    if ((index >= step_total) || (index < 0)) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid index : %d\n", __func__, __LINE__,
             index);
         return NULL;
@@ -128,8 +128,8 @@ void *wlan_emu_tests_t::test_function(void *arg)
 {
     struct timespec time_to_wait;
     int rc, nbytes;
-    struct timeval tv_now;
-    struct timeval tv_ref;
+    struct timespec tv_now;
+    struct timespec tv_ref;
     unsigned int tv_sec = 0;
     int ret;
 
@@ -159,7 +159,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
     }
 
     pthread_mutex_lock(&test->m_lock);
-    gettimeofday(&tv_ref, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &tv_ref);
     while (test->should_exit() == false) {
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: step_number : %d test_state  : %d step_count : %d \n", __func__, __LINE__,
@@ -189,17 +189,16 @@ void *wlan_emu_tests_t::test_function(void *arg)
                 __LINE__, step->step_number, step->test_state, test_config->current_test_step);
             step->test_state = wlan_emu_tests_state_cmd_start;
         }
-        gettimeofday(&tv_now, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &tv_now);
         time_to_wait.tv_sec = tv_now.tv_sec + 1; // wait for 1 seconds
-        time_to_wait.tv_nsec = 0;
+        time_to_wait.tv_nsec = tv_now.tv_nsec;
 
         tv_sec = (tv_now.tv_sec - tv_ref.tv_sec);
         if ((tv_now.tv_sec - tv_ref.tv_sec) >= (HEART_BEAT_TRIGGER_TIME)) {
             // send an heartbeat to controller
             tmp_ui_mgr->cci_report_heartbeat_to_tda();
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Sent Heartbeat\n", __func__, __LINE__,
-                tv_sec);
-            gettimeofday(&tv_ref, NULL);
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Sent Heartbeat\n", __func__, __LINE__);
+            clock_gettime(CLOCK_MONOTONIC, &tv_ref);
         }
 
         rc = test->test_wait(&time_to_wait);
@@ -542,6 +541,10 @@ int wlan_emu_tests_t::start()
         return -1;
     }
 
+    pthread_setname_np(m_tid, "test_function");
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Thread created with Name : test_function\n",
+        __func__, __LINE__);
+
     m_msg_mgr->subscribe(this);
     if (pthread_join(m_tid, NULL)) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pthread detach failed\n", __func__,
@@ -602,7 +605,11 @@ wlan_emu_tests_t::wlan_emu_tests_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_
     wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config)
 {
     m_exit = false;
-    pthread_cond_init(&m_cond, NULL);
+    pthread_condattr_t cond_attr;
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&m_cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
     pthread_mutex_init(&m_lock, NULL);
     m_results = queue_create();
     m_reference = queue_create();

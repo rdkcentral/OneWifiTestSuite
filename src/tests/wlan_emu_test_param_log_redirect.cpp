@@ -104,6 +104,10 @@ int test_step_param_logredirect::step_execute()
                 return RETURN_ERR;
             }
 
+            pthread_setname_np(step->u.log_capture->thread_id, "log_capture");
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: Thread created with Name : log_capture \n", __func__, __LINE__);
+
             if (pthread_detach(step->u.log_capture->thread_id)) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: thread detach failed\n", __func__,
                     __LINE__);

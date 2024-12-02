@@ -504,6 +504,10 @@ int wlan_emu_msg_hdlr_t::start()
         return -1;
     }
 
+    pthread_setname_np(m_tid, "msg_hdlr");
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Thread created with Name : msg_hdlr \n",
+        __func__, __LINE__);
+
     return 0;
 }
 

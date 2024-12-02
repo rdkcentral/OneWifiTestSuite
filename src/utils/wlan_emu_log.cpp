@@ -30,11 +30,6 @@ void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
     char *log_file = "/tmp/cciLog";
     char buff[256] = { 0 };
 
-    log_fp = fopen(log_file, "a+");
-    if (log_fp == NULL) {
-        return;
-    }
-
     switch (level) {
     case wlan_emu_log_level_dbg:
         if ((access(dbg_file, R_OK)) != 0) {
@@ -48,6 +43,12 @@ void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
     default:
         return;
     }
+
+    log_fp = fopen(log_file, "a+");
+    if (log_fp == NULL) {
+        return;
+    }
+
     get_formatted_time(&buff[strlen(buff)]);
 
     static const char *level_marker[wlan_emu_log_level_max] = {
