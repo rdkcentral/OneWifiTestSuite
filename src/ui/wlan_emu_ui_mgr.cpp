@@ -2953,20 +2953,43 @@ wlan_emu_sig_type_t wlan_emu_ui_mgr_t::io_wait()
 
 int wlan_emu_ui_mgr_t::get_mlts_configuration()
 {
+#ifdef CONFIG_XB7_MTLS
     char default_cpe_ssl_cert[] = "/nvram/certs/devicecert_1.pk12";
+#else
+    char default_cpe_ssl_cert[] = "/nvram/certs/devicecert_2.pk12";
+#endif
     char key_cmd[128] = { 0 };
     FILE *fp;
 
+
+#ifdef CONFIG_XB7_MTLS
     if (access(default_cpe_ssl_cert, F_OK) == -1) {
         // The cpe file does not exist
         snprintf(ssl_cert, sizeof(ssl_cert), "%s", "/etc/ssl/certs/staticXpkiCrt.pk12");
         snprintf(key_cmd, sizeof(key_cmd), "%s",
             "/usr/bin/rdkssacli \"{STOR=GET,SRC=mamjwwgtfwpa,DST=/dev/stdout}\"");
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs\n", __func__,
+            __LINE__);
     } else {
         snprintf(ssl_cert, sizeof(ssl_cert), "%s", default_cpe_ssl_cert);
         snprintf(key_cmd, sizeof(key_cmd), "%s",
             "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"");
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs\n", __func__,
+            __LINE__);
     }
+#else
+    if (access(default_cpe_ssl_cert, F_OK) == 0) {
+        snprintf(ssl_cert, sizeof(ssl_cert), "%s", default_cpe_ssl_cert);
+        snprintf(key_cmd, sizeof(key_cmd), "%s",
+            "GetConfigFile /tmp/.cfgDynamicSExpki;cat /tmp/.cfgDynamicSExpki");
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb8 certs\n", __func__,
+            __LINE__);
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: No available certs for xb8 conf\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+#endif
 
     if ((fp = popen(key_cmd, "r")) == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: popen failed for key cmd\n", __func__,
