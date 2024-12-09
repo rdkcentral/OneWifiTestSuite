@@ -798,8 +798,8 @@ int wlan_emu_ui_mgr_t::decode_step_config_onewifi(cJSON *step, test_step_params_
 
     step_config->param_type = step_param_type_config_onewifi;
     decode_param_string(step, "OneWiFiSubdoc", param);
-    snprintf(step_config->u.test_onewifi_subdoc,
-            sizeof(step_config->u.test_onewifi_subdoc), "%s", param->valuestring);
+    snprintf(step_config->u.test_onewifi_subdoc, sizeof(step_config->u.test_onewifi_subdoc), "%s",
+        param->valuestring);
 
     return RETURN_OK;
 }
@@ -2605,9 +2605,9 @@ int wlan_emu_ui_mgr_t::download_step_param_config(test_step_params_t *step)
         }
     } else if (step->param_type == step_param_type_config_onewifi) {
         if ((download_file(step->u.test_onewifi_subdoc, sizeof(step->u.test_onewifi_subdoc))) !=
-                RETURN_OK) {
+            RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n", __func__,
-                    __LINE__, step->u.test_onewifi_subdoc);
+                __LINE__, step->u.test_onewifi_subdoc);
             return RETURN_ERR;
         }
     }
@@ -2961,29 +2961,25 @@ int wlan_emu_ui_mgr_t::get_mlts_configuration()
     char key_cmd[128] = { 0 };
     FILE *fp;
 
-
 #ifdef CONFIG_XB7_MTLS
     if (access(default_cpe_ssl_cert, F_OK) == -1) {
         // The cpe file does not exist
         snprintf(ssl_cert, sizeof(ssl_cert), "%s", "/etc/ssl/certs/staticXpkiCrt.pk12");
         snprintf(key_cmd, sizeof(key_cmd), "%s",
             "/usr/bin/rdkssacli \"{STOR=GET,SRC=mamjwwgtfwpa,DST=/dev/stdout}\"");
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs\n", __func__,
-            __LINE__);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs\n", __func__, __LINE__);
     } else {
         snprintf(ssl_cert, sizeof(ssl_cert), "%s", default_cpe_ssl_cert);
         snprintf(key_cmd, sizeof(key_cmd), "%s",
             "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"");
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs\n", __func__,
-            __LINE__);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs\n", __func__, __LINE__);
     }
 #else
     if (access(default_cpe_ssl_cert, F_OK) == 0) {
         snprintf(ssl_cert, sizeof(ssl_cert), "%s", default_cpe_ssl_cert);
         snprintf(key_cmd, sizeof(key_cmd), "%s",
             "GetConfigFile /tmp/.cfgDynamicSExpki;cat /tmp/.cfgDynamicSExpki");
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb8 certs\n", __func__,
-            __LINE__);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb8 certs\n", __func__, __LINE__);
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: No available certs for xb8 conf\n", __func__,
             __LINE__);
@@ -3009,6 +3005,26 @@ int wlan_emu_ui_mgr_t::get_mlts_configuration()
     }
 
     return RETURN_OK;
+}
+
+void *wlan_emu_ui_mgr_t::heartbeat_function(void *arg)
+{
+    wlan_emu_ui_mgr_t *ui_mgr = (wlan_emu_ui_mgr_t *)arg;
+    bool exit = false;
+    int rc;
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d:Initialized heartbeat\n", __func__, __LINE__);
+    pthread_mutex_lock(&ui_mgr->m_heartbeat_lock);
+    while (exit == false) {
+        rc = pthread_cond_wait(&ui_mgr->m_heartbeat_cond, &ui_mgr->m_heartbeat_lock);
+        if (rc == 0) {
+            ui_mgr->cci_report_heartbeat_to_tda();
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Sent Heartbeat\n", __func__, __LINE__);
+        }
+    }
+    pthread_mutex_unlock(&ui_mgr->m_heartbeat_lock);
+
+    return NULL;
 }
 
 int wlan_emu_ui_mgr_t::init()
@@ -3067,6 +3083,22 @@ int wlan_emu_ui_mgr_t::init()
     }
 
     is_local_host_enabled = false;
+
+    if (pthread_create(&m_heartbeat_tid, NULL, wlan_emu_ui_mgr_t::heartbeat_function, this) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Thread create error for heartbeat\n",
+            __func__, __LINE__);
+        return -1;
+    }
+
+    pthread_setname_np(m_heartbeat_tid, "heartbeat");
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Thread created with Name : heartbeat\n",
+        __func__, __LINE__);
+
+    if (pthread_detach(m_heartbeat_tid)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: thread detach failed for hearbeat\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
     cci_report_reboot_to_tda();
 
@@ -4324,6 +4356,8 @@ wlan_emu_ui_mgr_t::wlan_emu_ui_mgr_t()
 {
     memset(server_address, 0, sizeof(server_address));
     test_cov_cases_q = queue_create();
+    pthread_cond_init(&m_heartbeat_cond, NULL);
+    pthread_mutex_init(&m_heartbeat_lock, NULL);
 }
 
 wlan_emu_ui_mgr_t::~wlan_emu_ui_mgr_t()

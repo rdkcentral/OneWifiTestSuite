@@ -16,6 +16,7 @@ int test_step_param_command::step_execute()
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n", __func__,
         __LINE__, step->step_number);
+    step->test_state = wlan_emu_tests_state_cmd_continue;
 
     fp = popen(step->u.cmd->test_cmd, "r");
     if (fp == NULL) {

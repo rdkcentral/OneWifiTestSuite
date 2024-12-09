@@ -66,12 +66,13 @@ int test_step_param_logredirect::step_execute()
     test_step_params_t *step = this;
     char tmp_log_result_file[128] = { 0 };
     char timestamp[24] = { 0 };
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n", __func__,
-        __LINE__, step->step_number);
+
+    wlan_emu_print(wlan_emu_log_level_dbg,
+        "%s:%d: Called for Test Step Num : %d log_operation : %d\n", __func__, __LINE__,
+        step->step_number, step->u.log_capture->log_operation);
 
     if (step->u.log_capture->log_operation == log_operation_type_start) {
         if (step->test_state == wlan_emu_tests_state_cmd_start) {
-            step->test_state = wlan_emu_tests_state_cmd_wait;
             step->u.log_capture->redirect_fd = open(step->u.log_capture->log_redirect_filename,
                 O_RDONLY);
             if (step->u.log_capture->redirect_fd == -1) {
@@ -113,6 +114,8 @@ int test_step_param_logredirect::step_execute()
                     __LINE__);
                 return RETURN_ERR;
             }
+            step->test_state = wlan_emu_tests_state_cmd_continue;
+            return RETURN_OK;
         }
     } else {
         test_step_params_t *log_step = NULL;
@@ -138,9 +141,11 @@ int test_step_param_logredirect::step_execute()
         log_step->u.log_capture->log_operation = log_operation_type_stop;
         pthread_cancel(log_step->u.log_capture->thread_id);
         close(log_step->u.log_capture->redirect_fd);
+        step->test_state = wlan_emu_tests_state_cmd_results;
+        return RETURN_OK;
     }
 
-    return RETURN_OK;
+    return RETURN_ERR;
 }
 
 int test_step_param_logredirect::step_timeout()

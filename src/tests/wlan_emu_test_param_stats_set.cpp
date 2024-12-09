@@ -1211,6 +1211,11 @@ int test_step_param_set_stats_t::step_execute()
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: webconfig_stats_set_instance success\n",
                 __func__, __LINE__);
+            if (step->fork == true) {
+                step->test_state = wlan_emu_tests_state_cmd_wait;
+            } else {
+                step->test_state = wlan_emu_tests_state_cmd_continue;
+            }
             return RETURN_OK;
         }
     } else {
@@ -1248,10 +1253,15 @@ int test_step_param_set_stats_t::step_timeout()
                 step->timeout_count++;
                 if (step->u.wifi_stats_set->set_exec_duration < reference->stats_duration) {
                     wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: Duration for current instance: %d\n", __func__, __LINE__,
-                        step->u.wifi_stats_set->set_exec_duration);
+                            "%s:%d: Duration for current instance: %d\n", __func__, __LINE__,
+                            step->u.wifi_stats_set->set_exec_duration);
                     step->u.wifi_stats_set->set_exec_duration++;
-                    step->test_state = wlan_emu_tests_state_cmd_continue;
+                    if (step->fork == true) {
+                        step->test_state = wlan_emu_tests_state_cmd_wait;
+                    } else {
+                        step->test_state = wlan_emu_tests_state_cmd_continue;
+                    }
+
                     return RETURN_OK;
                 }
             }
@@ -1275,20 +1285,24 @@ int test_step_param_set_stats_t::step_timeout()
                 step->u.wifi_stats_set->current_stats_set_count = count - 1;
                 step->u.wifi_stats_set->set_exec_duration = 0;
                 wlan_emu_print(wlan_emu_log_level_dbg,
-                    "%s:%d: Next instance for step number : %d\n", __func__, __LINE__,
-                    step->step_number);
+                        "%s:%d: Next instance for step number : %d\n", __func__, __LINE__,
+                        step->step_number);
                 ret = webconfig_stats_set_instance();
                 if (ret != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: webconfig_stats_set_instance failed\n", __func__, __LINE__);
+                            "%s:%d: webconfig_stats_set_instance failed\n", __func__, __LINE__);
                     step->test_state = wlan_emu_tests_state_cmd_abort;
                     return RETURN_ERR;
                 } else {
                     wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: webconfig_stats_set_instance success\n", __func__, __LINE__);
+                            "%s:%d: webconfig_stats_set_instance success\n", __func__, __LINE__);
                 }
                 step->u.wifi_stats_set->set_exec_duration++;
-                step->test_state = wlan_emu_tests_state_cmd_continue;
+                if (step->fork == true) {
+                    step->test_state = wlan_emu_tests_state_cmd_wait;
+                } else {
+                    step->test_state = wlan_emu_tests_state_cmd_continue;
+                }
                 return RETURN_OK;
             }
         }

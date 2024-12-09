@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include "timespec_macro.h"
 #define HEART_BEAT_TRIGGER_TIME 15
+#define POLL_PERIOD 1
 
 test_step_params_t *wlan_emu_tests_t::get_step_from_index(int index)
 {
@@ -106,6 +108,12 @@ int wlan_emu_tests_t::get_next_pending_step(test_step_params_t **next_step)
                 *next_step = temp_step;
                 return RETURN_OK;
             }
+            if (test_config->pending_steps == 0) {
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: All steps executed\n", __func__,
+                    __LINE__);
+                *next_step = NULL;
+                return RETURN_OK;
+            }
         }
     }
 
@@ -130,7 +138,11 @@ void *wlan_emu_tests_t::test_function(void *arg)
     int rc, nbytes;
     struct timespec tv_now;
     struct timespec tv_ref;
-    unsigned int tv_sec = 0;
+    time_t tv_sec;
+    time_t time_diff;
+    struct timespec t_start;
+    timespecclear(&t_start);
+    struct timespec interval;
     int ret;
 
     wlan_emu_tests_t *test = (wlan_emu_tests_t *)arg;
@@ -190,19 +202,21 @@ void *wlan_emu_tests_t::test_function(void *arg)
             step->test_state = wlan_emu_tests_state_cmd_start;
         }
         clock_gettime(CLOCK_MONOTONIC, &tv_now);
-        time_to_wait.tv_sec = tv_now.tv_sec + 1; // wait for 1 seconds
-        time_to_wait.tv_nsec = tv_now.tv_nsec;
+        interval.tv_sec = POLL_PERIOD; // wait for 1 seconds
+        //interval.tv_nsec = tv_now.tv_nsec;
+        interval.tv_nsec = 0;
+        timespecadd(&t_start, &interval, &time_to_wait);
 
         tv_sec = (tv_now.tv_sec - tv_ref.tv_sec);
         if ((tv_now.tv_sec - tv_ref.tv_sec) >= (HEART_BEAT_TRIGGER_TIME)) {
             // send an heartbeat to controller
-            tmp_ui_mgr->cci_report_heartbeat_to_tda();
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Sent Heartbeat\n", __func__, __LINE__);
+            pthread_cond_signal(tmp_ui_mgr->get_heartbeat_cond_var());
             clock_gettime(CLOCK_MONOTONIC, &tv_ref);
         }
 
         rc = test->test_wait(&time_to_wait);
-        if (rc == 0) {
+        if ((rc == 0) || (queue_count(test->m_results) != 0)) {
             switch (step->test_state) {
             case wlan_emu_tests_state_cmd_start:
             case wlan_emu_tests_state_cmd_wait:
@@ -254,29 +268,58 @@ void *wlan_emu_tests_t::test_function(void *arg)
                     test_config->current_test_step);
                 test->stop();
                 test->test_fail();
-                break;
-            }
-        } else if (rc == ETIMEDOUT) {
-            // First check if the step state is abort ?
-            if (step->test_state == wlan_emu_tests_state_cmd_abort) {
-                wlan_emu_print(wlan_emu_log_level_err,
-                    "%s:%d: Fail for step_number : %d test_state  : %d step_count : %d \n",
-                    __func__, __LINE__, step->step_number, step->test_state,
-                    test_config->current_test_step);
-                test->stop();
-                test->test_fail();
-                step->test_state = wlan_emu_tests_state_cmd_abort;
                 test_config->test_state = wlan_emu_tests_state_cmd_abort;
                 pthread_mutex_unlock(&test->m_lock);
                 pthread_exit(NULL);
                 return NULL;
             }
-
-            // perform respective step timeout function
-            step->step_timeout();
-
-            if (step->test_state == wlan_emu_tests_state_cmd_results) {
-                test->clear_pending_step(step->step_seq_num);
+        } else if (rc == ETIMEDOUT) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: In ETIMEDOUT\n", __func__, __LINE__);
+            int temp_step_count = 0;
+            clock_gettime(CLOCK_MONOTONIC, &t_start);
+            test_step_params_t *temp_wait_step;
+            for (temp_step_count = (step_total - 1); temp_step_count >= 0; temp_step_count--) {
+                temp_wait_step = test->get_step_from_index(temp_step_count);
+                if (temp_wait_step != NULL) {
+                    // When timeout occurs check for all the steps
+                    if ((temp_wait_step->test_state == wlan_emu_tests_state_cmd_wait) ||
+                        (temp_wait_step->test_state == wlan_emu_tests_state_cmd_continue)) {
+                        wlan_emu_print(wlan_emu_log_level_info,
+                            "%s:%d: Executing timeout for wait_step_number : %d test_state  : "
+                            "%d current step_count : %d \n",
+                            __func__, __LINE__, temp_wait_step->step_number,
+                            temp_wait_step->test_state, test_config->current_test_step);
+                        temp_wait_step->step_timeout();
+                    }
+                    // check error for all the steps, if in abort state return
+                    if (temp_wait_step->test_state == wlan_emu_tests_state_cmd_abort) {
+                        wlan_emu_print(wlan_emu_log_level_err,
+                            "%s:%d: Fail for step_number : %d test_state  : %d step_count "
+                            ": %d \n",
+                            __func__, __LINE__, temp_wait_step->step_number,
+                            temp_wait_step->test_state, test_config->current_test_step);
+                        test->stop();
+                        test->test_fail();
+                        temp_wait_step->test_state = wlan_emu_tests_state_cmd_abort;
+                        test_config->test_state = wlan_emu_tests_state_cmd_abort;
+                        pthread_mutex_unlock(&test->m_lock);
+                        pthread_exit(NULL);
+                        return NULL;
+                    }
+                    // if we get results here, then change the state to results.
+                    if (temp_wait_step->test_state == wlan_emu_tests_state_cmd_results) {
+                        test->clear_pending_step(temp_wait_step->step_seq_num);
+                        wlan_emu_print(wlan_emu_log_level_info,
+                            "%s:%d: received results for step_number : %d test_state  : %d "
+                            "step_count : %d \n",
+                            __func__, __LINE__, temp_wait_step->step_number,
+                            temp_wait_step->test_state, test_config->current_test_step);
+                    }
+                }
+            }
+            // From the above loop, if current executing step might achieved results state move to
+            // next pending steps.
+            if ((step->test_state == wlan_emu_tests_state_cmd_results) || (step->fork == true)) {
                 ret = test->get_next_pending_step(&step);
                 if (ret == RETURN_ERR) {
                     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: next pending step failed\n",
@@ -299,63 +342,8 @@ void *wlan_emu_tests_t::test_function(void *arg)
                     return NULL;
                 }
                 test_config->current_test_step = (step_total - (step->step_seq_num) - 1);
-                continue;
-
-            } else if ((step->test_state == wlan_emu_tests_state_cmd_wait)) {
-                // Here wait means get the available next step
-                wlan_emu_print(wlan_emu_log_level_info,
-                    "%s:%d: wait for step_number : %d test_state  : %d step_count : %d \n",
-                    __func__, __LINE__, step->step_number, step->test_state,
-                    test_config->current_test_step);
-                if (step->fork == true) {
-                    // upate the next available step
-                    ret = test->get_next_pending_step(&step);
-                    if (ret == RETURN_ERR) {
-                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: next pending step failed\n",
-                            __func__, __LINE__);
-                        step->test_state = wlan_emu_tests_state_cmd_abort;
-                        test_config->test_state = wlan_emu_tests_state_cmd_abort;
-                        pthread_mutex_unlock(&test->m_lock);
-                        pthread_exit(NULL);
-                        return NULL;
-                    }
-                    // here temp_step cant be null
-                    if (step == NULL) {
-                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pending step is NULL\n",
-                            __func__, __LINE__);
-                        step->test_state = wlan_emu_tests_state_cmd_abort;
-                        test_config->test_state = wlan_emu_tests_state_cmd_abort;
-                        pthread_mutex_unlock(&test->m_lock);
-                        pthread_exit(NULL);
-                        return NULL;
-                    }
-
-                    test_config->current_test_step = (step_total - (step->step_seq_num) - 1);
-                    wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: In fork new current_test_step : %d\n", __func__, __LINE__,
-                        test_config->current_test_step);
-                }
-                continue;
-            } else if ((step->test_state == wlan_emu_tests_state_cmd_continue)) {
-                // continue executing the same step
-                wlan_emu_print(wlan_emu_log_level_info,
-                    "%s:%d: continue for step_number : %d test_state  : %d step_count : %d \n",
-                    __func__, __LINE__, step->step_number, step->test_state,
-                    test_config->current_test_step);
-                continue;
-            } else {
-                wlan_emu_print(wlan_emu_log_level_err,
-                    "%s:%d: Fail for step_number : %d test_state  : %d step_count : %d \n",
-                    __func__, __LINE__, step->step_number, step->test_state,
-                    test_config->current_test_step);
-                test->stop();
-                test->test_fail();
-                step->test_state = wlan_emu_tests_state_cmd_abort;
-                test_config->test_state = wlan_emu_tests_state_cmd_abort;
-                pthread_mutex_unlock(&test->m_lock);
-                pthread_exit(NULL);
-                return NULL;
             }
+            continue;
         }
     }
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: number : %d step->test_state  : %d\n", __func__,
@@ -547,8 +535,7 @@ int wlan_emu_tests_t::start()
 
     m_msg_mgr->subscribe(this);
     if (pthread_join(m_tid, NULL)) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pthread detach failed\n", __func__,
-            __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pthread join failed\n", __func__, __LINE__);
         return -1;
     }
 

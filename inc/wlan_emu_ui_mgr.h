@@ -83,6 +83,9 @@ class wlan_emu_ui_mgr_t {
     char ssl_cert[128];
     char ssl_key[64];
     int cci_error_code;
+    pthread_cond_t m_heartbeat_cond;
+    pthread_mutex_t m_heartbeat_lock;
+    pthread_t m_heartbeat_tid;
 
 private:
     int io_prep(void);
@@ -203,6 +206,11 @@ public:
     {
         m_webconfig_data = cci_webconfig;
     }
+
+    inline pthread_cond_t* get_heartbeat_cond_var() {
+        return &m_heartbeat_cond;
+    }
+    static void *heartbeat_function(void *arg);
 
     static void set_webconfig_cci_data(rbusHandle_t handle, const rbusEvent_t *event,
         rbusEventSubscription_t *subscription);
