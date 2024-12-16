@@ -58,7 +58,7 @@ class wlan_emu_sim_sta_mgr_t {
     }
 
 public:
-    int init(wifi_hal_capability_t *cap);
+    int init(wifi_interface_name_idex_map_t *if_map, int if_map_size);
     int start();
     void stop();
 
