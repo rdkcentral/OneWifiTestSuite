@@ -1,25 +1,31 @@
 project(wifi_emu)
 
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+set(EXECUTABLE_NAME cci)
 
-set(INCLUDES_WIFIEMU inc src/utils)
-include_directories(${INCLUDES_WIFIEMU})
-
-file(GLOB_RECURSE SOURCES
-    "src/utils/*.c"
-    "src/*.cpp"
+file(GLOB_RECURSE MAIN_SRC  "src/utils/*.c"
+    "src/ui/*.cpp"
     "src/tests/*.cpp"
     "src/messages/*.cpp"
     "src/utils/*.cpp"
     "src/utils/*.hpp"
     "src/sta/*.cpp"
-)
+    "src/bus/common/*.cpp"
+    "src/bus/rdkb/*.cpp"
+    "src/common/*.cpp")
 
-add_executable(cci ${SOURCES})
-target_link_libraries(cci 
-       pcap rdk_wifiemulatorhal wifi_webconfig stdc++fs cjson pthread rbus curl)
+if (CONFIG_EXT_AGENT_CCI)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/src/external_agent_cci")
+        message(FATAL_ERROR "Critical error! Stopping CMake.")
+    endif()
+    # Add subdirectory external_agent
+    add_subdirectory(src/external_agent_cci)
+else()
+    # Add subdirectory for gateway
+    add_subdirectory(src/gateway_cci)
+endif()
+
+# Set include directories for the subproject
+target_include_directories(${EXECUTABLE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/inc  ${CMAKE_SOURCE_DIR}/src/utils ${CMAKE_SOURCE_DIR}/src/bus/rdkb)
 
 install(TARGETS cci DESTINATION bin)
 

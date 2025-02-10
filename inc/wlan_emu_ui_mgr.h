@@ -1,7 +1,10 @@
 #ifndef WLAN_UI_MGR_H
 #define WLAN_UI_MGR_H
+#include "cci_wifi_utils.hpp"
 #include "wifi_util.h"
 #include "wifi_webconfig.h"
+#include "wlan_common_utils.h"
+#include "wlan_emu_bus.h"
 #include "wlan_emu_cjson.h"
 #include "wlan_emu_common.h"
 #include <rbus.h>
@@ -23,7 +26,7 @@ typedef struct {
     active_msmt_t blaster;
     hash_map_t *assoc_dev_hash_map[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
     acl_data_t acl_data;
-    rbusHandle_t rbus_handle;
+    bus_handle_t handle;
     instant_measurement_config_t harvester;
     queue_t *csi_data_queue;
 } webconfig_cci_t;
@@ -66,7 +69,7 @@ class wlan_emu_ui_mgr_t {
     wlan_emu_pollables_t m_pollables[wlan_emu_sig_type_max];
     char input_test_buff[256];
     char tda_url[128];
-    char cci_out_file_list[64];
+    char cci_out_file_list[128];
     char test_config_file[128]; // Config file used for testing
     char interface[16];
     // Configuration present in Config file
@@ -86,14 +89,13 @@ class wlan_emu_ui_mgr_t {
     pthread_cond_t m_heartbeat_cond;
     pthread_mutex_t m_heartbeat_lock;
     pthread_t m_heartbeat_tid;
+    wlan_emu_bus_t *m_bus_mgr;
 
 private:
     int io_prep(void);
-    int rbus_init(void);
+    int bus_init();
     int process_input_request(void);
     void send_signal(wlan_emu_sig_type_t sig);
-    int http_get(const char *get_url, const char *output_file);
-    int http_post(const char *post_url, const char *input_file);
     int decode_config_file(void);
     int decode_json_config(char *json_str);
     int decode_coverage_1_config(cJSON *conf);
@@ -104,7 +106,6 @@ private:
     void push_config_to_queue(wlan_emu_test_case_config *test);
     int download_test_files(void);
     int parse_test_config_json_parameters(cJSON *root_json);
-    void copy_string(char *destination, char *source, int len);
     int get_file_name_from_url(char *url, char *file_name, int len);
     int decode_step_common_config(cJSON *entry, test_step_params_t *step_config);
     int decode_step_param_config(cJSON *entry, test_step_params_t **step_config);
@@ -144,6 +145,11 @@ public:
     wlan_emu_sig_type_t io_wait(void);
     int analyze_request(void);
     unsigned int upload_results(void);
+
+    inline void add_bus_mgr(wlan_emu_bus_t *bus_mgr)
+    {
+        m_bus_mgr = bus_mgr;
+    }
 
     inline void signal_received_request(void)
     {
@@ -189,13 +195,13 @@ public:
         return test_cov_cases_q;
     }
 
-    inline rbusHandle_t get_rbus_handle(void)
+    inline bus_handle_t get_bus_handle(void)
     {
-        return m_webconfig_data->rbus_handle;
+        return m_webconfig_data->handle;
     }
 
     int decode_pcap_frame_type(char *frame_type_str, frame_capture_request_t *frame_capture_req);
-    int rbus_send(char *data);
+    int bus_send(char *data, wlan_emu_bus_t *bus_mgr);
 
     inline webconfig_cci_t *get_webconfig_data()
     {
@@ -212,10 +218,8 @@ public:
     }
     static void *heartbeat_function(void *arg);
 
-    static void set_webconfig_cci_data(rbusHandle_t handle, const rbusEvent_t *event,
-        rbusEventSubscription_t *subscription);
-    void (*func_ptr)(rbusHandle_t handle, const rbusEvent_t *event,
-        rbusEventSubscription_t *subscription);
+    static void set_webconfig_cci_data(char *event_name, raw_data_t *data);
+    void (*func_ptr)(char *event_name, raw_data_t *data);
     void cci_cache_update(webconfig_subdoc_data_t *data);
     void mac_filter_cci_cache_update(webconfig_subdoc_data_t *data);
     void update_cci_subdoc_vap_data(webconfig_subdoc_data_t *data);
@@ -243,7 +247,6 @@ public:
     }
 
     int upload_file_to_server(char *file_name, char *path);
-    int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len);
     int wlan_emu_get_station_capability(wifi_hal_capability_t *sta_hal_cap);
 
     inline void update_station_capability(wifi_hal_capability_t *sta_hal_cap)
@@ -282,7 +285,6 @@ public:
     }
 
     void send_webconfig_ctrl_msg(webconfig_subdoc_type_t subdoc_type);
-    int copy_file(const char *source_path, const char *destination_path);
 
     inline int get_cci_error_code()
     {
@@ -294,6 +296,8 @@ public:
         cci_error_code = error_code;
         return;
     }
+
+    http_info_t *fill_http_info();
 
     wlan_emu_ui_mgr_t();
     ~wlan_emu_ui_mgr_t();

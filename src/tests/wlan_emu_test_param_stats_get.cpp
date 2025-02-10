@@ -2,13 +2,16 @@
 #include "wlan_emu_common.h"
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_bus.h"
 #include <assert.h>
 #include <cjson/cJSON.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <rbus.h>
 #include <sstream>
 #include <string>
+
+
+test_step_params_t *user_data = nullptr;
 
 int test_step_param_get_stats_t::step_frame_filter(wlan_emu_msg_t *msg)
 {
@@ -194,35 +197,42 @@ int test_step_param_get_stats_t::update_output_file_name()
     return RETURN_ERR;
 }
 
-void test_step_param_get_stats_t::stats_get_event_handler(rbusHandle_t handle,
-    rbusEvent_t const *event, rbusEventSubscription_t *subscription)
+void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_data_t *p_data)
 {
-    const char *event_name = event->name;
-    rbusValue_t value;
-    const char *json_str;
+    bus_error_t rc = bus_error_success;
+    const char *json_str = NULL;
     int len = 0;
-    test_step_params_t *step;
+    test_step_params_t *step = user_data;
     unsigned int count = 0;
     char file_name[128] = { 0 };
     char *temp_file_name;
     FILE *fp = NULL;
     char timestamp[24] = { 0 };
+    webconfig_cci_t *cci_webconfig;
+    cci_webconfig = step->m_ui_mgr->get_webconfig_data();
+    raw_data_t data;
 
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s: %d rbus event callback Event is %s \n", __func__,
+    memset(&data, 0, sizeof(raw_data_t));
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s: %d bus event callback Event is %s \n", __func__,
         __LINE__, event_name);
 
-    value = rbusObject_GetValue(event->data, NULL);
-    if (!value) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s FAIL: value is NULL\n", __FUNCTION__);
+    rc = step->m_bus_mgr->desc.bus_data_get_fn(&cci_webconfig->handle, event_name, &data);
+
+    if (rc != bus_error_success || (data.data_type != bus_data_type_string)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: bus_data_get_fn failed for %s\n", __func__,
+            __LINE__, event_name);
         return;
     }
-    json_str = rbusValue_GetString(value, &len);
+
+    json_str = new char[data.raw_data_len + 1]();
+    strncpy((char *)json_str, (char *)data.raw_data.bytes, data.raw_data_len);
+    len = data.raw_data_len;
+
     if (json_str == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s Null pointer,Rbus get string len=%d\n",
+        wlan_emu_print(wlan_emu_log_level_err, "%s Null pointer,bus get string len=%d\n",
             __FUNCTION__, len);
         return;
     }
-    step = static_cast<test_step_params_t *>(subscription->userData);
 
     pthread_mutex_lock(&step->s_lock);
     count = queue_count(step->u.wifi_stats_get->get_stats_queue);
@@ -230,6 +240,7 @@ void test_step_param_get_stats_t::stats_get_event_handler(rbusHandle_t handle,
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
             __LINE__);
+        free((void *)json_str);
         return;
     }
 
@@ -245,6 +256,7 @@ void test_step_param_get_stats_t::stats_get_event_handler(rbusHandle_t handle,
             file_name);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         pthread_mutex_unlock(&step->s_lock);
+        free((void *)json_str);
         return;
     }
     fputs((const char *)json_str, fp);
@@ -260,11 +272,13 @@ int test_step_param_get_stats_t::start_subscription()
 {
     char subscription[128] = { 0 };
     int index = 0;
-    int rc = RBUS_ERROR_SUCCESS;
+    int rc = bus_error_success;
     test_step_params_t *step = this;
     webconfig_cci_t *cci_webconfig;
     cci_webconfig = step->m_ui_mgr->get_webconfig_data();
+    raw_data_t data;
 
+    memset(&data, 0, sizeof(raw_data_t));
     if (get_subscription_string(subscription, sizeof(subscription)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Get Subscription string failed for step : %d \n", __func__, __LINE__,
@@ -274,9 +288,11 @@ int test_step_param_get_stats_t::start_subscription()
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Subscription string : %s\n", __func__, __LINE__,
         subscription);
 
-    rc = rbusEvent_Subscribe(cci_webconfig->rbus_handle, subscription,
-        test_step_param_get_stats_t::stats_get_event_handler, this, 0);
-    if (rc != RBUS_ERROR_SUCCESS) {
+    user_data = step;
+    rc = step->m_bus_mgr->desc.bus_event_subs_fn(&cci_webconfig->handle, subscription,
+        (void *)test_step_param_get_stats_t::stats_get_event_handler, NULL, 0);
+
+    if (rc != bus_error_success) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Subscription failed for string : %s for step : %d rc : %d\n", __func__,
             __LINE__, subscription, step->step_number, rc);
@@ -293,7 +309,7 @@ int test_step_param_get_stats_t::stop_subscription(test_step_params_t *step)
 {
     char subscription[128] = { 0 };
     int index = 0;
-    int rc = RBUS_ERROR_SUCCESS;
+    int rc = bus_error_success;
     webconfig_cci_t *cci_webconfig;
     cci_webconfig = step->m_ui_mgr->get_webconfig_data();
 
@@ -305,8 +321,8 @@ int test_step_param_get_stats_t::stop_subscription(test_step_params_t *step)
     }
     wlan_emu_print(wlan_emu_log_level_dbg, " UnSubscription string : %s\n", subscription);
 
-    rc = rbusEvent_Unsubscribe(cci_webconfig->rbus_handle, subscription);
-    if (rc != RBUS_ERROR_SUCCESS) {
+    rc = step->m_bus_mgr->desc.bus_event_unsubs_fn(&cci_webconfig->handle, subscription);
+    if (rc != bus_error_success) {
         wlan_emu_print(wlan_emu_log_level_err, "Failed to UnSubscribe to %s: %d\n", subscription,
             rc);
         step->test_state = wlan_emu_tests_state_cmd_abort;
@@ -320,8 +336,6 @@ int test_step_param_get_stats_t::stop_subscription(test_step_params_t *step)
 
 int test_step_param_get_stats_t::step_execute()
 {
-    rbusHandle_t handle;
-    int rc = RBUS_ERROR_SUCCESS;
     test_step_params_t *step = this;
     test_step_params_t *step_to_be_stopped = NULL;
     int timeout = 0;
@@ -480,7 +494,7 @@ int test_step_param_get_stats_t::step_upload_files(FILE *output_file, bool *upda
                     res_file_name);
                 *update_to_tda = true;
                 temp_res_file = strdup(res_file_name);
-                if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name,
+                if (get_last_substring_after_slash(temp_res_file, res_file_name,
                         128) != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,

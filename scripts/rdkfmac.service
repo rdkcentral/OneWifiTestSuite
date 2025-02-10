@@ -1,0 +1,13 @@
+[Unit]
+Description=Install rdkfmac Driver
+After=wifi.service
+
+[Service]
+Type=forking
+RemainAfterExit=yes
+ExecStart=/usr/bin/rdkfmac_modprobe.sh start
+ExecStop=/usr/bin/rdkfmac_modprobe.sh stop
+Restart=always
+
+[Install]
+WantedBy=wifi-initialized.target

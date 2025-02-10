@@ -9,8 +9,6 @@ webconfig_subdoc_type_t subdoc_array[] = { webconfig_subdoc_type_private,
 
 int test_step_param_dml_reset::step_execute()
 {
-    int rc = RBUS_ERROR_SUCCESS;
-    rbusValue_t value;
     char *json_data;
     FILE *destination_file;
     int len = 0;
@@ -67,10 +65,10 @@ int test_step_param_dml_reset::step_execute()
         }
 
         json_data = dml_data.u.encoded.raw;
-        ret = step->m_ui_mgr->rbus_send(json_data);
+        ret = step->m_ui_mgr->bus_send(json_data, step->m_bus_mgr);
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: rbus send failed for Test Step Num : %d for subdoc : %d\n", __func__,
+                "%s:%d: bus send failed for Test Step Num : %d for subdoc : %d\n", __func__,
                 __LINE__, step->step_number, subdoc_array[count]);
             step->test_state = wlan_emu_tests_state_cmd_abort;
             free(json_data);

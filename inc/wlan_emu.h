@@ -7,7 +7,9 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_msg_mgr.h"
 #include "wlan_emu_sta_mgr.h"
+#include "wlan_emu_ext_sta_mgr.h"
 #include "wlan_emu_ui_mgr.h"
+#include "wlan_emu_bus.h"
 
 #define CCI_TEST_CONFIG_URL "Device.WiFi.Tests.TestConfigURL"
 #define CCI_TEST_RESULT_FILENAME "Device.WiFi.Tests.ResultsFileName"
@@ -22,7 +24,9 @@ class wlan_emu_tests_private_vap_t;
 class wlan_emu_t {
     wifi_hal_capability_t m_cap;
     wlan_emu_msg_mgr_t m_msg_mgr;
-    wlan_emu_sta_mgr_t m_sta_mgr;
+    wlan_emu_bus_t m_bus_mgr;
+    wlan_emu_sim_sta_mgr_t m_sim_sta_mgr;
+    wlan_emu_ext_sta_mgr_t m_ext_sta_mgr;
 #ifdef LINUX_VM
     wlan_emu_standalone_ui_mgr_t m_ui_mgr;
 #else
@@ -30,7 +34,7 @@ class wlan_emu_t {
 #endif
     static wlan_emu_tests_state_t m_state;
     static wlan_emu_dml_tests_state_t dml_state;
-    rbusHandle_t rbus_handle;
+    bus_handle_t handle;
 
 private:
     void update_state_io_wait_done(wlan_emu_sig_type_t val);
@@ -40,11 +44,9 @@ private:
 public:
     int init();
     int run();
-    void rbus_register_handlers();
-    static rbusError_t get_cci_handler(rbusHandle_t handle, rbusProperty_t property,
-        rbusGetHandlerOptions_t *opts);
-    static rbusError_t set_cci_handler(rbusHandle_t handle, rbusProperty_t property,
-        rbusSetHandlerOptions_t *opts);
+    void bus_register_handlers();
+    static bus_error_t get_cci_handler(char *event_name, raw_data_t *p_data);
+    static bus_error_t set_cci_handler(char *event_name, raw_data_t *p_data);
 
     // wifi_platform_type_t get_platform_type() { return m_cap.wifi_prop.platform_type; }
     inline wlan_emu_tests_state_t get_state()

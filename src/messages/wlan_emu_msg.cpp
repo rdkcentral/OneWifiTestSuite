@@ -1,10 +1,10 @@
 #include "wlan_emu_msg.h"
+#include "wlan_emu_log.h"
 #include "cci_wifi_utils.hpp"
 #include "common/ieee802_11_defs.h"
 #include "common/defs.h"
 #include "common/wpa_common.h"
 #include "wifi_hal.h"
-#include "wlan_emu_log.h"
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -110,6 +110,10 @@ const char *wlan_emu_msg_t::get_ops_string_by_msg_type()
         break;
     case wlan_emu_msg_type_webconfig:
         str = "webconfig_update";
+        break;
+    case wlan_emu_msg_type_agent:
+        str = "external_agent";
+        break;
     default:
         str = "unknown";
         break;
@@ -266,7 +270,7 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
         if (step->param_type == step_param_type_station_management) {
             if (step->u.sta_test->capture_sta_requests == true) {
                 step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.frm80211.u.frame.client_macaddr,
-                        &radio_index);
+                    &radio_index);
             }
         }
 

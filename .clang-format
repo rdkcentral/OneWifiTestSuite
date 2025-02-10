@@ -110,6 +110,22 @@ ForEachMacros:
   - foreach
   - Q_FOREACH
   - BOOST_FOREACH
+  - ds_tree_foreach
+  - ds_tree_foreach_iter
+  - ds_list_foreach
+  - ds_list_foreach_iter
+  - ds_dlist_iforeach
+  - ds_dlist_foreach
+  - ds_dlist_foreach_iter
+  - ds_dlist_foreach_safe
+  - json_array_foreach
+  - json_object_foreach
+  - cJSON_ArrayForEach
+  - for_each_element
+  - nla_for_each_attr
+  - nla_for_each_nested
+  - hash_map_foreach
+  - hash_map_foreach_safe
 IfMacros:
   - KJ_IF_MAYBE
 IncludeBlocks:   Preserve
@@ -187,7 +203,7 @@ RequiresExpressionIndentation: OuterScope
 SeparateDefinitionBlocks: Always
 ShortNamespaceLines: 1
 SkipMacroDefinitionBody: false
-SortIncludes:    CaseSensitive
+SortIncludes:    false
 SortJavaStaticImport: Before
 SortUsingDeclarations: LexicographicNumeric
 SpaceAfterCStyleCast: false
@@ -200,10 +216,10 @@ SpaceBeforeCpp11BracedList: true
 SpaceBeforeCtorInitializerColon: true
 SpaceBeforeInheritanceColon: true
 SpaceBeforeJsonColon: false
-SpaceBeforeParens: ControlStatements
+SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
   AfterControlStatements: true
-  AfterForeachMacros: true
+  AfterForeachMacros: false
   AfterFunctionDefinitionName: false
   AfterFunctionDeclarationName: false
   AfterIfMacros:   true

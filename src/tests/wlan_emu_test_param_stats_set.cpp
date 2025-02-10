@@ -2,14 +2,15 @@
 #include "wlan_emu_common.h"
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_bus.h"
 #include <assert.h>
 #include <cjson/cJSON.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <rbus.h>
 #include <sstream>
 #include <string>
 
+#if !defined(CONFIG_EXT_AGENT_CCI)
 extern "C" {
 int wifi_hal_emu_set_radio_channel_stats(unsigned int radio_index, bool emu_state,
     wifi_channelStats_t *chan_stat, unsigned int count, unsigned int phy_index,
@@ -26,7 +27,6 @@ int wifi_hal_emu_set_radio_temp(unsigned int radio_index, bool emu_state, int te
     unsigned int phy_index, unsigned int interface_index);
 void copy_chanstats_to_chandata(radio_chan_data_t *chan_data, wifi_channelStats_t *chan_stats);
 }
-
 int test_step_param_set_stats_t::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
@@ -1550,3 +1550,4 @@ test_step_param_set_radio_temperature_stats::~test_step_param_set_radio_temperat
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
 }
+#endif //CONFIG_EXT_AGENT_CCI

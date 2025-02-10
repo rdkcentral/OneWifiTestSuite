@@ -162,6 +162,8 @@ HOSTAP_LIB_FLAGS = -g -fPIC $(HOSTAP_INCLUDE_DIRS) -DHOSTAPD -DCONFIG_DRIVER_NL8
 PROGRAM = $(INSTALLDIR)/bin/wlan_emu
 
 INCLUDEDIRS = \
+    -I$(WLAN_EMU_HOME)/src/bus/rdkb \
+    -I$(WLAN_EMU_HOME)/src/bus/common \
     -I$(WLAN_EMU_HOME)/inc \
     -I$(WLAN_EMU_HOME)/src/utils \
     -I$(ONEWIFI_HOME)/halinterface/generic \
@@ -184,6 +186,8 @@ FRAMEWORK_SOURCES = $(wildcard $(WLAN_EMU_SRC)/*.cpp) \
     $(wildcard $(WLAN_EMU_SRC)/tests/*.cpp) \
     $(wildcard $(WLAN_EMU_SRC)/ui/*.cpp) \
     $(wildcard $(WLAN_EMU_SRC)/utils/*.cpp) \
+    $(wildcard $(WLAN_EMU_SRC)/bus/common/*.cpp) \
+    $(wildcard $(WLAN_EMU_SRC)/bus/rdkb/*.cpp) \
 
 FRAMEWORK_OBJECTS = $(FRAMEWORK_SOURCES:.cpp=.o)
 GENERIC_OBJECTS = $(GENERIC_SOURCES:.c=.o)
@@ -192,26 +196,26 @@ ALLOBJECTS = $(FRAMEWORK_OBJECTS) $(GENERIC_OBJECTS)
 all: $(HAL_LIBRARY) $(PROGRAM)
 
 $(HAL_LIBRARY): $(HAL_LIB_OBJECTS)
-    $(CXX) -shared -fPIC -o $@ $^
+	$(CXX) -shared -fPIC -o $@ $^
 
 
 $(PROGRAM): $(ALLOBJECTS)
-    $(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
+	$(CXX) -o $@ $(ALLOBJECTS) $(LDFLAGS)
 
 $(HAL_LIB_OBJECTS): %.o: %.c
-    $(CC) $(HAL_LIB_FLAGS) $(HOSTAP_LIB_FLAGS) -o $@ -c $<
+	$(CC) $(HAL_LIB_FLAGS) $(HOSTAP_LIB_FLAGS) -o $@ -c $<
 
 $(GENERIC_OBJECTS): %.o: %.c
-    $(CC) $(CXXFLAGS) -o $@ -c $<
+	$(CC) $(CXXFLAGS) -o $@ -c $<
 
 $(FRAMEWORK_OBJECTS): %.o: %.cpp
-    $(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
 
 # Clean target: "make -f Makefile.Linux clean" to remove unwanted objects and executables.
 #
 
 clean:
-    $(RM) $(HAL_LIB_OBJECTS) $(HAL_LIBRARY) $(ALLOBJECTS) $(PROGRAM)
+	$(RM) $(HAL_LIB_OBJECTS) $(HAL_LIBRARY) $(ALLOBJECTS) $(PROGRAM)
 
 #
 # Run target: "make -f Makefile.Linux run" to execute the application
@@ -219,5 +223,5 @@ clean:
 #             that you defined earlier in this file.
 #
 
-run:
-    ./$(PROGRAM)
+#run:
+#    ./$(PROGRAM)

@@ -57,9 +57,9 @@ int test_step_param_vap::step_execute()
                     step->execution_time);
         }
 
-        ret = step->m_ui_mgr->rbus_send(json_data);
+        ret = step->m_ui_mgr->bus_send(json_data, step->m_bus_mgr);
         if (ret != RETURN_OK) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: rbus_send failed\n", __func__, __LINE__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: bus_send failed\n", __func__, __LINE__);
             step->test_state = wlan_emu_tests_state_cmd_abort;
             free(json_data);
             cJSON_Delete(root_json);
@@ -147,7 +147,7 @@ int test_step_param_vap::step_upload_files(FILE *output_file, bool *update_to_td
                         __LINE__, res_file->pcap_file);
                     *update_to_tda = true;
                     temp_res_file = strdup(res_file->pcap_file);
-                    if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name,
+                    if (get_last_substring_after_slash(temp_res_file, res_file_name,
                             sizeof(res_file_name)) != RETURN_OK) {
                         wlan_emu_print(wlan_emu_log_level_err,
                             "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,

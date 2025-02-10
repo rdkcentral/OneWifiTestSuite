@@ -23,7 +23,7 @@ int test_step_param_get_file::step_execute()
         return RETURN_ERR;
     }
 
-    if (step->m_ui_mgr->copy_file(step->u.get_file->source_file, step->u.get_file->dest_filename) !=
+    if (copy_file(step->u.get_file->source_file, step->u.get_file->dest_filename) !=
         RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: File copy failed from src %s to dest %s step : %d\n", __func__, __LINE__,
@@ -93,7 +93,7 @@ int test_step_param_get_file::step_upload_files(FILE *output_file, bool *update_
                 step->u.get_file->dest_filename);
             *update_to_tda = true;
             temp_res_file = strdup(step->u.get_file->dest_filename);
-            if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name,
+            if (get_last_substring_after_slash(temp_res_file, res_file_name,
                     sizeof(res_file_name)) != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,

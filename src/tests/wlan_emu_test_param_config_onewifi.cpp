@@ -85,10 +85,10 @@ int test_step_param_config_onewifi::step_execute()
         }
     }
 
-    ret = step->m_ui_mgr->rbus_send(json_data);
+    ret = step->m_ui_mgr->bus_send(json_data, step->m_bus_mgr);
     if (ret != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: STEP : %d - rbus_send failed for subdoc_type : %d file : %s\n", __func__,
+            "%s:%d: STEP : %d - bus_send failed for subdoc_type : %d file : %s\n", __func__,
             __LINE__, step->step_number, step->frame_request.subdoc_type, file_to_read);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         cJSON_Delete(json_str);

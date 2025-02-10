@@ -1,19 +1,21 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_bus.h"
 #include <assert.h>
 
 int test_step_param_dmlsubdoc::step_execute()
 {
-    int rc = RBUS_ERROR_SUCCESS;
-    rbusValue_t value;
-    const char *str;
+    int rc = bus_error_success;
+    char *str;
     FILE *destination_file;
     int len = 0;
+    raw_data_t bus_data;
 
     webconfig_cci_t *webconfig_data = NULL;
 
     test_step_params_t *step = this;
 
+    memset(&bus_data, 0, sizeof(raw_data_t));
     webconfig_data = step->m_ui_mgr->get_webconfig_data();
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Called for Test Step Num : %d\n", __func__,
@@ -21,34 +23,42 @@ int test_step_param_dmlsubdoc::step_execute()
     step->frame_request.msg_type |= 1 << wlan_emu_msg_type_webconfig;
     step->frame_request.subdoc_type = webconfig_subdoc_type_dml;
 
-    rc = rbus_get(webconfig_data->rbus_handle, WIFI_WEBCONFIG_INIT_DML_DATA, &value);
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wlan_emu_print(wlan_emu_log_level_err, "rbus_get failed for [%s] with error [%d]\n",
+    rc = step->m_bus_mgr->desc.bus_data_get_fn(&webconfig_data->handle, WIFI_WEBCONFIG_INIT_DML_DATA,
+        &bus_data);
+    if (rc != bus_error_success) {
+        wlan_emu_print(wlan_emu_log_level_err, "bus_get failed for [%s] with error [%d]\n",
             WIFI_WEBCONFIG_INIT_DML_DATA, rc);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
 
     wlan_emu_print(wlan_emu_log_level_dbg,
-        "%s:%d rbus_get WIFI_WEBCONFIG_INIT_DML_DATA successfull \n", __FUNCTION__, __LINE__);
-    str = rbusValue_GetString(value, &len);
-    if (str == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Null pointer,Rbus set string len=%d\n",
+        "%s:%d bus_get WIFI_WEBCONFIG_INIT_DML_DATA successfull \n", __FUNCTION__, __LINE__);
+
+    if (bus_data.data_type != bus_data_type_string || bus_data.raw_data.bytes == NULL ||
+        bus_data.raw_data_len == 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Null pointer,bus set string len=%d\n",
             __FUNCTION__, __LINE__, len);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
+
+    str = new char[bus_data.raw_data_len + 1]();
+    strncpy(str, (char *)bus_data.raw_data.bytes, bus_data.raw_data_len);
+    len = bus_data.raw_data_len;
 
     destination_file = fopen(step->u.cmd->cmd_exec_log_filename, "w");
     if (destination_file == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__, __LINE__,
             step->u.cmd->cmd_exec_log_filename);
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        free(str);
         return RETURN_ERR;
     }
 
     fputs(str, destination_file);
     fclose(destination_file);
+    free(str);
 
     step->test_state = wlan_emu_tests_state_cmd_results;
     return RETURN_OK;
@@ -88,7 +98,7 @@ int test_step_param_dmlsubdoc::step_upload_files(FILE *output_file, bool *update
                 step->u.cmd->cmd_exec_log_filename);
             *update_to_tda = true;
             temp_res_file = strdup(step->u.cmd->cmd_exec_log_filename);
-            if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name,
+            if (get_last_substring_after_slash(temp_res_file, res_file_name,
                     sizeof(res_file_name)) != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,

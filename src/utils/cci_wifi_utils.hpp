@@ -15,6 +15,8 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <cjson/cJSON.h>
+#include <string>
 
 #define RETURN_OK 0
 #define RETURN_ERR -1
@@ -31,6 +33,18 @@
 #define DUMMY_PORT_OUT 68
 typedef unsigned char mac_addr_t[MAC_ADDR_LEN];
 
+typedef struct {
+    bool is_local_host_enabled;
+    char tda_url[128];
+    char ssl_cert[128];
+    char ssl_key[64];
+    char interface[16];
+} http_info_t;
+
+typedef enum {
+    http_status_code_ok = 200,
+} http_status_code_t;
+
 char *mac_to_str(unsigned char *mac, char *s_mac);
 int get_current_time_string(char *time_str, int time_str_len);
 int dmcli_get(char *cmd, char *value, unsigned int val_len);
@@ -40,6 +54,16 @@ int send_raw_packet(const void *data, size_t data_len, uint32_t source_nip, int 
     uint32_t dest_nip, int dest_port, const uint8_t *dest_arp, int ifindex);
 unsigned int ieee_frame_hdr_len(__le16 fc);
 bool is_zero_mac(mac_address_t mac);
+int https_get_file(http_info_t *http_info, const char *get_url, const char *output_file);
+void copy_string(char *destination, char *source, int len);
+int copy_file(const char *source_path, const char *destination_path);
+int https_post_file(http_info_t *http_info, const char *post_url, const char *input_file);
+int http_get(const std::string &url, std::string &response, long &status_code);
+int http_get_file(const std::string &url, const std::string &file_path, long &status_code);
+int http_post(const std::string &url, const std::string &data, long &status_code);
+int http_post_file(const std::string &url, const std::string &file_path, long &status_code);
+int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len);
+int decode_param_string_fn(cJSON *json, const char *key, cJSON *&value);
 
 const uint8_t MAC_BCAST_ADDR[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
@@ -345,4 +369,5 @@ static const uint8_t dummy_data[] = {
     0x00,
     0x00,
 };
+
 #endif /* cci_wifi_utils_hpp */

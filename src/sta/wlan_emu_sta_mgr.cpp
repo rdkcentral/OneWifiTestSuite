@@ -40,7 +40,7 @@ static void ovs_fdb_flush(char *bridge_name)
     pclose(fp);
 }
 
-int wlan_emu_sta_mgr_t::find_first_free_dev()
+int wlan_emu_sim_sta_mgr_t::find_first_free_dev()
 {
     unsigned int i;
     sta_info_t *sta_info;
@@ -55,27 +55,27 @@ int wlan_emu_sta_mgr_t::find_first_free_dev()
     return -1;
 }
 
-void wlan_emu_sta_mgr_t::set_dev_busy(unsigned int dev_id)
+void wlan_emu_sim_sta_mgr_t::set_dev_busy(unsigned int dev_id)
 {
     sta_info_t *sta_info;
     sta_info = (sta_info_t *)queue_peek(m_sta_info_map, dev_id);
     sta_info->status = sta_state_in_use;
 }
 
-void wlan_emu_sta_mgr_t::set_dev_free(unsigned int dev_id)
+void wlan_emu_sim_sta_mgr_t::set_dev_free(unsigned int dev_id)
 {
     sta_info_t *sta_info;
     sta_info = (sta_info_t *)queue_peek(m_sta_info_map, dev_id);
     sta_info->status = sta_state_free;
 }
 
-sta_info_t *wlan_emu_sta_mgr_t::get_devid_sta_info(unsigned int dev_id)
+sta_info_t *wlan_emu_sim_sta_mgr_t::get_devid_sta_info(unsigned int dev_id)
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: dev_id : %d\n", __func__, __LINE__, dev_id);
     return (sta_info_t *)queue_peek(m_sta_info_map, dev_id);
 }
 
-void wlan_emu_sta_mgr_t::send_heart_beat(char *key, heart_beat_data_t *heart_beat_data)
+void wlan_emu_sim_sta_mgr_t::send_heart_beat(char *key, heart_beat_data_t *heart_beat_data)
 {
     wlan_emu_sta_t *sta;
     sta_info_t *sta_info = NULL;
@@ -104,7 +104,7 @@ void add_to_bridge(char *interface, char *bridge)
 
     snprintf(ovs_cmd, BUFSIZ, "ovs-vsctl add-port %s %s", bridge, interface);
 
-    if ((fp = popen(ovs_cmd, "r")) != NULL) {
+    if ((fp = popen(ovs_cmd, "r")) == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to add %s from bridge %s\n", __func__,
             __LINE__, interface, bridge);
         return;
@@ -177,7 +177,7 @@ static void set_bridge_mac(char *bridge_name)
     pclose(fp);
 }
 
-void wlan_emu_sta_mgr_t::remove_all_sta(unsigned int test_id)
+void wlan_emu_sim_sta_mgr_t::remove_all_sta(unsigned int test_id)
 {
     wlan_emu_sta_t *sta, *tmp;
     sta_key_t key;
@@ -201,7 +201,7 @@ void wlan_emu_sta_mgr_t::remove_all_sta(unsigned int test_id)
             remove_from_bridge(sta_info->interface_name, sta_vap_info->bridge_name);
             ovs_fdb_flush(sta_vap_info->bridge_name);
 
-            wlan_emu_sta_mgr_t::create_key(key, tmp->get_dev_id(), test_id);
+            wlan_emu_sim_sta_mgr_t::create_key(key, tmp->get_dev_id(), test_id);
 
             set_dev_free(tmp->get_dev_id());
             wlan_emu_print(wlan_emu_log_level_dbg,
@@ -214,7 +214,7 @@ void wlan_emu_sta_mgr_t::remove_all_sta(unsigned int test_id)
     }
 }
 
-void wlan_emu_sta_mgr_t::remove_sta(sta_test_t *sta_test)
+void wlan_emu_sim_sta_mgr_t::remove_sta(sta_test_t *sta_test)
 {
     wlan_emu_sta_t *sta;
     sta_key_t key;
@@ -226,8 +226,8 @@ void wlan_emu_sta_mgr_t::remove_sta(sta_test_t *sta_test)
     }
 
     if (strlen(sta_test->key) == 0) {
-        wlan_emu_print(wlan_emu_log_level_dbg,
-            "%s:%d:Received key with length 0\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d:Received key with length 0\n", __func__,
+            __LINE__);
         return;
     }
 
@@ -262,7 +262,7 @@ void wlan_emu_sta_mgr_t::remove_sta(sta_test_t *sta_test)
     return;
 }
 
-int wlan_emu_sta_mgr_t::send_proto_pcap(wlan_emu_emu80211_cmd_type_t cmd_type,
+int wlan_emu_sim_sta_mgr_t::send_proto_pcap(wlan_emu_emu80211_cmd_type_t cmd_type,
     mac_address_t mac_addr, char *proto_file)
 {
     struct pcap_pkthdr header;
@@ -359,10 +359,12 @@ int wlan_emu_sta_mgr_t::send_proto_pcap(wlan_emu_emu80211_cmd_type_t cmd_type,
         mgmt->sa[0], mgmt->sa[5]);
     pcap_close(handle);
 
+    free(buff);
+
     return 0;
 }
 
-station_prototype_pcaps_t *wlan_emu_sta_mgr_t::get_frm80211_proto_pcap(
+station_prototype_pcaps_t *wlan_emu_sim_sta_mgr_t::get_frm80211_proto_pcap(
     station_prototype_t *station_prototype, unsigned int type)
 {
 
@@ -380,19 +382,23 @@ station_prototype_pcaps_t *wlan_emu_sta_mgr_t::get_frm80211_proto_pcap(
             station_prototype_pcaps_t *station_prototype_pcap =
                 (station_prototype_pcaps_t *)current->data;
 
-            wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: found type : %d file : %s msg_type : %d\n", __func__, __LINE__,
-                station_prototype_pcap->fc_request.frm80211_ops,
-                station_prototype_pcap->file_location, station_prototype_pcap->fc_request.msg_type);
-            if ((station_prototype_pcap != NULL) &&
-                (station_prototype_pcap->fc_request.msg_type == 1 << wlan_emu_msg_type_frm80211) &&
-                (station_prototype_pcap->fc_request.frm80211_ops == type)) {
+            if (station_prototype_pcap != NULL) {
 
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: found type : %d file : %s \n",
-                    __func__, __LINE__, type, station_prototype_pcap->file_location);
-                return station_prototype_pcap;
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: found type : %d file : %s msg_type : %d\n", __func__, __LINE__,
+                    station_prototype_pcap->fc_request.frm80211_ops,
+                    station_prototype_pcap->file_location,
+                    station_prototype_pcap->fc_request.msg_type);
+                if ((station_prototype_pcap->fc_request.msg_type ==
+                        1 << wlan_emu_msg_type_frm80211) &&
+                    (station_prototype_pcap->fc_request.frm80211_ops == type)) {
+
+                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: found type : %d file : %s \n",
+                        __func__, __LINE__, type, station_prototype_pcap->file_location);
+                    return station_prototype_pcap;
+                }
+                current = current->next;
             }
-            current = current->next;
         }
     }
 
@@ -401,7 +407,7 @@ station_prototype_pcaps_t *wlan_emu_sta_mgr_t::get_frm80211_proto_pcap(
     return nullptr;
 }
 
-int wlan_emu_sta_mgr_t::configure_proto_types_on_sta(sta_test_t *sta_test_config)
+int wlan_emu_sim_sta_mgr_t::configure_proto_types_on_sta(sta_test_t *sta_test_config)
 {
     station_prototype_pcaps_t *station_prototype_pcap = nullptr;
     int ret = RETURN_ERR;
@@ -469,12 +475,12 @@ int wlan_emu_sta_mgr_t::configure_proto_types_on_sta(sta_test_t *sta_test_config
     return ret;
 }
 
-int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
+int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
 {
     wlan_emu_sta_t *sta;
     int dev_id;
     unsigned int chan_list[1] = { 0 };
-    wifi_vap_info_map_t map;
+    wifi_vap_info_map_t *map = NULL;
     wifi_bss_info_t bss;
     sta_info_t *sta_info = NULL;
     mac_update_t mac_update;
@@ -526,8 +532,15 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         assert(0);
     }
 
-    map.num_vaps = 1;
-    memcpy(&map.vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
+    map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (map == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to allocate memory\n", __func__,
+            __LINE__);
+        delete (sta);
+        return RETURN_ERR;
+    }
+    map->num_vaps = 1;
+    memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
 
     pre_station_connectivity_profile_t *pre_connect_profile =
         sta_test_config->u.sta_management.pre_assoc_stats;
@@ -537,8 +550,10 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     // create the heart beat data
     heart_beat_data = new (std::nothrow) heart_beat_data_t;
     if (heart_beat_data == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat\n",
-            __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat\n", __func__,
+            __LINE__);
+        delete (sta);
+        free(map);
         return RETURN_ERR;
     }
     memcpy(heart_beat_data->mac, sta_test_config->sta_vap_config->u.sta_info.mac,
@@ -551,28 +566,33 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     delete (heart_beat_data);
     delete (pre_connect_profile);
 
-    if (wifi_hal_createVAP(dev_id, &map) == RETURN_OK) {
+    if (wifi_hal_createVAP(dev_id, map) == RETURN_OK) {
         sta->set_vap(sta_test_config->sta_vap_config);
     } else {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_createVAP failed for dev_id : %d\n",
-            __func__, __LINE__, dev_id);
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: wifi_hal_createVAP failed for radio index : %d\n", __func__, __LINE__,
+            sta_info->rdk_radio_index);
+        delete (sta);
+        free(map);
         return RETURN_ERR;
     }
 
     memset(&mac_update, 0, sizeof(mac_update_t));
     memcpy(mac_update.old_mac, sta_info->mac, sizeof(mac_address_t));
-    memcpy(sta_info->mac, map.vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
+    memcpy(sta_info->mac, map->vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
     memcpy(mac_update.new_mac, sta_info->mac, sizeof(mac_address_t));
-    memcpy(mac_update.bridge_name, map.vap_array[0].bridge_name, sizeof(mac_update.bridge_name));
-    mac_update.op_modes = sta_test_config->u.sta_management.op_modes; 
+    memcpy(mac_update.bridge_name, map->vap_array[0].bridge_name, sizeof(mac_update.bridge_name));
+    mac_update.op_modes = sta_test_config->u.sta_management.op_modes;
 
     sta->send_mac_update(&mac_update);
 
+    free(map);
     if (sta_test_config->is_station_prototype_enabled == true) {
         if (configure_proto_types_on_sta(sta_test_config) == RETURN_ERR) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: Unable to configure proto types on sta for dev_id : %d\n", __func__,
                 __LINE__, dev_id);
+            delete (sta);
             return RETURN_ERR;
         }
     }
@@ -593,6 +613,7 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: hal connect failed for dev_id : %d for vap_index : %d\n", __func__, __LINE__,
             dev_id, sta_test_config->sta_vap_config->vap_index);
+        delete (sta);
         return RETURN_ERR;
     }
 
@@ -605,14 +626,14 @@ int wlan_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     return 0;
 }
 
-int wlan_emu_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
+int wlan_emu_sim_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
 {
     wlan_emu_print(wlan_emu_log_level_info, "%s:%d: initiated\n", __func__, __LINE__);
     int array_size;
     unsigned int i = 0;
     sta_info_t *sta_info;
     wifi_interface_name_idex_map_t *interface_map;
-    wifi_vap_info_map_t vap_info_map;
+    wifi_vap_info_map_t *vap_info_map = NULL;
     mac_addr_str_t mac_str;
 
     m_sta_map = hash_map_create();
@@ -626,6 +647,12 @@ int wlan_emu_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
         return RETURN_ERR;
     }
 
+    vap_info_map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (vap_info_map == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to allocate memory\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
     array_size = ARRAY_SIZE(sta_hal_cap->wifi_prop.interface_map);
     for (i = 0; i < array_size; i++) {
         interface_map = &sta_hal_cap->wifi_prop.interface_map[i];
@@ -647,23 +674,23 @@ int wlan_emu_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
             sta_info->index = interface_map->index;
             sta_info->status = sta_state_free;
 
-            memset(&vap_info_map, 0, sizeof(wifi_vap_info_map_t));
-            if (wifi_hal_getRadioVapInfoMap(sta_info->rdk_radio_index, &vap_info_map) !=
-                RETURN_OK) {
+            memset(vap_info_map, 0, sizeof(wifi_vap_info_map_t));
+            if (wifi_hal_getRadioVapInfoMap(sta_info->rdk_radio_index, vap_info_map) != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: vap info map failed for radio index : %d\n", __func__, __LINE__,
                     sta_info->rdk_radio_index);
                 free(sta_info);
+                free(vap_info_map);
                 return RETURN_ERR;
             }
 
-            for (unsigned int itr = 0; itr < vap_info_map.num_vaps; itr++) {
-                if (vap_info_map.vap_array[itr].vap_index == sta_info->index) {
-                    memcpy(sta_info->mac, vap_info_map.vap_array[itr].u.sta_info.mac,
+            for (unsigned int itr = 0; itr < vap_info_map->num_vaps; itr++) {
+                if (vap_info_map->vap_array[itr].vap_index == sta_info->index) {
+                    memcpy(sta_info->mac, vap_info_map->vap_array[itr].u.sta_info.mac,
                         sizeof(mac_address_t));
                     wlan_emu_print(wlan_emu_log_level_dbg,
                         "%s:%d: itr : %d vap_index : %d mac : %s\n", __func__, __LINE__, itr,
-                        vap_info_map.vap_array[itr].vap_index, to_mac_str(sta_info->mac, mac_str));
+                        vap_info_map->vap_array[itr].vap_index, to_mac_str(sta_info->mac, mac_str));
                 }
             }
 
@@ -674,15 +701,16 @@ int wlan_emu_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
             queue_push(m_sta_info_map, sta_info);
         }
     }
+    free(vap_info_map);
 
     return 0;
 }
 
-void wlan_emu_sta_mgr_t::stop()
+void wlan_emu_sim_sta_mgr_t::stop()
 {
 }
 
-int wlan_emu_sta_mgr_t::start()
+int wlan_emu_sim_sta_mgr_t::start()
 {
     /*    unsigned int i, j;
         wifi_interface_name_idex_map_t  *map;
@@ -708,10 +736,14 @@ int wlan_emu_sta_mgr_t::start()
     return 0;
 }
 
-wlan_emu_sta_mgr_t::wlan_emu_sta_mgr_t()
+wlan_emu_sim_sta_mgr_t::wlan_emu_sim_sta_mgr_t()
 {
+    m_sta_map = NULL;
+    m_cap = NULL;
+    m_sta_info_map = NULL;
+    m_sta_info_count = 0;
 }
 
-wlan_emu_sta_mgr_t::~wlan_emu_sta_mgr_t()
+wlan_emu_sim_sta_mgr_t::~wlan_emu_sim_sta_mgr_t()
 {
 }

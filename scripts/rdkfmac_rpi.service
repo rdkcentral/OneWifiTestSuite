@@ -1,0 +1,12 @@
+[Unit]
+Description=Start cci for RPI
+After=CcspPandMSsp.service
+
+[Service]
+Type=forking
+RemainAfterExit=yes
+ExecStart=/usr/bin/rdkfmac_rpi.sh 
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

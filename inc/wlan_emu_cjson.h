@@ -60,3 +60,77 @@
             return RETURN_ERR;                                                              \
         }                                                                                   \
     }
+
+#define encode_param_string(json, key, value)                                              \
+    {                                                                                      \
+        if (cJSON_AddStringToObject(json, key, value) == NULL) {                           \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to add %s for key:%s\n", \
+                __func__, __LINE__, value, key);                                           \
+            return RETURN_ERR;                                                             \
+        }                                                                                  \
+    }
+
+#define encode_param_integer(json, key, value)                                             \
+    {                                                                                      \
+        if (cJSON_AddNumberToObject(json, key, value) == NULL) {                           \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to add %d for key:%s\n", \
+                __func__, __LINE__, value, key);                                           \
+            return RETURN_ERR;                                                             \
+        }                                                                                  \
+    }
+
+#define encode_param_array(json, key, param)                                                    \
+    {                                                                                           \
+        if ((param = cJSON_CreateArray()) == NULL) {                                            \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to create array\n", __func__, \
+                __LINE__);                                                                      \
+            return RETURN_ERR;                                                                  \
+        }                                                                                       \
+        if (cJSON_AddItemToObject(json, key, param) == false) {                                 \
+            cJSON_Delete(param);                                                                \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to add array for key:%s\n",   \
+                __func__, __LINE__, key);                                                       \
+            return RETURN_ERR;                                                                  \
+        }                                                                                       \
+    }
+
+#define encode_param_array_item_object(json, param)                                               \
+    {                                                                                             \
+        param = cJSON_CreateObject();                                                             \
+        if (param == NULL) {                                                                      \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to create object\n", __func__,  \
+                __LINE__);                                                                        \
+            return RETURN_ERR;                                                                    \
+        }                                                                                         \
+        if (cJSON_AddItemToArray(json, param) == false) {                                         \
+            cJSON_Delete(param);                                                                  \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to add array item\n", __func__, \
+                __LINE__);                                                                        \
+            return RETURN_ERR;                                                                    \
+        }                                                                                         \
+    }
+
+#define encode_param_array_item_string(json, value)                                               \
+    {                                                                                             \
+        cJSON *param = cJSON_CreateString(value);                                                 \
+        if (param == NULL) {                                                                      \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to create object\n", __func__,  \
+                __LINE__);                                                                        \
+            return RETURN_ERR;                                                                    \
+        }                                                                                         \
+        if (cJSON_AddItemToArray(json, param) == false) {                                         \
+            cJSON_Delete(param);                                                                  \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to add array item\n", __func__, \
+                __LINE__);                                                                        \
+            return RETURN_ERR;                                                                    \
+        }                                                                                         \
+    }
+
+#define validate_param_string(param)                                                               \
+    {                                                                                              \
+        if ((param == NULL) || (cJSON_IsString(param) == false) || (param->valuestring == NULL)) { \
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Validation failed for string param\n",  \
+                __func__, __LINE__);                                                               \
+            return RETURN_ERR;                                                                     \
+        }                                                                                          \
+    }

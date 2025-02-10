@@ -1,4 +1,5 @@
 #include "wlan_emu_tests.h"
+#include "timespec_macro.h"
 #include "wlan_emu_log.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -6,7 +7,6 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include "timespec_macro.h"
 #define HEART_BEAT_TRIGGER_TIME 15
 #define POLL_PERIOD 1
 
@@ -77,7 +77,7 @@ int wlan_emu_tests_t::get_next_pending_step(test_step_params_t **next_step)
         *next_step = get_step_from_index(step_seq_num);
         if (next_step == NULL) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step is NULL for %d\n", __func__,
-                __LINE__);
+                __LINE__, step_seq_num);
             return RETURN_ERR;
         } else {
             return RETURN_OK;
@@ -157,8 +157,10 @@ void *wlan_emu_tests_t::test_function(void *arg)
 
     wlan_emu_ui_mgr_t *tmp_ui_mgr = test->get_ui_mgr();
     wlan_emu_msg_mgr_t *tmp_msg_mgr = test->get_msg_mgr();
-    wlan_emu_sta_mgr_t *tmp_sta_mgr = test->get_sta_mgr();
+    wlan_emu_sim_sta_mgr_t *tmp_sta_mgr = test->get_sta_mgr();
+    wlan_emu_ext_sta_mgr_t *tmp_ext_sta_mgr = test->get_ext_sta_mgr();
     wlan_emu_test_case_config *temp_test_config = test->get_test_config();
+    wlan_emu_bus_t *tmp_bus_mgr = test->get_bus_mgr();
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step total : %d\n", __func__, __LINE__,
         step_total);
@@ -177,7 +179,8 @@ void *wlan_emu_tests_t::test_function(void *arg)
             "%s:%d: step_number : %d test_state  : %d step_count : %d \n", __func__, __LINE__,
             step->step_number, step->test_state, test_config->current_test_step);
         if (step->test_state == wlan_emu_tests_state_cmd_request) {
-            step->step_add_mgr_data(tmp_msg_mgr, tmp_ui_mgr, tmp_sta_mgr, temp_test_config);
+            step->step_add_mgr_data(tmp_msg_mgr, tmp_ui_mgr, tmp_sta_mgr, tmp_ext_sta_mgr,
+                temp_test_config, tmp_bus_mgr);
             test_config->current_test_step = (step_total - (step->step_seq_num) - 1);
             if (step->capture_frames == true) {
                 step->test_results_queue = queue_create();
@@ -203,7 +206,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
         }
         clock_gettime(CLOCK_MONOTONIC, &tv_now);
         interval.tv_sec = POLL_PERIOD; // wait for 1 seconds
-        //interval.tv_nsec = tv_now.tv_nsec;
+        // interval.tv_nsec = tv_now.tv_nsec;
         interval.tv_nsec = 0;
         timespecadd(&t_start, &interval, &time_to_wait);
 
@@ -589,9 +592,11 @@ wlan_emu_tests_t::~wlan_emu_tests_t()
 }
 
 wlan_emu_tests_t::wlan_emu_tests_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
-    wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *config)
+    wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
+    wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr)
 {
     m_exit = false;
+    m_tid = 0;
     pthread_condattr_t cond_attr;
     pthread_condattr_init(&cond_attr);
     pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
@@ -605,7 +610,9 @@ wlan_emu_tests_t::wlan_emu_tests_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_
     add_msg_mgr(msg_mgr);
     add_ui_mgr(ui_mgr);
     add_sta_mgr(sta_mgr);
+    add_ext_sta_mgr(ext_sta_mgr);
     add_test_config(config);
+    add_bus_mgr(bus_mgr);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step total : %d \n", __func__, __LINE__,
         queue_count(config->test_steps_q));
 }

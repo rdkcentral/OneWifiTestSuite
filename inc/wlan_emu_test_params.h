@@ -4,20 +4,26 @@
 #include "wlan_emu_common.h"
 #include "wlan_emu_msg.h"
 #include "wlan_emu_ui_mgr.h"
+#include "wlan_emu_bus.h"
 #include <cstdio>
 #include <cstring>
+#include <vector>
+#include <string>
 
 class wlan_emu_msg_mgr_t;
 class wlan_emu_ui_mgr_t;
-class wlan_emu_sta_mgr_t;
+class wlan_emu_sim_sta_mgr_t;
+class wlan_emu_ext_sta_mgr_t;
 class wlan_emu_msg_t;
 
 class test_step_params_t {
 public:
     wlan_emu_msg_mgr_t *m_msg_mgr;
     wlan_emu_ui_mgr_t *m_ui_mgr;
-    wlan_emu_sta_mgr_t *m_sta_mgr;
+    wlan_emu_sim_sta_mgr_t *m_sim_sta_mgr;
+    wlan_emu_ext_sta_mgr_t *m_ext_sta_mgr;
     wlan_emu_test_case_config *m_step_parent_test_config;
+    wlan_emu_bus_t *m_bus_mgr;
     step_param_type_t param_type;
     /* Common Start*/
     char test_case_name[128];
@@ -59,7 +65,12 @@ public:
     virtual int step_upload_files(FILE *output_file, bool *update_to_tda) = 0;
     virtual void step_remove() = 0;
     virtual int step_frame_filter(wlan_emu_msg_t *msg) = 0;
-    int rbus_send(char *data);
+    int bus_send(char *data, wlan_emu_bus_t *bus_mgr);
+
+    inline void param_add_bus_mgr(wlan_emu_bus_t *mgr)
+    {
+        m_bus_mgr = mgr;
+    }
 
     inline void param_add_msg_mgr(wlan_emu_msg_mgr_t *mgr)
     {
@@ -71,9 +82,14 @@ public:
         m_ui_mgr = mgr;
     }
 
-    inline void param_add_sta_mgr(wlan_emu_sta_mgr_t *mgr)
+    inline void param_add_sta_mgr(wlan_emu_sim_sta_mgr_t *mgr)
     {
-        m_sta_mgr = mgr;
+        m_sim_sta_mgr = mgr;
+    }
+
+    inline void param_add_ext_sta_mgr(wlan_emu_ext_sta_mgr_t *mgr)
+    {
+        m_ext_sta_mgr = mgr;
     }
 
     inline void param_add_test_config(wlan_emu_test_case_config *mgr)
@@ -81,9 +97,9 @@ public:
         m_step_parent_test_config = mgr;
     }
 
-    inline wlan_emu_sta_mgr_t *param_get_sta_mgr()
+    inline wlan_emu_sim_sta_mgr_t *param_get_sta_mgr()
     {
-        return m_sta_mgr;
+        return m_sim_sta_mgr;
     }
 
     inline wlan_emu_test_case_config *param_get_test_case_config()
@@ -92,12 +108,15 @@ public:
     }
 
     inline void step_add_mgr_data(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
-        wlan_emu_sta_mgr_t *sta_mgr, wlan_emu_test_case_config *test_config)
+        wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
+        wlan_emu_test_case_config *test_config, wlan_emu_bus_t *bus_mgr)
     {
         param_add_msg_mgr(msg_mgr);
         param_add_ui_mgr(ui_mgr);
         param_add_sta_mgr(sta_mgr);
+        param_add_ext_sta_mgr(ext_sta_mgr);
         param_add_test_config(test_config);
+        param_add_bus_mgr(bus_mgr);
     }
 };
 
@@ -133,6 +152,11 @@ public:
 };
 
 class test_step_param_sta_management : public test_step_param_sta {
+private:
+
+    int step_timeout_ext_sta();
+    int push_ext_sta_result_files(const std::vector<std::string> &files);
+
 public:
     int decode_user_ap_config(cJSON *sta_root_json, wifi_vap_info_t *ap_vap_info);
     int update_sta_config(wifi_vap_info_t *ap_vap_config);
@@ -142,6 +166,7 @@ public:
     int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
+    int encode_external_sta_management_subdoc(std::string &cli_subdoc);
     test_step_param_sta_management();
     ~test_step_param_sta_management();
 };
@@ -204,8 +229,7 @@ public:
     char *get_scanmode_str();
     int update_output_file_name();
     int get_subscription_string(char *str, int str_len);
-    static void stats_get_event_handler(rbusHandle_t handle, rbusEvent_t const *event,
-        rbusEventSubscription_t *subscription);
+    static void stats_get_event_handler(char *event_name, raw_data_t *data);
     int step_frame_filter(wlan_emu_msg_t *msg);
     char *get_stats_response_type();
 };

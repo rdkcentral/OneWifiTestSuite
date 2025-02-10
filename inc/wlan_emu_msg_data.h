@@ -244,6 +244,25 @@ typedef struct {
     webconfig_subdoc_type_t subdoc_type;
 } wlan_emu_msg_type_webconfig_t;
 
+typedef enum {
+    wlan_emu_msg_agent_ops_type_cmd,
+    wlan_emu_msg_agent_ops_type_data
+} wlan_emu_msg_agent_ops_t;
+
+typedef enum {
+    wlan_emu_msg_agent_cmd_type_start,
+    wlan_emu_msg_agent_cmd_type_stop
+} wlan_emu_msg_agent_cmd_t;
+
+typedef struct {
+    wlan_emu_msg_agent_ops_t ops;
+
+    union {
+        wlan_emu_msg_agent_cmd_t cmd;
+        void *buf;
+    } u;
+} wlan_emu_msg_type_agent_msg_t;
+
 typedef struct {
     wlan_emu_msg_type_t type;
 
@@ -253,6 +272,7 @@ typedef struct {
         wlan_emu_msg_emu80211_t emu80211;
         wlan_emu_msg_frm80211_t frm80211;
         wlan_emu_msg_type_webconfig_t ow_webconfig;
+        wlan_emu_msg_type_agent_msg_t agent_msg;
     } u;
 } wlan_emu_msg_data_t;
 

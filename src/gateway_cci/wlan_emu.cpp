@@ -1,9 +1,16 @@
 #include "wlan_emu.h"
+#include "wlan_emu_bus.h"
 #include "wlan_emu_tests.h"
 #include <assert.h>
 #include <csignal>
 #include <stdio.h>
 #include <string.h>
+
+#if !defined(CONFIG_EXT_AGENT_CCI)
+#include "syscfg/syscfg.h"
+#endif // CONFIG_EXT_AGENT_CCI
+
+#define CCI_SIM_CLI_COUNT_SYS_ENTRY "onewifi_suite_sim_cli_count"
 
 extern "C" {
 INT wifi_hal_init();
@@ -64,7 +71,7 @@ int wlan_emu_t::run()
     //        get_platform_type());
 
     m_msg_mgr.start();
-    m_sta_mgr.start();
+    m_sim_sta_mgr.start();
     //    std::signal(SIGTERM, StationDisconnectHandler);
     while (exit == false) {
         switch (get_state()) {
@@ -75,6 +82,14 @@ int wlan_emu_t::run()
             // download the test and respective configs will be downloaded
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: in case wlan_emu_tests_state_cmd_request\n", __func__, __LINE__);
+            if (m_ext_sta_mgr.init() != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: update_external_agent_capabilities failed\n", __func__, __LINE__);
+                m_ui_mgr.signal_report_test_fail();
+                dml_state = wlan_emu_dml_tests_state_complete_failure;
+                break;
+            }
+
             if (m_ui_mgr.analyze_request() == RETURN_OK) {
                 // Download succesfull, trigger the start
                 m_ui_mgr.signal_downloaded_test_data();
@@ -164,109 +179,133 @@ int wlan_emu_t::start_test()
 
         switch (config->test_type) {
         case wlan_emu_test_1_subtype_radio:
-            test = new wlan_emu_tests_radio_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_radio_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
+                config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_private:
-            test = new wlan_emu_tests_private_vap_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_private_vap_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_public_xfinity_open:
-            test = new wlan_emu_tests_xfinity_open_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_xfinity_open_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_public_xfinity_secure:
-            test = new wlan_emu_tests_xfinity_secure_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_xfinity_secure_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_xhs:
-            test = new wlan_emu_tests_xhs_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_xhs_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
+                config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_lnf_enterprise:
-            test = new wlan_emu_tests_lnf_enterprise_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_lnf_enterprise_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_lnf_secure:
-            test = new wlan_emu_tests_lnf_secure_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_lnf_secure_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_mesh_backhaul:
-            test = new wlan_emu_tests_mesh_backhaul_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_mesh_backhaul_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_mesh_client:
-            test = new wlan_emu_tests_mesh_client_t(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_mesh_client_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_cc_probe_response:
-            test = new wlan_emu_tests_cli_probe_response(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_cli_probe_response(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_cc_authentication:
-            test = new wlan_emu_tests_cli_auth(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_cli_auth(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_connection_admission:
-            test = new wlan_emu_tests_connection_admission(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr,
-                config);
+            test = new wlan_emu_tests_connection_admission(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_access_control:
-            test = new wlan_emu_tests_access_control(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_access_control(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_stats_manager:
-            test = new wlan_emu_tests_stats_manager(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_stats_manager(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_steering_manager:
-            test = new wlan_emu_tests_steering_manager(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_steering_manager(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_optimization:
-            test = new wlan_emu_tests_optimization(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_optimization(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_grey_listing:
-            test = new wlan_emu_tests_grey_listing(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_grey_listing(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_active_passive_msrmnts:
-            test = new wlan_emu_tests_active_passive_msrmt(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr,
-                config);
+            test = new wlan_emu_tests_active_passive_msrmt(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_whix:
-            test = new wlan_emu_tests_whix(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_whix(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
+                config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_blaster:
-            test = new wlan_emu_tests_blaster(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_blaster(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
+                config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_motion:
-            test = new wlan_emu_tests_motion(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_motion(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
+                config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_finger_printing:
-            test = new wlan_emu_tests_finger_printing(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_finger_printing(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_tr_181:
-            test = new wlan_emu_tests_tr_181(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_tr_181(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
+                config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_webconfig:
-            test = new wlan_emu_tests_webconfig(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_webconfig(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_webpa:
-            test = new wlan_emu_tests_webpa(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_webpa(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
+                config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_3_subtype_pm_stats_get:
-            test = new wlan_emu_tests_stats_get(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_stats_get(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: Config test type : wlan_emu_test_3_subtype_pm_stats_get\n", __func__,
                 __LINE__);
@@ -275,7 +314,8 @@ int wlan_emu_t::start_test()
             test->start();
             break;
         case wlan_emu_test_3_subtype_pm_stats_set:
-            test = new wlan_emu_tests_stats_set(&m_msg_mgr, &m_ui_mgr, &m_sta_mgr, config);
+            test = new wlan_emu_tests_stats_set(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
+                &m_ext_sta_mgr, config, &m_bus_mgr);
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: Config test type : wlan_emu_test_3_subtype_pm_stats_set\n", __func__,
                 __LINE__);
@@ -313,163 +353,157 @@ void wlan_emu_t::abort_test()
 
 #define STR_LEN 128
 
-rbusError_t wlan_emu_t::set_cci_handler(rbusHandle_t handle, rbusProperty_t property,
-    rbusSetHandlerOptions_t *opts)
+bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data)
 {
-    (void)opts;
-    char const *name;
-    rbusValue_t value;
-    rbusValueType_t type;
     char parameter[STR_LEN] = { 0 };
-    char const *pTmp = NULL;
     int len = 0;
-
-    name = rbusProperty_GetName(property);
-    value = rbusProperty_GetValue(property);
-    type = rbusValue_GetType(value);
 
     if (get_dml_state() == wlan_emu_dml_tests_state_running) {
         wlan_emu_print(wlan_emu_log_level_info,
             "%s: Execution not allowed as test case is in running state\n", __FUNCTION__);
-        return RBUS_ERROR_INVALID_INPUT;
+        return bus_error_invalid_input;
     }
 
-    if (!name) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
-        return RBUS_ERROR_INVALID_INPUT;
+    if (!event_name) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+        return bus_error_invalid_input;
     }
 
     memset(parameter, 0, STR_LEN);
-    sscanf(name, "Device.WiFi.Tests.%200s", parameter);
+    sscanf(event_name, "Device.WiFi.Tests.%200s", parameter);
     if (strstr(parameter, "TestConfigURL")) {
-        if (type != RBUS_STRING) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
-            return RBUS_ERROR_INVALID_INPUT;
+        if (data->data_type != bus_data_type_string) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+            return bus_error_invalid_input;
         }
-        pTmp = rbusValue_GetString(value, &len);
-        strncpy(m_ui_mgr.get_tda_url(), pTmp, STR_LEN);
+        copy_string(m_ui_mgr.get_tda_url(), (char *)data->raw_data.bytes, STR_LEN);
     } else if (strstr(parameter, "ResultsFileName")) {
-        if (type != RBUS_STRING) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
-            return RBUS_ERROR_INVALID_INPUT;
+        if (data->data_type != bus_data_type_string) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+            return bus_error_invalid_input;
         }
-        pTmp = rbusValue_GetString(value, &len);
-        strncpy(m_ui_mgr.get_tda_output_file(), pTmp, STR_LEN);
+        copy_string(m_ui_mgr.get_tda_output_file(), (char *)data->raw_data.bytes, STR_LEN);
     } else if (strstr(parameter, "Interface")) {
-        if (type != RBUS_STRING) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
-            return RBUS_ERROR_INVALID_INPUT;
+        if (data->data_type != bus_data_type_string) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+            return bus_error_invalid_input;
         }
-        pTmp = rbusValue_GetString(value, &len);
-        strncpy(m_ui_mgr.get_tda_interface(), pTmp, STR_LEN);
+        copy_string(m_ui_mgr.get_tda_interface(), (char *)data->raw_data.bytes, STR_LEN);
     } else if (strstr(parameter, "SimulatedClientDevices")) {
-        if (type != RBUS_UINT32) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
-            return RBUS_ERROR_INVALID_INPUT;
+        if (data->data_type != bus_data_type_uint32) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+            return bus_error_invalid_input;
         }
-        int count = rbusValue_GetUInt32(value);
+        int count = data->raw_data.u32;
         if (count <= 0) {
-            return RBUS_ERROR_INVALID_INPUT;
+            return bus_error_invalid_input;
         }
         memcpy(m_ui_mgr.get_simulated_client_count(), &count, sizeof(int));
+
     } else if (strstr(parameter, "Start")) {
-        if (type != RBUS_BOOLEAN) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid Rbus property\n", __func__);
-            return RBUS_ERROR_INVALID_INPUT;
+        if (data->data_type != bus_data_type_boolean) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+            return bus_error_invalid_input;
         }
-        bool start = rbusValue_GetBoolean(value);
+        bool start = data->raw_data.b;
         if (start) {
             m_ui_mgr.signal_input();
         }
     }
-    return RBUS_ERROR_SUCCESS;
+    return bus_error_success;
 }
 
-rbusError_t wlan_emu_t::get_cci_handler(rbusHandle_t handle, rbusProperty_t property,
-    rbusGetHandlerOptions_t *opts)
+bus_error_t wlan_emu_t::get_cci_handler(char *event_name, raw_data_t *data)
 {
-    char const *name = rbusProperty_GetName(property);
-    rbusValue_t value;
-    char null_string[3] = { 0 };
-
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s: Rbus property=%s\n", __FUNCTION__, name);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s: bus property=%s\n", __FUNCTION__, event_name);
 
     char extension[64] = { 0 };
-    sscanf(name, "Device.WiFi.Tests.%s", extension);
+    sscanf((char *)event_name, "Device.WiFi.Tests.%63s", extension);
 
-    rbusValue_Init(&value);
+    memset(data, 0, sizeof(raw_data_t));
     if (strstr(extension, "TestConfigURL")) {
         if (m_ui_mgr.get_tda_url()[0] == '\0') {
-            rbusValue_SetString(value, null_string);
+            data->raw_data.bytes = new char[3]();
+            data->data_type = bus_data_type_string;
         } else {
-            rbusValue_SetString(value, m_ui_mgr.get_tda_url());
+            data->raw_data.bytes = new char[128]();
+            strncpy((char *)data->raw_data.bytes, m_ui_mgr.get_tda_url(), 127);
+            data->data_type = bus_data_type_string;
         }
     } else if (strstr(extension, "ResultsFileName")) {
+        data->raw_data.bytes = new char[64]();
         if (m_ui_mgr.get_tda_output_file()[0] == '\0') {
-            rbusValue_SetString(value, "results.txt");
+            strncpy((char *)data->raw_data.bytes, "results.txt", strlen("results.txt") + 1);
+            data->data_type = bus_data_type_string;
         } else {
-            rbusValue_SetString(value, m_ui_mgr.get_tda_output_file());
+            strncpy((char *)data->raw_data.bytes, m_ui_mgr.get_tda_output_file(), 63);
+            data->data_type = bus_data_type_string;
         }
     } else if (strstr(extension, "Interface")) {
+        data->raw_data.bytes = new char[16]();
         if (m_ui_mgr.get_tda_interface()[0] == '\0') {
-            rbusValue_SetString(value, "erouter0");
+            strncpy((char *)data->raw_data.bytes, "erouter0", strlen("erouter0") + 1);
+            data->data_type = bus_data_type_string;
         } else {
-            rbusValue_SetString(value, m_ui_mgr.get_tda_interface());
+            strncpy((char *)data->raw_data.bytes, m_ui_mgr.get_tda_interface(), 15);
+            data->data_type = bus_data_type_string;
         }
     } else if (strstr(extension, "SimulatedClientDevices")) {
-        int count = 0;
-        memcpy(&count, m_ui_mgr.get_simulated_client_count(), sizeof(int));
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s: count is %d\n", __func__, count);
-        if (count == 0) {
-            count = 100;
-        }
-        rbusValue_SetUInt32(value, count);
+        data->raw_data.u32 = (uint32_t)m_ui_mgr.get_simulated_client_count();
+        data->data_type = bus_data_type_uint32;
     } else if (strstr(extension, "Start")) {
-        rbusValue_SetBoolean(value, false);
+        data->raw_data.b = 0;
+        data->data_type = bus_data_type_boolean;
     } else if (strstr(extension, "Status")) {
-        rbusValue_SetUInt32(value, wlan_emu_t::get_dml_state());
+        data->raw_data.u32 = wlan_emu_t::get_dml_state();
+        data->data_type = bus_data_type_uint32;
     }
 
-    rbusProperty_SetValue(property, value);
-    rbusValue_Release(value);
-
-    return RBUS_ERROR_SUCCESS;
+    return bus_error_success;
 }
 
-void wlan_emu_t::rbus_register_handlers()
+void wlan_emu_t::bus_register_handlers()
 {
-    int rc = RBUS_ERROR_SUCCESS;
+    int rc = bus_error_success;
     unsigned char num_of_radio = 0, index = 0;
     char *component_name = "Cci";
-    rbusDataElement_t dataElements[] = {
-        { CCI_TEST_CONFIG_URL,              RBUS_ELEMENT_TYPE_PROPERTY,
-         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL } },
-        { CCI_TEST_RESULT_FILENAME,         RBUS_ELEMENT_TYPE_PROPERTY,
-         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL } },
-        { CCI_TEST_INTERFACE,               RBUS_ELEMENT_TYPE_PROPERTY,
-         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL } },
-        { CCI_TEST_SIMULATED_CLIENTDEVICES, RBUS_ELEMENT_TYPE_PROPERTY,
-         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL } },
-        { CCI_TEST_START,                   RBUS_ELEMENT_TYPE_PROPERTY,
-         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL } },
-        { CCI_TEST_STATUS,                  RBUS_ELEMENT_TYPE_PROPERTY,
-         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL } },
+
+    bus_data_element_t dataElements[] = {
+        { const_cast<char *>(CCI_TEST_CONFIG_URL),              bus_element_type_property,
+         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL },
+         slow_speed, ZERO_TABLE, { bus_data_type_string, true, 0, 0, 0, NULL }  },
+        { const_cast<char *>(CCI_TEST_RESULT_FILENAME),         bus_element_type_property,
+         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL },
+         slow_speed, ZERO_TABLE, { bus_data_type_string, true, 0, 0, 0, NULL }  },
+        { const_cast<char *>(CCI_TEST_INTERFACE),               bus_element_type_property,
+         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL },
+         slow_speed, ZERO_TABLE, { bus_data_type_string, true, 0, 0, 0, NULL }  },
+        { const_cast<char *>(CCI_TEST_SIMULATED_CLIENTDEVICES), bus_element_type_property,
+         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL },
+         slow_speed, ZERO_TABLE, { bus_data_type_uint32, true, 0, 0, 0, NULL }  },
+        { const_cast<char *>(CCI_TEST_START),                   bus_element_type_property,
+         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL },
+         slow_speed, ZERO_TABLE, { bus_data_type_boolean, true, 0, 0, 0, NULL } },
+        { const_cast<char *>(CCI_TEST_STATUS),                  bus_element_type_property,
+         { wlan_emu_t::get_cci_handler, wlan_emu_t::set_cci_handler, NULL, NULL, NULL, NULL },
+         slow_speed, ZERO_TABLE, { bus_data_type_uint32, true, 0, 0, 0, NULL }  },
     };
 
-    rc = rbus_open(&this->rbus_handle, component_name);
+    rc = this->m_bus_mgr.desc.bus_open_fn(&this->handle, component_name);
 
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s Rbus open failed\n", __FUNCTION__);
+    if (rc != bus_error_success) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s bus open failed\n", __FUNCTION__);
         return;
     }
 
-    rc = rbus_regDataElements(this->rbus_handle, sizeof(dataElements) / sizeof(rbusDataElement_t),
-        dataElements);
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s rbus_regDataElements failed\n", __FUNCTION__);
-        rbus_unregDataElements(this->rbus_handle, sizeof(dataElements) / sizeof(rbusDataElement_t),
-            dataElements);
-        rbus_close(this->rbus_handle);
+    rc = this->m_bus_mgr.desc.bus_reg_data_element_fn(&this->handle, dataElements,
+        sizeof(dataElements) / sizeof(bus_data_element_t));
+
+    if (rc != bus_error_success) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s bus_regDataElements failed\n", __FUNCTION__);
+        this->m_bus_mgr.desc.bus_unreg_data_elements_fn(&this->handle,
+            sizeof(dataElements) / sizeof(bus_data_element_t), dataElements);
+        this->m_bus_mgr.desc.bus_close_fn(&this->handle);
     }
 
     return;
@@ -497,17 +531,25 @@ int wlan_emu_t::init()
         return RETURN_ERR;
     }
 
-    rbus_register_handlers();
+    m_bus_mgr.bus_init();
+    bus_register_handlers();
+    m_ui_mgr.add_bus_mgr(&m_bus_mgr);
     m_ui_mgr.init();
-    if (m_sta_mgr.init(sta_cap) == RETURN_ERR) {
+    if (m_sim_sta_mgr.init(sta_cap) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_mgr init failed\n", __func__, __LINE__);
         free(sta_cap);
         return RETURN_ERR;
     }
+    // Init the external station manager
+    if (m_ext_sta_mgr.init() == RETURN_ERR) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d:  external_station manager init failed\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
     // wlan_emu_print(wlan_emu_log_level_info, "%s:%d: wlan emu msg collection started on platform
     // type: %d\n", __func__, __LINE__,
     //        get_platform_type());
-
     free(sta_cap);
     sta_cap = NULL;
 
@@ -517,6 +559,8 @@ int wlan_emu_t::init()
 wlan_emu_t::wlan_emu_t()
 {
     m_state = wlan_emu_tests_state_cmd_none;
+    m_ext_sta_mgr.m_bus_mgr = &m_bus_mgr;
+    m_ext_sta_mgr.handle = &handle;
 }
 
 wlan_emu_t::~wlan_emu_t()

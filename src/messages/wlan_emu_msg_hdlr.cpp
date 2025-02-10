@@ -402,6 +402,33 @@ void handle_webconfig_msg(char *f_tmp, wlan_emu_msg_data_t *f_data)
         f_data->u.ow_webconfig.subdoc_type);
 }
 
+void handle_agent_msg(char *f_tmp, wlan_emu_msg_data_t *f_data)
+{
+    void *buf_address;
+
+    if ((f_tmp == NULL) || (f_data == NULL)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: NULL Pointer f_tmp : %p f_data : %p\n",
+            __func__, __LINE__, f_tmp, f_data);
+        return;
+    }
+
+    memcpy(&(f_data->u.agent_msg.ops), f_tmp, sizeof(wlan_emu_msg_agent_ops_t));
+    f_tmp += sizeof(wlan_emu_msg_agent_ops_t);
+
+    if (f_data->u.agent_msg.ops == wlan_emu_msg_agent_ops_type_cmd) {
+        memcpy(&(f_data->u.agent_msg.u.cmd), f_tmp, sizeof(wlan_emu_msg_agent_cmd_t));
+        f_tmp += sizeof(wlan_emu_msg_agent_cmd_t);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: cmd : %d\n", __func__, __LINE__,
+            f_data->u.agent_msg.u.cmd);
+    } else if (f_data->u.agent_msg.ops == wlan_emu_msg_agent_ops_type_data) {
+        memcpy(&(buf_address), f_tmp, sizeof(void *));
+        f_tmp += sizeof(void *);
+        f_data->u.agent_msg.u.buf = buf_address;
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: buf : %p\n", __func__, __LINE__,
+            (unsigned char *)f_data->u.agent_msg.u.buf);
+    }
+}
+
 void wlan_emu_msg_hdlr_t::msg_hdlr_thread_func()
 {
     int rc, nbytes;
@@ -464,6 +491,9 @@ void wlan_emu_msg_hdlr_t::msg_hdlr_thread_func()
         case wlan_emu_msg_type_webconfig:
             handle_webconfig_msg(p_f_tmp, &f_data);
             break;
+        case wlan_emu_msg_type_agent:
+            handle_agent_msg(p_f_tmp, &f_data);
+            break;
         default:
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not handling any other messages\n",
                 __func__, __LINE__);
@@ -500,6 +530,7 @@ void *wlan_emu_msg_hdlr_t::msg_hdlr_thread_func(void *data)
 
 int wlan_emu_msg_hdlr_t::start()
 {
+    m_threadExit = false;
     if (pthread_create(&m_tid, NULL, wlan_emu_msg_hdlr_t::msg_hdlr_thread_func, this) != 0) {
         return -1;
     }

@@ -1,5 +1,5 @@
-#ifndef _WLAN_EMU_MSG_H
-#define _WLAN_EMU_MSG_H
+#ifndef WLAN_EMU_MSG_H
+#define WLAN_EMU_MSG_H
 
 #include "wlan_emu_test_params.h"
 #include "wlan_emu_msg_data.h"
@@ -65,6 +65,11 @@ public:
         return m_msg.u.ow_webconfig.subdoc_type;
     }
 
+    inline wlan_emu_msg_agent_ops_t get_agent_ops_type()
+    {
+        return m_msg.u.agent_msg.ops;
+    }
+
     bool operator==(wlan_emu_msg_mac80211_t *grd);
     bool operator==(wlan_emu_msg_cfg80211_t *grd);
     bool operator==(wlan_emu_msg_emu80211_t *grd);
@@ -89,6 +94,11 @@ public:
         return &m_msg.u.emu80211;
     }
 
+    inline wlan_emu_msg_type_agent_msg_t *get_agent_msg()
+    {
+        return &m_msg.u.agent_msg;
+    }
+
     void send_ctrl_msg(wlan_emu_test_coverage_t coverage, wlan_emu_test_type_t type,
         wlan_emu_emu80211_ctrl_type_t ctrl);
     void send_ctrl_msg(unsigned char *buff, unsigned int buff_len,
@@ -106,4 +116,4 @@ public:
     ~wlan_emu_msg_t();
 };
 
-#endif // _WLAN_EMU_MSG_H
+#endif // WLAN_EMU_MSG_H

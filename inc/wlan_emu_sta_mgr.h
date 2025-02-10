@@ -1,27 +1,14 @@
 #ifndef _WLAN_EMU_STA_MGR_H
 #define _WLAN_EMU_STA_MGR_H
 
+#include <cstdio>
 #include "collection.h"
 #include "wifi_base.h"
 #include "wifi_hal.h"
 #include "wlan_emu_common.h"
 #include "wlan_emu_msg_data.h"
 
-typedef enum { sta_state_free = 0, sta_state_in_use } sta_state_t;
-
-typedef struct {
-    unsigned int phy_index; /**< actual index of the phy device */
-    unsigned int rdk_radio_index; /**< radio index of upper layer */
-    wifi_interface_name_t interface_name;
-    wifi_interface_name_t bridge_name;
-    int vlan_id;
-    unsigned int index;
-    wifi_vap_name_t vap_name;
-    mac_address_t mac;
-    sta_state_t status;
-} sta_info_t;
-
-class wlan_emu_sta_mgr_t {
+class wlan_emu_sim_sta_mgr_t {
     hash_map_t *m_sta_map;
     wifi_hal_capability_t *m_cap;
     queue_t *m_sta_info_map; // sta_info_t
@@ -68,8 +55,8 @@ public:
     int send_proto_pcap(wlan_emu_emu80211_cmd_type_t cmd_type, mac_address_t mac_addr,
         char *proto_file);
 
-    wlan_emu_sta_mgr_t();
-    ~wlan_emu_sta_mgr_t();
+    wlan_emu_sim_sta_mgr_t();
+    ~wlan_emu_sim_sta_mgr_t();
 };
 
-#endif // _WLAN_EMU_STA_MGR_H
+#endif //_WLAN_EMU_STA_MGR_H

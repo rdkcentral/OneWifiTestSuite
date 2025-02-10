@@ -119,8 +119,8 @@ int test_step_param_get_pattern_files::step_upload_files(FILE *output_file, bool
                 }
                 *update_to_tda = true;
                 temp_res_file = strdup(res_file_name);
-                if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name,
-                        128) != RETURN_OK) {
+                if (get_last_substring_after_slash(temp_res_file, res_file_name, 128) !=
+                    RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
                         __LINE__, temp_res_file);
@@ -192,8 +192,10 @@ test_step_param_get_pattern_files::test_step_param_get_pattern_files()
             "%s:%d: allocation of memory for get_pattern_files failed for %d\n", __func__, __LINE__,
             step->step_number);
         step->is_step_initialized = false;
+        return;
+    } else {
+        memset(step->u.get_pattern_files, 0, sizeof(get_pattern_files_t));
     }
-    memset(step->u.get_pattern_files, 0, sizeof(get_pattern_files_t));
 
     step->u.get_pattern_files->get_pattern_files_queue = queue_create();
     if (step->u.get_pattern_files->get_pattern_files_queue == nullptr) {

@@ -113,7 +113,7 @@ int test_step_param_command::step_upload_files(FILE *output_file, bool *update_t
                 step->u.cmd->cmd_exec_log_filename);
             *update_to_tda = true;
             temp_res_file = strdup(step->u.cmd->cmd_exec_log_filename);
-            if (step->m_ui_mgr->get_last_substring_after_slash(temp_res_file, res_file_name,
+            if (get_last_substring_after_slash(temp_res_file, res_file_name,
                     sizeof(res_file_name)) != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,

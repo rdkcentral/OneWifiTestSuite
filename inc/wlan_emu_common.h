@@ -4,9 +4,9 @@
 #include "collection.h"
 #include "wifi_base.h"
 #include "wifi_webconfig.h"
+#include "wlan_emu_common.h"
 #include <new> // For std::nothrow
 #include <pthread.h>
-#include <rbus.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,7 +30,8 @@ typedef enum {
     wlan_emu_msg_type_cfg80211,
     wlan_emu_msg_type_mac80211,
     wlan_emu_msg_type_frm80211,
-    wlan_emu_msg_type_webconfig
+    wlan_emu_msg_type_webconfig,
+    wlan_emu_msg_type_agent
 } wlan_emu_msg_type_t;
 
 typedef enum {
@@ -129,6 +130,12 @@ typedef enum {
     wlan_emu_dml_tests_state_complete_failure,
 } wlan_emu_dml_tests_state_t;
 
+typedef enum {
+    client_connection_type_no_user_input = 0,
+    client_connection_type_internal,
+    client_connection_type_external
+} wlan_emu_connection_type_t;
+
 typedef char configurator_t[32];
 typedef char reference_t[8][32];
 
@@ -182,7 +189,8 @@ typedef enum {
     step_param_type_mgmt_frame_capture,
     step_param_type_get_pattern_files,
     step_param_type_timed_wait,
-    step_param_type_config_onewifi
+    step_param_type_config_onewifi,
+    step_param_type_ext_station_management
 } step_param_type_t;
 
 typedef struct {
@@ -278,10 +286,10 @@ typedef struct {
 } mgmt_frame_capture_t;
 
 typedef enum {
-    wlan_emu_mode_ht   = 1,
-    wlan_emu_mode_vht  = 2,
-    wlan_emu_mode_he   = 4,
-    wlan_emu_mode_eht  = 8,
+    wlan_emu_mode_ht = 1,
+    wlan_emu_mode_vht = 2,
+    wlan_emu_mode_he = 4,
+    wlan_emu_mode_eht = 8,
 } wlan_emu_op_modes;
 
 // Connectivity is called as management
@@ -339,6 +347,7 @@ typedef struct {
     bool capture_sta_requests;
     bool wait_connection;
     mac_address_t custom_mac;
+    wlan_emu_connection_type_t connection_type;
 
     union {
         sta_management_t sta_management;
@@ -382,6 +391,20 @@ typedef struct {
     int op_modes;
     char bridge_name[32];
 } mac_update_t;
+
+typedef enum { sta_state_free = 0, sta_state_in_use } sta_state_t;
+
+typedef struct {
+    unsigned int phy_index; /* actual index of the phy device */
+    unsigned int rdk_radio_index; /* radio index of upper layer */
+    wifi_interface_name_t interface_name;
+    wifi_interface_name_t bridge_name;
+    int vlan_id;
+    unsigned int index;
+    wifi_vap_name_t vap_name;
+    mac_address_t mac;
+    sta_state_t status;
+} sta_info_t;
 
 #ifdef __cplusplus
 }
