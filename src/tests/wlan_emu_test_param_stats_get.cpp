@@ -10,9 +10,6 @@
 #include <sstream>
 #include <string>
 
-
-test_step_params_t *user_data = nullptr;
-
 int test_step_param_get_stats_t::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
@@ -197,20 +194,22 @@ int test_step_param_get_stats_t::update_output_file_name()
     return RETURN_ERR;
 }
 
-void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_data_t *p_data)
+void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
     bus_error_t rc = bus_error_success;
     const char *json_str = NULL;
     int len = 0;
-    test_step_params_t *step = user_data;
+    test_step_params_t *step = NULL;
     unsigned int count = 0;
     char file_name[128] = { 0 };
     char *temp_file_name;
     FILE *fp = NULL;
     char timestamp[24] = { 0 };
     webconfig_cci_t *cci_webconfig;
-    cci_webconfig = step->m_ui_mgr->get_webconfig_data();
     raw_data_t data;
+
+    step = static_cast<test_step_params_t *>(userData);
+    cci_webconfig = step->m_ui_mgr->get_webconfig_data();
 
     memset(&data, 0, sizeof(raw_data_t));
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: %d bus event callback Event is %s \n", __func__,
@@ -288,9 +287,8 @@ int test_step_param_get_stats_t::start_subscription()
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Subscription string : %s\n", __func__, __LINE__,
         subscription);
 
-    user_data = step;
     rc = step->m_bus_mgr->desc.bus_event_subs_fn(&cci_webconfig->handle, subscription,
-        (void *)test_step_param_get_stats_t::stats_get_event_handler, NULL, 0);
+        (void *)test_step_param_get_stats_t::stats_get_event_handler, this, 0);
 
     if (rc != bus_error_success) {
         wlan_emu_print(wlan_emu_log_level_err,

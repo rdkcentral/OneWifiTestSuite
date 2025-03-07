@@ -477,8 +477,10 @@ static rbusError_t rbus_set_handler(rbusHandle_t handle, rbusProperty_t property
     raw_data_t bus_data;
     bus_error_t ret = bus_error_success;
     char *event_name;
+    bus_user_data_t bus_userdata;
     event_name = (char *)rbusProperty_GetName(property);
 
+    bus_userdata.handle = handle;
     memset(&bus_data, 0, sizeof(raw_data_t));
     if (event_name == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d rbus event name is NULL\n", __func__,
@@ -512,7 +514,7 @@ static rbusError_t rbus_set_handler(rbusHandle_t handle, rbusProperty_t property
                 return RBUS_ERROR_INVALID_OPERATION;
             }
 #endif
-            ret = user_cb->set_handler(event_name, &bus_data);
+            ret = user_cb->set_handler(event_name, &bus_data, &bus_userdata);
             if (ret != bus_error_success) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d user cb processing failed:%d for %s\n", __func__, __LINE__, ret,
@@ -530,6 +532,7 @@ static rbusError_t rbus_get_handler(rbusHandle_t handle, rbusProperty_t property
     raw_data_t bus_data;
     bus_error_t ret = bus_error_success;
     char *event_name;
+    bus_user_data_t bus_userdata;
     event_name = (char *)rbusProperty_GetName(property);
 
     if (event_name == NULL) {
@@ -546,7 +549,7 @@ static rbusError_t rbus_get_handler(rbusHandle_t handle, rbusProperty_t property
     rbusValue_t value = rbusProperty_GetValue(property);
     rbusValueType_t type = rbusValue_GetType(value);
     bus_data.data_type = convert_rbus_to_bus_data_type(type);
-
+    bus_userdata.handle = handle;
     bus_mux_reg_node_data_t *reg_node_data = (bus_mux_reg_node_data_t *)get_bus_cb_data_info(
         get_bus_mux_reg_cb_map(), event_name);
     if (reg_node_data == NULL) {
@@ -562,7 +565,7 @@ static rbusError_t rbus_get_handler(rbusHandle_t handle, rbusProperty_t property
     }
 
     if (user_cb->get_handler != NULL) {
-        ret = user_cb->get_handler(event_name, &bus_data);
+        ret = user_cb->get_handler(event_name, &bus_data, &bus_userdata);
         if (ret == bus_error_success) {
             ret = set_rbus_property_data(event_name, property, &bus_data);
         } else {
@@ -753,6 +756,7 @@ static void rbus_sub_handler(rbusHandle_t handle, rbusEvent_t const *event,
     bus_error_t ret = bus_error_success;
     raw_data_t bus_data;
     char *event_name = (char *)subscription->eventName;
+    void *userData = subscription->userData;
 
     memset(&bus_data, 0, sizeof(raw_data_t));
     wlan_emu_print(wlan_emu_log_level_info, "%s:%d rbus sub cb triggered for %s\n", __func__,
@@ -768,7 +772,7 @@ static void rbus_sub_handler(rbusHandle_t handle, rbusEvent_t const *event,
     if (user_cb->sub_handler != NULL) {
         ret = get_rbus_object_data(event_name, event->data, &bus_data);
         if (ret == bus_error_success) {
-            user_cb->sub_handler((char *)event_name, &bus_data);
+            user_cb->sub_handler((char *)event_name, &bus_data, userData);
         }
     }
 }
@@ -783,6 +787,7 @@ static void rbus_sub_ex_async_handler(rbusHandle_t handle, rbusEventSubscription
         __LINE__);
     if (subscription) {
         char *event_name = (char *)subscription->eventName;
+        void *userData = subscription->userData;
         wlan_emu_print(wlan_emu_log_level_info, "%s: %d event name (%s) subscribe %s\n", __func__,
             __LINE__, subscription->eventName,
             bus_error == bus_error_success ? "success" : "failed");
@@ -795,7 +800,7 @@ static void rbus_sub_ex_async_handler(rbusHandle_t handle, rbusEventSubscription
         }
         bus_sub_callback_table_t *user_cb = &sub_node_data->cb_table;
         if (user_cb->sub_ex_async_handler != NULL) {
-            user_cb->sub_ex_async_handler((char *)event_name, bus_error);
+            user_cb->sub_ex_async_handler((char *)event_name, bus_error, userData);
         }
     }
 }
@@ -1373,7 +1378,7 @@ static bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle, bus_event_
 }
 
 static bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event,
-    raw_data_t *input_data, raw_data_t *output_data, bool input_bus_data)
+    raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data)
 {
     rbusError_t rc;
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;

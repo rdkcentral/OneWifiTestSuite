@@ -353,8 +353,9 @@ void wlan_emu_t::abort_test()
 
 #define STR_LEN 128
 
-bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data)
+bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data, bus_user_data_t *user_data)
 {
+    (void)user_data;
     char parameter[STR_LEN] = { 0 };
     int len = 0;
 
@@ -413,10 +414,10 @@ bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data)
     return bus_error_success;
 }
 
-bus_error_t wlan_emu_t::get_cci_handler(char *event_name, raw_data_t *data)
+bus_error_t wlan_emu_t::get_cci_handler(char *event_name, raw_data_t *data, bus_user_data_t *user_data)
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: bus property=%s\n", __FUNCTION__, event_name);
-
+    (void)user_data;
     char extension[64] = { 0 };
     sscanf((char *)event_name, "Device.WiFi.Tests.%63s", extension);
 

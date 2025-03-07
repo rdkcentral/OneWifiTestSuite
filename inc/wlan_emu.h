@@ -45,8 +45,8 @@ public:
     int init();
     int run();
     void bus_register_handlers();
-    static bus_error_t get_cci_handler(char *event_name, raw_data_t *p_data);
-    static bus_error_t set_cci_handler(char *event_name, raw_data_t *p_data);
+    static bus_error_t get_cci_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data);
+    static bus_error_t set_cci_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data);
 
     // wifi_platform_type_t get_platform_type() { return m_cap.wifi_prop.platform_type; }
     inline wlan_emu_tests_state_t get_state()

@@ -229,7 +229,7 @@ public:
     char *get_scanmode_str();
     int update_output_file_name();
     int get_subscription_string(char *str, int str_len);
-    static void stats_get_event_handler(char *event_name, raw_data_t *data);
+    static void stats_get_event_handler(char *event_name, raw_data_t *data, void *userData);
     int step_frame_filter(wlan_emu_msg_t *msg);
     char *get_stats_response_type();
 };

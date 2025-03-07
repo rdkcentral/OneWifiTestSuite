@@ -218,7 +218,7 @@ public:
     }
     static void *heartbeat_function(void *arg);
 
-    static void set_webconfig_cci_data(char *event_name, raw_data_t *data);
+    static void set_webconfig_cci_data(char *event_name, raw_data_t *data, void *userData);
     void (*func_ptr)(char *event_name, raw_data_t *data);
     void cci_cache_update(webconfig_subdoc_data_t *data);
     void mac_filter_cci_cache_update(webconfig_subdoc_data_t *data);

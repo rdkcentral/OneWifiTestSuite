@@ -32,8 +32,6 @@ webconfig_subdoc_type_t find_subdoc_type(webconfig_t *config, cJSON *json);
 
 unsigned int wlan_emu_ui_mgr_t::m_token = 0xdeadbeef;
 webconfig_cci_t cci_webconfig;
-wlan_emu_ui_mgr_t *bus_user_data =
-    nullptr; // will be removed after bus absraction is done in onewifi
 
 http_info_t *wlan_emu_ui_mgr_t::fill_http_info()
 {
@@ -3392,8 +3390,9 @@ void wlan_emu_ui_mgr_t::cci_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus_data)
+void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus_data, void *userData)
 {
+    (void)userData;
     int len = 0;
     char *pTmp = NULL;
     webconfig_subdoc_data_t data;
@@ -3402,7 +3401,7 @@ void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: %d bus event callback Event is %s \n", __func__,
         __LINE__, event_name);
 
-    ptr = static_cast<wlan_emu_ui_mgr_t *>(bus_user_data);
+    ptr = static_cast<wlan_emu_ui_mgr_t *>(userData);
     pTmp = new char[bus_data->raw_data_len + 1]();
     if (pTmp == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: malloc failed\n", __func__, __LINE__);
@@ -3970,12 +3969,11 @@ int wlan_emu_ui_mgr_t::bus_init()
         return RETURN_ERR;
     }
 
-    bus_user_data = (wlan_emu_ui_mgr_t *)this;
     for (i = 0; i < ARRAY_SIZE(bus_events); i++) {
         memset(&bus_data, 0, sizeof(raw_data_t));
 
         rc = m_bus_mgr->desc.bus_event_subs_fn(&m_webconfig_data->handle, bus_events[i],
-            (void *)wlan_emu_ui_mgr_t::set_webconfig_cci_data, NULL, 0);
+            (void *)wlan_emu_ui_mgr_t::set_webconfig_cci_data, this, 0);
 
         if (rc != bus_error_success) {
             wlan_emu_print(wlan_emu_log_level_err,
