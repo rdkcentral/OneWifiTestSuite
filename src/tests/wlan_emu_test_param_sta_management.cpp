@@ -61,7 +61,6 @@ int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_co
     test_step_params_t *step_config = this;
     wifi_vap_info_t *sta_vap_config = step_config->u.sta_test->sta_vap_config;
 
-    sta_vap_config->radio_index = ap_vap_config->radio_index;
     sta_vap_config->vap_mode = wifi_vap_mode_sta;
     snprintf(sta_vap_config->bridge_name, sizeof(sta_vap_config->bridge_name), "%s",
         ap_vap_config->bridge_name);

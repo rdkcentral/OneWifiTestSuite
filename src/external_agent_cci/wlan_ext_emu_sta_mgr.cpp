@@ -20,6 +20,7 @@ INT wifi_hal_disconnect(INT ap_index);
 INT wifi_hal_getRadioVapInfoMap(wifi_radio_index_t index, wifi_vap_info_map_t *map);
 INT wifi_hal_startScan(wifi_radio_index_t index, wifi_neighborScanMode_t scan_mode, INT dwell_time,
     UINT num, UINT *chan_list);
+int convert_channel_to_freq(int band, unsigned char chan);
 }
 
 int wlan_ext_emu_sta_mgr_t::find_first_free_dev()
@@ -181,7 +182,8 @@ int wlan_ext_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
 
     memset(&bss, 0, sizeof(bss));
 
-    bss.freq = chann_to_freq(sta_test_config->radio_oper_param->channel);
+    bss.freq = convert_channel_to_freq(sta_test_config->radio_oper_param->band,
+        sta_test_config->radio_oper_param->channel);
     wlan_emu_print(wlan_emu_log_level_dbg,
         "%s:%d: vap_index : %d phy_index : %d channel : %d bss.freq : %d \n", __func__, __LINE__,
         sta_test_config->sta_vap_config->vap_index, sta_test_config->phy_index,

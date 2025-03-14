@@ -20,6 +20,9 @@ INT wifi_hal_disconnect(INT ap_index);
 INT wifi_hal_getRadioVapInfoMap(wifi_radio_index_t index, wifi_vap_info_map_t *map);
 INT wifi_hal_startScan(wifi_radio_index_t index, wifi_neighborScanMode_t scan_mode, INT dwell_time,
     UINT num, UINT *chan_list);
+INT wifi_hal_setRadioOperatingParameters(wifi_radio_index_t index,
+    wifi_radio_operationParam_t *operationParam);
+int convert_channel_to_freq(int band, unsigned char chan);
 }
 
 static void ovs_fdb_flush(char *bridge_name)
@@ -504,6 +507,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         return -1;
     }
     sta_test_config->sta_vap_config->vap_index = sta_info->index;
+    sta_test_config->sta_vap_config->radio_index = sta_info->rdk_radio_index;
     sta_test_config->phy_index = sta_info->phy_index;
 
     memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, sta_info->mac, sizeof(mac_address_t));
@@ -566,7 +570,18 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     delete (heart_beat_data);
     delete (pre_connect_profile);
 
-    if (wifi_hal_createVAP(dev_id, map) == RETURN_OK) {
+    // Copy Radio Params to HAL.
+    if (wifi_hal_setRadioOperatingParameters(sta_info->rdk_radio_index,
+            sta_test_config->radio_oper_param) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: wifi_hal_setRadioOperatingParameters failed for radio index : %d\n", __func__,
+            __LINE__, sta_info->rdk_radio_index);
+        delete (sta);
+        free(map);
+        return RETURN_ERR;
+    }
+
+    if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) == RETURN_OK) {
         sta->set_vap(sta_test_config->sta_vap_config);
     } else {
         wlan_emu_print(wlan_emu_log_level_err,
@@ -598,7 +613,8 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     }
     memset(&bss, 0, sizeof(bss));
 
-    bss.freq = chann_to_freq(sta_test_config->radio_oper_param->channel);
+    bss.freq = convert_channel_to_freq(sta_test_config->radio_oper_param->band,
+        sta_test_config->radio_oper_param->channel);
     wlan_emu_print(wlan_emu_log_level_dbg,
         "%s:%d: vap_index : %d phy_index : %d channel : %d bss.freq : %d \n", __func__, __LINE__,
         sta_test_config->sta_vap_config->vap_index, sta_test_config->phy_index,

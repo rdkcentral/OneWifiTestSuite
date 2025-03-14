@@ -48,7 +48,6 @@ typedef enum {
 char *mac_to_str(unsigned char *mac, char *s_mac);
 int get_current_time_string(char *time_str, int time_str_len);
 int dmcli_get(char *cmd, char *value, unsigned int val_len);
-int chann_to_freq(unsigned char chan);
 char *mac_str_without_colon(mac_address_t mac, mac_addr_str_t key);
 int send_raw_packet(const void *data, size_t data_len, uint32_t source_nip, int source_port,
     uint32_t dest_nip, int dest_port, const uint8_t *dest_arp, int ifindex);

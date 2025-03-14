@@ -110,21 +110,6 @@ int dmcli_get(char *cmd, char *value, unsigned int val_len)
     return RETURN_ERR;
 }
 
-int chann_to_freq(unsigned char chan)
-{
-    if (chan >= MIN_CHANNEL_2G && chan <= MAX_CHANNEL_2G) {
-        return 2407 + 5 * chan;
-    }
-
-    if (chan >= MIN_CHANNEL_5G && chan <= MAX_CHANNEL_5G) {
-        return 5000 + 5 * chan;
-    }
-
-    printf("%s:%d: Failed to convert channel %u to frequency\n", __func__, __LINE__, chan);
-
-    return RETURN_OK;
-}
-
 uint16_t inet_csum(const void *buf, size_t hdr_len)
 {
     unsigned long sum = 0;
