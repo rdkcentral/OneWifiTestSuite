@@ -2427,7 +2427,7 @@ int wlan_emu_ui_mgr_t::process_input_request()
     http_info_t *http_info = NULL;
 
     // check if the tda_url is localhost or not
-    strncpy(temp_local_buf, tda_url, sizeof(temp_local_buf));
+    strncpy(temp_local_buf, tda_url, sizeof(temp_local_buf) - 1);
     check_local = strstr(temp_local_buf, "localhost");
     if (check_local) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: locahost is present in \"URL:\" in %s\n",
