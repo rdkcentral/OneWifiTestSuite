@@ -2519,6 +2519,64 @@ int wlan_emu_ui_mgr_t::analyze_request()
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::upload_cci_log(char *test_case_id, char *test_case_name, FILE *output_file)
+{
+    char cci_log_copy[128] = { 0 };
+    char timestamp[24] = { 0 };
+    char res_file_name[128] = { 0 };
+
+    if ((test_case_id == NULL) || (strlen(test_case_id) == 0)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_case_id is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    if ((test_case_name == NULL) || (strlen(test_case_name) == 0)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_case_name is NULL\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+    if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+    snprintf(cci_log_copy, sizeof(cci_log_copy), "/tmp/%s_%s_%s_CCILOG.txt", test_case_id,
+        timestamp, test_case_name);
+    if (copy_file(CCI_LOG_FILE, cci_log_copy) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to copy from %s to %s\n", __func__,
+            __LINE__, CCI_LOG_FILE, cci_log_copy);
+        return RETURN_ERR;
+    }
+
+    // Remove the file once uploaded
+    if (remove(CCI_LOG_FILE) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to remove %s\n", __func__, __LINE__,
+            CCI_LOG_FILE);
+    }
+
+    if (upload_file_to_server(cci_log_copy, remote_test_results_loc) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__, __LINE__,
+            cci_log_copy);
+        return RETURN_ERR;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
+            cci_log_copy);
+        if (get_last_substring_after_slash(cci_log_copy, res_file_name, sizeof(res_file_name)) !=
+            RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__, __LINE__,
+                cci_log_copy);
+            return RETURN_ERR;
+        }
+        fprintf(output_file, "%s\n", res_file_name);
+    }
+
+    if (remove(cci_log_copy) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to remove %s\n", __func__, __LINE__,
+            cci_log_copy);
+    }
+    return RETURN_OK;
+}
+
 unsigned int wlan_emu_ui_mgr_t::upload_results()
 {
     unsigned int count = 0;
@@ -2580,6 +2638,11 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
                 step = (test_step_params_t *)queue_pop(test->test_steps_q);
             }
             queue_destroy(test->test_steps_q);
+        }
+        // Call function to upload cci file
+        if (upload_cci_log(test->test_case_id, test->test_case_name, output_file) == RETURN_ERR) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to upload cci log for %s_%s\n",
+                __func__, __LINE__, test->test_case_id, test->test_case_name);
         }
         delete test;
         test = (wlan_emu_test_case_config *)queue_pop(test_cov_cases_q);

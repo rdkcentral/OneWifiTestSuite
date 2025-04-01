@@ -27,7 +27,6 @@ void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
     va_list list;
     FILE *log_fp = NULL;
     char *dbg_file = "/nvram/cciDbg";
-    char *log_file = "/tmp/cciLog";
     char buff[256] = { 0 };
 
     switch (level) {
@@ -44,7 +43,7 @@ void wlan_emu_print(wlan_emu_log_level_t level, const char *format, ...)
         return;
     }
 
-    log_fp = fopen(log_file, "a+");
+    log_fp = fopen(CCI_LOG_FILE, "a+");
     if (log_fp == NULL) {
         return;
     }

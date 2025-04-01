@@ -1,6 +1,8 @@
 #ifndef WLAN_EMU_LOG
 #define WLAN_EMU_LOG
 
+#define CCI_LOG_FILE "/tmp/cciLog"
+
 typedef enum {
     wlan_emu_log_level_dbg,
     wlan_emu_log_level_info,

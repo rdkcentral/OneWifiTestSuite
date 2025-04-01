@@ -145,6 +145,7 @@ public:
     wlan_emu_sig_type_t io_wait(void);
     int analyze_request(void);
     unsigned int upload_results(void);
+    int upload_cci_log(char *test_case_id, char *test_case_name, FILE *fp);
 
     inline void add_bus_mgr(wlan_emu_bus_t *bus_mgr)
     {
