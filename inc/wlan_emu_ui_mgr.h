@@ -307,9 +307,14 @@ public:
         return cci_out_file_list;
     }
 
-    inline int *get_simulated_client_count()
+    inline int get_simulated_client_count()
     {
-        return &simulated_clients;
+        return simulated_clients;
+    }
+
+    inline void set_simulated_client_count(int count)
+    {
+        simulated_clients = count;
     }
 
     void send_webconfig_ctrl_msg(webconfig_subdoc_type_t subdoc_type);

@@ -416,7 +416,7 @@ bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data, bus_
         if (count <= 0) {
             return bus_error_invalid_input;
         }
-        memcpy(m_ui_mgr.get_simulated_client_count(), &count, sizeof(int));
+        m_ui_mgr.set_simulated_client_count(count);
 
     } else if (strstr(parameter, "Start")) {
         if (data->data_type != bus_data_type_boolean) {
