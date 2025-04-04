@@ -221,7 +221,7 @@ test_step_param_radio::test_step_param_radio()
 {
     test_step_params_t *step = this;
     step->is_step_initialized = true;
-    step->execution_time = 10;
+    step->execution_time = 25;
     step->timeout_count = 0;
     step->test_results_queue = NULL;
     step->capture_frames = false;

@@ -52,7 +52,7 @@ int test_step_param_vap::step_execute()
             step->frame_request.subdoc_type);
 
         if (step->frame_request.subdoc_type == webconfig_subdoc_type_xfinity) {
-            step->execution_time = 25;
+            step->execution_time = 40;
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: new execution time : %d for xfinity\n", __func__, __LINE__,
                     step->execution_time);
         }
@@ -306,7 +306,7 @@ test_step_param_vap::test_step_param_vap()
 {
     test_step_params_t *step = this;
     step->is_step_initialized = true;
-    step->execution_time = 15;
+    step->execution_time = 25;
     step->timeout_count = 0;
     step->test_results_queue = NULL;
     step->capture_frames = false;

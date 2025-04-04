@@ -2758,7 +2758,7 @@ int wlan_emu_ui_mgr_t::init()
     memset(ssl_key, 0, sizeof(ssl_key));
 
     strncpy(m_path, "/tmp", sizeof(m_path));
-    snprintf(interface, sizeof(interface), "%s", "brlan0");
+    snprintf(interface, sizeof(interface), "%s", "erouter0");
 
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
