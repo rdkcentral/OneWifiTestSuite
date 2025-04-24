@@ -2,9 +2,11 @@
 #define __NET_CFG80211_H
 
 #include "nl80211_copy.h"
-#include <linux/types.h>
 #include <stdint.h>
+#include <linux/types.h>
+#include "android_vendor_copy.h"
 
+#define CFG80211_MAX_NUM_AKM_SUITES 10
 #define IEEE80211_HT_MCS_MASK_LEN 10
 #define ETH_ALEN 6
 
@@ -19,8 +21,31 @@ struct mac_address {
 
 struct ieee80211_he_obss_pd {
     bool enable;
+    u8 sr_ctrl;
+    u8 non_srg_max_offset;
     u8 min_offset;
     u8 max_offset;
+    u8 bss_color_bitmap[8];
+    u8 partial_bssid_bitmap[8];
+};
+
+struct cfg80211_fils_discovery {
+    u32 min_interval;
+    u32 max_interval;
+    size_t tmpl_len;
+    const u8 *tmpl;
+};
+
+struct cfg80211_mbssid_config {
+    struct wireless_dev *tx_wdev;
+    u8 index;
+    bool ema;
+};
+
+struct cfg80211_unsol_bcast_probe_resp {
+    u32 interval;
+    size_t tmpl_len;
+    const u8 *tmpl;
 };
 
 /*
@@ -31,7 +56,10 @@ struct cfg80211_bitrate_mask {
         u32 legacy;
         u8 ht_mcs[IEEE80211_HT_MCS_MASK_LEN];
         u16 vht_mcs[NL80211_VHT_NSS_MAX];
+        u16 he_mcs[NL80211_HE_NSS_MAX];
         enum nl80211_txrate_gi gi;
+        enum nl80211_he_gi he_gi;
+        enum nl80211_he_ltf he_ltf;
     } control[NUM_NL80211_BANDS];
 };
 
@@ -41,19 +69,37 @@ struct cfg80211_crypto_settings {
     int n_ciphers_pairwise;
     u32 ciphers_pairwise[NL80211_MAX_NR_CIPHER_SUITES];
     int n_akm_suites;
-    u32 akm_suites[NL80211_MAX_NR_AKM_SUITES];
+    u32 akm_suites[CFG80211_MAX_NUM_AKM_SUITES];
     bool control_port;
     __be16 control_port_ethertype;
     bool control_port_no_encrypt;
     bool control_port_over_nl80211;
+    bool control_port_no_preauth;
     struct key_params *wep_keys;
     int wep_tx_key;
     const u8 *psk;
     const u8 *sae_pwd;
     u8 sae_pwd_len;
+    enum nl80211_sae_pwe_mechanism sae_pwe;
+
+    ANDROID_BACKPORT_RESERVED(1);
+    ANDROID_BACKPORT_RESERVED(2);
+
+    ANDROID_VENDOR_DATA(1);
+    ANDROID_VENDOR_DATA(2);
+
+    ANDROID_KABI_RESERVE(1);
+};
+
+struct cfg80211_he_bss_color {
+    u8 color;
+    bool enabled;
+    bool partial;
 };
 
 struct cfg80211_beacon_data {
+    unsigned int link_id;
+
     const u8 *head, *tail;
     const u8 *beacon_ies;
     const u8 *proberesp_ies;
@@ -61,7 +107,9 @@ struct cfg80211_beacon_data {
     const u8 *probe_resp;
     const u8 *lci;
     const u8 *civicloc;
+    struct cfg80211_mbssid_elems *mbssid_ies;
     u8 ftm_responder;
+
     size_t head_len, tail_len;
     size_t beacon_ies_len;
     size_t proberesp_ies_len;
@@ -69,6 +117,20 @@ struct cfg80211_beacon_data {
     size_t probe_resp_len;
     size_t lci_len;
     size_t civicloc_len;
+    struct cfg80211_he_bss_color he_bss_color;
+    bool he_bss_color_valid;
+
+    ANDROID_BACKPORT_RESERVED(1);
+    ANDROID_BACKPORT_RESERVED(2);
+    ANDROID_BACKPORT_RESERVED(3);
+    ANDROID_BACKPORT_RESERVED(4);
+
+    ANDROID_VENDOR_DATA(1);
+    ANDROID_VENDOR_DATA(2);
+    ANDROID_VENDOR_DATA(3);
+    ANDROID_VENDOR_DATA(4);
+
+    ANDROID_KABI_RESERVE(1);
 };
 
 /**
@@ -114,19 +176,19 @@ struct ieee80211_ht_cap {
  * struct ieee80211_vht_mcs_info - VHT MCS information
  * @rx_mcs_map: RX MCS map 2 bits for each stream, total 8 streams
  * @rx_highest: Indicates highest long GI VHT PPDU data rate
- *  STA can receive. Rate expressed in units of 1 Mbps.
- *  If this field is 0 this value should not be used to
- *  consider the highest RX data rate supported.
- *  The top 3 bits of this field indicate the Maximum NSTS,total
- *  (a beamformee capability.)
+ *STA can receive. Rate expressed in units of 1 Mbps.
+ *If this field is 0 this value should not be used to
+ *consider the highest RX data rate supported.
+ *The top 3 bits of this field indicate the Maximum NSTS,total
+ *(a beamformee capability.)
  * @tx_mcs_map: TX MCS map 2 bits for each stream, total 8 streams
  * @tx_highest: Indicates highest long GI VHT PPDU data rate
- *  STA can transmit. Rate expressed in units of 1 Mbps.
- *  If this field is 0 this value should not be used to
- *  consider the highest TX data rate supported.
- *  The top 2 bits of this field are reserved, the
- *  3rd bit from the top indiciates VHT Extended NSS BW
- *  Capability.
+ *STA can transmit. Rate expressed in units of 1 Mbps.
+ *If this field is 0 this value should not be used to
+ *consider the highest TX data rate supported.
+ *The top 2 bits of this field are reserved, the
+ *3rd bit from the top indiciates VHT Extended NSS BW
+ *Capability.
  */
 struct ieee80211_vht_mcs_info {
     __le16 rx_mcs_map;
@@ -185,6 +247,17 @@ struct cfg80211_chan_def {
     u32 center_freq1;
     u32 center_freq2;
     struct ieee80211_edmg edmg;
+    u16 freq1_offset;
+
+    ANDROID_BACKPORT_RESERVED(1);
+    ANDROID_BACKPORT_RESERVED(2);
+    ANDROID_BACKPORT_RESERVED(3);
+    ANDROID_BACKPORT_RESERVED(4);
+
+    ANDROID_VENDOR_DATA(1);
+    ANDROID_VENDOR_DATA(2);
+    ANDROID_VENDOR_DATA(3);
+    ANDROID_VENDOR_DATA(4);
 };
 
 struct cfg80211_acl_data {
@@ -218,10 +291,31 @@ struct cfg80211_ap_settings {
     const struct ieee80211_ht_cap *ht_cap;
     const struct ieee80211_vht_cap *vht_cap;
     const struct ieee80211_he_cap_elem *he_cap;
-    bool ht_required, vht_required;
+    const struct ieee80211_he_operation *he_oper;
+    const struct ieee80211_eht_cap_elem *eht_cap;
+    const struct ieee80211_eht_operation *eht_oper;
+    bool ht_required, vht_required, he_required, sae_h2e_required;
     bool twt_responder;
     u32 flags;
     struct ieee80211_he_obss_pd he_obss_pd;
+    struct cfg80211_fils_discovery fils_discovery;
+    struct cfg80211_unsol_bcast_probe_resp unsol_bcast_probe_resp;
+    struct cfg80211_mbssid_config mbssid_config;
+    u16 punct_bitmap;
+
+    ANDROID_BACKPORT_RESERVED(1);
+    ANDROID_BACKPORT_RESERVED(2);
+    ANDROID_BACKPORT_RESERVED(3);
+    ANDROID_BACKPORT_RESERVED(4);
+    ANDROID_BACKPORT_RESERVED(5);
+
+    ANDROID_VENDOR_DATA(1);
+    ANDROID_VENDOR_DATA(2);
+    ANDROID_VENDOR_DATA(3);
+    ANDROID_VENDOR_DATA(4);
+    ANDROID_VENDOR_DATA(5);
+
+    ANDROID_KABI_RESERVE(1);
 };
 
 #endif //__NET_CFG80211_H
