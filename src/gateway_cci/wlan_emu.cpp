@@ -5,6 +5,8 @@
 #include <csignal>
 #include <stdio.h>
 #include <string.h>
+#include <memory>
+#include <curl/curl.h>
 
 #if !defined(CONFIG_EXT_AGENT_CCI)
 #include "syscfg/syscfg.h"
@@ -546,6 +548,8 @@ int wlan_emu_t::init()
         free(sta_cap);
         return RETURN_ERR;
     }
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    static std::shared_ptr<void> curl_cleanup_guard(nullptr, [](void *) { curl_global_cleanup(); });
 
     m_bus_mgr.bus_init();
     bus_register_handlers();

@@ -4,6 +4,8 @@
 #include "wlan_ext_emu_sta_mgr.h"
 #include "wlan_ext_emu_test_step_params.h"
 #include "wlan_ext_emu_tests.h"
+#include <memory>
+#include <curl/curl.h>
 
 #define MAX_NUM_EXTERNAL_CLIENTS 1
 
@@ -653,6 +655,9 @@ int wlan_ext_emu_t::init()
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: creation of directory failed : %s - %s\n",
             __func__, __LINE__, get_ext_emu_test_results_dir_path().c_str(), strerror(errno));
     }
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    static std::shared_ptr<void> curl_cleanup_guard(nullptr, [](void *) { curl_global_cleanup(); });
 
     snprintf(m_pollables[wlan_ext_emu_test_sig_type_idle].name,
         sizeof(m_pollables[wlan_ext_emu_test_sig_type_idle].name), "%s/ext_idle",

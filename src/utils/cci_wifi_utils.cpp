@@ -333,8 +333,6 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
         }
         test_config_URL = strdup(url);
 
-        curl_global_init(CURL_GLOBAL_DEFAULT);
-
         curl = curl_easy_init();
         if (curl) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: using get_tda_interface() :%s\n",
@@ -370,7 +368,6 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
             //        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
             //      *res_code = code;
             curl_easy_cleanup(curl);
-            curl_global_cleanup();
             curl = NULL;
             wlan_emu_print(wlan_emu_log_level_info, "%s:%d: ==> Downloaded file : %s\n", __func__,
                 __LINE__, output_file);
@@ -422,7 +419,6 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
         }
 
         test_config_URL = strdup(post_url);
-        curl_global_init(CURL_GLOBAL_DEFAULT);
         curl = curl_easy_init();
         if (curl) {
             // Set the URL for the POST request
@@ -474,8 +470,6 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
             // Clean up
             curl_easy_cleanup(curl);
             curl_mime_free(mime);
-
-            curl_global_cleanup();
         }
 
         free(test_config_URL);
@@ -514,14 +508,6 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 {
     CURLcode ret;
     CURL *curl = NULL;
-
-    ret = curl_global_init(CURL_GLOBAL_DEFAULT);
-    if (ret != CURLE_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to initialize curl globals\n",
-            __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    std::shared_ptr<void> global_wrapper(nullptr, [](void *) { curl_global_cleanup(); });
 
     curl = curl_easy_init();
     if (curl == NULL) {
@@ -624,14 +610,6 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
     CURLcode ret;
     CURL *curl = NULL;
 
-    ret = curl_global_init(CURL_GLOBAL_DEFAULT);
-    if (ret != CURLE_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to initialize curl globals\n",
-            __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    std::shared_ptr<void> global_wrapper(nullptr, [](void *) { curl_global_cleanup(); });
-
     curl = curl_easy_init();
     if (curl == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d failed to initialize curl\n", __func__,
@@ -711,14 +689,6 @@ int http_post(const std::string &url, const std::string &data, long &status_code
     CURLcode ret;
     CURL *curl = NULL;
     curl_slist *headers = NULL;
-
-    ret = curl_global_init(CURL_GLOBAL_DEFAULT);
-    if (ret != CURLE_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to initialize curl globals\n",
-            __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    std::shared_ptr<void> global_wrapper(nullptr, [](void *) { curl_global_cleanup(); });
 
     curl = curl_easy_init();
     if (curl == NULL) {
@@ -814,14 +784,6 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
     }
 
     url_with_filename = url + std::string(file_name);
-
-    ret = curl_global_init(CURL_GLOBAL_DEFAULT);
-    if (ret != CURLE_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to initialize curl globals\n",
-            __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    std::shared_ptr<void> global_wrapper(nullptr, [](void *) { curl_global_cleanup(); });
 
     curl = curl_easy_init();
     if (curl == NULL) {
