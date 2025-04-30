@@ -11,4 +11,4 @@ add_executable(${EXECUTABLE_NAME} ${SUBPROJECT_SOURCES} ${MAIN_SRC})
 #target_include_directories(${EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/http_server ${CMAKE_CURRENT_SOURCE_DIR}/ext_inc)
 
 target_link_libraries(${EXECUTABLE_NAME}
-    pcap rdk_wifiemulatorhal  wifi_webconfig stdc++fs cjson pthread rbus curl syscfg)
+    pcap rdk_wifiemulatorhal  wifi_webconfig stdc++fs cjson pthread rbus curl syscfg secure_wrapper)

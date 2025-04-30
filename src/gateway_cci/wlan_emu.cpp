@@ -127,6 +127,7 @@ int wlan_emu_t::run()
                 m_ui_mgr.signal_uploaded_test_results();
                 m_ui_mgr.cci_report_complete_to_tda();
                 dml_state = wlan_emu_dml_tests_state_complete_success;
+                m_ui_mgr.update_log_file_offset();
             } else {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: upload_results failed\n", __func__,
                     __LINE__);
@@ -137,9 +138,16 @@ int wlan_emu_t::run()
             break;
         case wlan_emu_tests_state_cmd_abort:
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d:\n", __func__, __LINE__);
+
+            if (m_ui_mgr.upload_results() != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: upload_results failed for abort\n",
+                        __func__, __LINE__);
+            }
+
             abort_test();
             m_state = wlan_emu_tests_state_cmd_wait;
             dml_state = wlan_emu_dml_tests_state_complete_failure;
+            m_ui_mgr.update_log_file_offset();
             // exit = true; //cci needs to run all the time even upon failure
             break;
         default:
@@ -366,7 +374,7 @@ bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data, bus_
     }
 
     if (!event_name) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Invalid bus property\n", __func__, __LINE__);
         return bus_error_invalid_input;
     }
 
@@ -378,21 +386,28 @@ bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data, bus_
             return bus_error_invalid_input;
         }
         copy_string(m_ui_mgr.get_tda_url(), (char *)data->raw_data.bytes, STR_LEN);
+        if (m_ui_mgr.update_tda_url_to_file() == RETURN_ERR) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to write to the file\n", __func__,
+                __LINE__);
+        }
     } else if (strstr(parameter, "ResultsFileName")) {
         if (data->data_type != bus_data_type_string) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d Invalid bus property\n", __func__,
+                __LINE__);
             return bus_error_invalid_input;
         }
         copy_string(m_ui_mgr.get_tda_output_file(), (char *)data->raw_data.bytes, STR_LEN);
     } else if (strstr(parameter, "Interface")) {
         if (data->data_type != bus_data_type_string) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d Invalid bus property\n", __func__,
+                __LINE__);
             return bus_error_invalid_input;
         }
         copy_string(m_ui_mgr.get_tda_interface(), (char *)data->raw_data.bytes, STR_LEN);
     } else if (strstr(parameter, "SimulatedClientDevices")) {
         if (data->data_type != bus_data_type_uint32) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s: Invalid bus property\n", __func__);
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d Invalid bus property\n", __func__,
+                __LINE__);
             return bus_error_invalid_input;
         }
         int count = data->raw_data.u32;

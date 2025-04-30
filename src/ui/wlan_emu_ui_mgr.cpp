@@ -1,6 +1,7 @@
 #include "wlan_emu_ui_mgr.h"
 #include "wifi_util.h"
 #include "wlan_emu.h"
+#include <secure_wrapper.h>
 #include <assert.h>
 #include <dirent.h>
 #include <errno.h>
@@ -17,6 +18,11 @@
 #include <sys/un.h>
 #include <time.h>
 #include <unistd.h>
+#include <fstream>
+
+#define dynamic_ssa_passwd_parameter "{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}"
+#define static_ssa_passwd_parameter "{STOR=GET,SRC=mamjwwgtfwpa,DST=/dev/stdout}"
+#define KeyGenBinaryPath "/usr/bin/rdkssacli"
 
 namespace fs = std::experimental::filesystem;
 
@@ -2524,6 +2530,7 @@ int wlan_emu_ui_mgr_t::upload_cci_log(char *test_case_id, char *test_case_name, 
     char cci_log_copy[128] = { 0 };
     char timestamp[24] = { 0 };
     char res_file_name[128] = { 0 };
+    long src_log_file_offset = 0;
 
     if ((test_case_id == NULL) || (strlen(test_case_id) == 0)) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_case_id is NULL\n", __func__, __LINE__);
@@ -2541,16 +2548,13 @@ int wlan_emu_ui_mgr_t::upload_cci_log(char *test_case_id, char *test_case_name, 
     }
     snprintf(cci_log_copy, sizeof(cci_log_copy), "/tmp/%s_%s_%s_CCILOG.txt", test_case_id,
         timestamp, test_case_name);
-    if (copy_file(CCI_LOG_FILE, cci_log_copy) != RETURN_OK) {
+
+    src_log_file_offset = get_log_file_offset();
+
+    if (copy_file(CCI_LOG_FILE, src_log_file_offset, cci_log_copy) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to copy from %s to %s\n", __func__,
             __LINE__, CCI_LOG_FILE, cci_log_copy);
         return RETURN_ERR;
-    }
-
-    // Remove the file once uploaded
-    if (remove(CCI_LOG_FILE) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to remove %s\n", __func__, __LINE__,
-            CCI_LOG_FILE);
     }
 
     if (upload_file_to_server(cci_log_copy, remote_test_results_loc) != RETURN_OK) {
@@ -2740,27 +2744,36 @@ int wlan_emu_ui_mgr_t::get_mlts_configuration()
 #else
     char default_cpe_ssl_cert[] = "/nvram/certs/devicecert_2.pk12";
 #endif
-    char key_cmd[128] = { 0 };
     FILE *fp;
+    FILE *fp1;
 
 #ifdef CONFIG_XB7_MTLS
     if (access(default_cpe_ssl_cert, F_OK) == -1) {
         // The cpe file does not exist
         snprintf(ssl_cert, sizeof(ssl_cert), "%s", "/etc/ssl/certs/staticXpkiCrt.pk12");
-        snprintf(key_cmd, sizeof(key_cmd), "%s",
-            "/usr/bin/rdkssacli \"{STOR=GET,SRC=mamjwwgtfwpa,DST=/dev/stdout}\"");
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs\n", __func__, __LINE__);
+        fp = v_secure_popen("r", "%s \"%s\"", KeyGenBinaryPath, static_ssa_passwd_parameter);
+
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs and static ssa assword\n",
+            __func__, __LINE__);
     } else {
         snprintf(ssl_cert, sizeof(ssl_cert), "%s", default_cpe_ssl_cert);
-        snprintf(key_cmd, sizeof(key_cmd), "%s",
-            "/usr/bin/rdkssacli \"{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}\"");
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs\n", __func__, __LINE__);
+        fp = v_secure_popen("r", "%s \"%s\"", KeyGenBinaryPath, dynamic_ssa_passwd_parameter);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs and dynamic ssa pasword\n",
+            __func__, __LINE__);
     }
 #else
     if (access(default_cpe_ssl_cert, F_OK) == 0) {
         snprintf(ssl_cert, sizeof(ssl_cert), "%s", default_cpe_ssl_cert);
-        snprintf(key_cmd, sizeof(key_cmd), "%s",
-            "GetConfigFile /tmp/.cfgDynamicSExpki;cat /tmp/.cfgDynamicSExpki");
+        fp1 = v_secure_popen("r", "%s \"%s\"", "GetConfigFile", "/tmp/.cfgDynamicSExpki");
+        if (fp1 == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: popen failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        v_secure_pclose(fp1); // Ensure GetConfigFile completes before reading the file
+
+        fp = v_secure_popen("r", "%s \"%s\"", "cat", "/tmp/.cfgDynamicSExpki");
+
+        // read from fp here
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb8 certs\n", __func__, __LINE__);
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: No available certs for xb8 conf\n", __func__,
@@ -2769,21 +2782,25 @@ int wlan_emu_ui_mgr_t::get_mlts_configuration()
     }
 #endif
 
-    if ((fp = popen(key_cmd, "r")) == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: popen failed for key cmd\n", __func__,
-            __LINE__);
+    if (fp == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: popen failed\n", __func__, __LINE__);
         return RETURN_ERR;
     } else {
         memset(ssl_key, 0, sizeof(ssl_key));
         if (fgets(ssl_key, sizeof(ssl_key) - 1, fp) == NULL) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fgets failed for key cmd\n", __func__,
-                __LINE__);
+            if (feof(fp)) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Command produced no output\n",
+                    __func__, __LINE__);
+            } else if (ferror(fp)) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error reading command output\n",
+                    __func__, __LINE__);
+            }
+            v_secure_pclose(fp);
             return RETURN_ERR;
         } else {
             ssl_key[strcspn(ssl_key, "\n")] = '\0';
         }
-
-        pclose(fp);
+        v_secure_pclose(fp);
     }
 
     return RETURN_OK;
@@ -2817,9 +2834,11 @@ int wlan_emu_ui_mgr_t::init()
     memset(input_test_buff, 0, sizeof(input_test_buff));
     memset(ssl_cert, 0, sizeof(ssl_cert));
     memset(ssl_key, 0, sizeof(ssl_key));
+    log_file_offset = 0;
 
     strncpy(m_path, "/tmp", sizeof(m_path));
     snprintf(interface, sizeof(interface), "%s", "erouter0");
+    set_reboot_url_file_name("/nvram/cci_reboot_url_file.txt");
 
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
@@ -2947,7 +2966,7 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
         value[strcspn(value, "\n")] = '\0';
 
         cJSON_AddStringToObject(json, "cm_mac", value);
-        cJSON_AddStringToObject(json, "result_file", "NA");
+        cJSON_AddStringToObject(json, "result_file", cci_out_file_list);
         cJSON_AddStringToObject(json, "status", "fail");
         // NOTE : Need to read the different error codes
         // use get_cci_error_code() to get the error code
@@ -3108,6 +3127,55 @@ int wlan_emu_ui_mgr_t::cci_report_heartbeat_to_tda()
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::update_tda_url_to_file()
+{
+    size_t host_start;
+    size_t path_start;
+    std::string url = get_tda_url();
+    std::string url_substring;
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: url is : %s\n", __func__, __LINE__, url.c_str());
+    size_t scheme_end = url.find("://");
+    if (scheme_end == std::string::npos) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to find the url\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    host_start = scheme_end + 3; // skip "://"
+    path_start = url.find('/', host_start);
+    std::string filename = get_reboot_url_file_name();
+
+    if (path_start != std::string::npos) {
+        url_substring = url.substr(0, path_start + 1); // include the slash
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to find the url\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    std::ofstream out_file(reboot_url_file_name);
+
+    if (!out_file.is_open()) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: file open failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    out_file << url_substring;
+
+    if (out_file.fail()) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: url write update failed\n", __func__,
+            __LINE__);
+        out_file.close();
+        return RETURN_ERR;
+    }
+
+    out_file.close();
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: reboot url update succesful\n", __func__,
+        __LINE__);
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::cci_report_reboot_to_tda()
 {
     cJSON *json;
@@ -3153,6 +3221,7 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
     char post_res_file[] = "/tmp/cci_post_file.json";
     FILE *fp = NULL;
     http_info_t *http_info = NULL;
+    std::string reboot_url;
 
     if (str == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: str is NULL\n", __func__, __LINE__);
@@ -3168,11 +3237,23 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
     } else if (endpoint_type == tc_endpoint_type_fail) {
         snprintf(result_url, sizeof(result_url), "%s/fail", server_address);
     } else if (endpoint_type == tc_endpoint_type_reboot) {
-        snprintf(result_url, sizeof(result_url),
-            "https://primary.vbautobot.comcast.com:7916/reboot");
+        std::ifstream source_file(reboot_url_file_name);
+        if (source_file) {
+            if (std::getline(source_file, reboot_url)) {
+                snprintf(result_url, sizeof(result_url), "%s/reboot", reboot_url.c_str());
+            } else {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to read line of %s\n",
+                    __func__, __LINE__, post_res_file);
+                source_file.close();
+                return RETURN_OK;
+            }
+            source_file.close();
+        }
     } else {
         return RETURN_ERR;
     }
+
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: url is : %s\n", __func__, __LINE__, result_url);
 
     fp = fopen(post_res_file, "wb");
     if (fp == NULL) {
@@ -3453,12 +3534,13 @@ void wlan_emu_ui_mgr_t::cci_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus_data, void *userData)
+void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus_data,
+    void *userData)
 {
     (void)userData;
     int len = 0;
     char *pTmp = NULL;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     wlan_emu_ui_mgr_t *ptr;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: %d bus event callback Event is %s \n", __func__,
@@ -3475,36 +3557,45 @@ void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus
     copy_string(pTmp, (char *)bus_data->raw_data.bytes, bus_data->raw_data_len);
 
     // setup the raw data
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.descriptor = 0;
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+
+    if (data == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s %d Failed to allocate memory\n", __func__,
+            __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    data->descriptor = 0;
     // data.descriptor = webconfig_data_descriptor_encoded |
     // webconfig_data_descriptor_translate_to_tr181;
-    data.descriptor = webconfig_data_descriptor_encoded;
+    data->descriptor = webconfig_data_descriptor_encoded;
 
     // wlan_emu_print(wlan_emu_log_level_dbg,"%s:%d: dml Json:\n%s\r\n", __func__, __LINE__,
     // data.u.encoded.raw);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: hal capability update\r\n", __func__, __LINE__);
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&cci_webconfig.hal_cap,
+    memcpy(&data->u.decoded.hal_cap, (unsigned char *)&cci_webconfig.hal_cap,
         sizeof(wifi_hal_capability_t));
 
-    data.u.decoded.num_radios = cci_webconfig.hal_cap.wifi_prop.numRadios;
+    data->u.decoded.num_radios = cci_webconfig.hal_cap.wifi_prop.numRadios;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: hal capability update radios : %d\r\n", __func__,
-        __LINE__, data.u.decoded.num_radios);
+        __LINE__, data->u.decoded.num_radios);
     // tell webconfig to decode
-    if (webconfig_decode(&cci_webconfig.webconfig, &data, pTmp) == webconfig_error_none) {
+    if (webconfig_decode(&cci_webconfig.webconfig, data, pTmp) == webconfig_error_none) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s %d webconfig_decode success\n", __FUNCTION__,
             __LINE__);
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s %d webconfig_decode fail \n%s\n", __FUNCTION__,
-            __LINE__, data.u.encoded.raw);
+            __LINE__, data->u.encoded.raw);
         delete[] pTmp;
+        free(data);
         return;
     }
 
-    ptr->cci_cache_update(&data);
+    ptr->cci_cache_update(data);
 
-    ptr->cci_webconfig_data_free(&data);
+    ptr->cci_webconfig_data_free(data);
+    free(data);
     delete[] pTmp;
 
     return;
@@ -4023,7 +4114,7 @@ int wlan_emu_ui_mgr_t::bus_init()
     unsigned int i = 0, itr = 0, itrj = 0;
     int len = 0;
     char *dbg_str;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t *data = NULL;
     raw_data_t bus_data;
 
     rc = m_bus_mgr->desc.bus_open_fn(&m_webconfig_data->handle, component_name);
@@ -4113,28 +4204,37 @@ int wlan_emu_ui_mgr_t::bus_init()
     }
 
     // setup the raw data
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.descriptor = 0;
-    data.descriptor |= webconfig_data_descriptor_encoded;
+    data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+
+    if (data == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to allocate memory\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    data->descriptor = 0;
+    data->descriptor |= webconfig_data_descriptor_encoded;
 
     // tell webconfig to decode
-    if (webconfig_decode(&m_webconfig_data->webconfig, &data, str) == webconfig_error_none) {
+    if (webconfig_decode(&m_webconfig_data->webconfig, data, str) == webconfig_error_none) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s %d webconfig_decode success \n", __FUNCTION__,
             __LINE__);
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s %d webconfig_decode fail \n", __FUNCTION__,
             __LINE__);
         delete[] str;
+        free(data);
         return RETURN_ERR;
     }
 
-    memcpy((unsigned char *)&m_webconfig_data->radios, (unsigned char *)&data.u.decoded.radios,
-        data.u.decoded.num_radios * sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&m_webconfig_data->config, (unsigned char *)&data.u.decoded.config,
+    memcpy((unsigned char *)&m_webconfig_data->radios, (unsigned char *)data->u.decoded.radios,
+        data->u.decoded.num_radios * sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&m_webconfig_data->config, &data->u.decoded.config,
         sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&m_webconfig_data->hal_cap, (unsigned char *)&data.u.decoded.hal_cap,
+    memcpy((unsigned char *)&m_webconfig_data->hal_cap, &data->u.decoded.hal_cap,
         sizeof(wifi_hal_capability_t));
-    m_webconfig_data->hal_cap.wifi_prop.numRadios = data.u.decoded.num_radios;
+    m_webconfig_data->hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
     m_webconfig_data->harvester.b_inst_client_enabled =
         m_webconfig_data->config.global_parameters.inst_wifi_client_enabled;
     m_webconfig_data->harvester.u_inst_client_reporting_period =
@@ -4150,9 +4250,28 @@ int wlan_emu_ui_mgr_t::bus_init()
         m_webconfig_data->config.global_parameters.inst_wifi_client_mac[4],
         m_webconfig_data->config.global_parameters.inst_wifi_client_mac[5]);
 
-    cci_webconfig_data_free(&data);
+    cci_webconfig_data_free(data);
+    free(data);
     delete[] str;
     return RETURN_OK;
+}
+
+void wlan_emu_ui_mgr_t::update_log_file_offset()
+{
+    FILE *log_fp = NULL;
+    long data_len = 0;
+    log_fp = fopen(CCI_LOG_FILE, "r");
+    if (log_fp == NULL) {
+        return;
+    }
+    fseek(log_fp, 0, SEEK_END);
+    data_len = ftell(log_fp);
+    fclose(log_fp);
+
+    set_log_file_offset(data_len);
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s %d data_len : %ld\n", __FUNCTION__,
+            __LINE__, data_len);
 }
 
 wlan_emu_ui_mgr_t::wlan_emu_ui_mgr_t()

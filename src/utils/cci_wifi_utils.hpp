@@ -55,7 +55,7 @@ unsigned int ieee_frame_hdr_len(__le16 fc);
 bool is_zero_mac(mac_address_t mac);
 int https_get_file(http_info_t *http_info, const char *get_url, const char *output_file);
 void copy_string(char *destination, char *source, int len);
-int copy_file(const char *source_path, const char *destination_path);
+int copy_file(const char *source_path, long source_offset, const char *destination_path);
 int https_post_file(http_info_t *http_info, const char *post_url, const char *input_file);
 int http_get(const std::string &url, std::string &response, long &status_code);
 int http_get_file(const std::string &url, const std::string &file_path, long &status_code);

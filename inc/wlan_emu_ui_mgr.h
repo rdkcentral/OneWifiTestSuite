@@ -90,6 +90,8 @@ class wlan_emu_ui_mgr_t {
     pthread_mutex_t m_heartbeat_lock;
     pthread_t m_heartbeat_tid;
     wlan_emu_bus_t *m_bus_mgr;
+    long log_file_offset;
+    std::string reboot_url_file_name;
 
 private:
     int io_prep(void);
@@ -190,6 +192,29 @@ public:
     int cci_report_complete_to_tda(void);
     int cci_report_reboot_to_tda(void);
     int cci_report_heartbeat_to_tda(void);
+    void update_log_file_offset(void);
+
+    long get_log_file_offset()
+    {
+        return log_file_offset;
+    }
+
+    void set_log_file_offset(long new_offset)
+    {
+        log_file_offset = new_offset;
+    }
+
+    int update_tda_url_to_file(void);
+
+    const std::string &get_reboot_url_file_name()
+    {
+        return reboot_url_file_name;
+    }
+
+    void set_reboot_url_file_name(const std::string &path)
+    {
+        reboot_url_file_name = path;
+    }
 
     inline queue_t *get_test_cov_cases_queue(void)
     {

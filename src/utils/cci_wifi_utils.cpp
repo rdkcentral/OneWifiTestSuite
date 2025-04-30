@@ -255,7 +255,7 @@ void copy_string(char *destination, char *source, int len)
     }
 }
 
-int copy_file(const char *source_path, const char *destination_path)
+int copy_file(const char *source_path, long source_offset, const char *destination_path)
 {
     if ((source_path == NULL) || (destination_path == NULL)) {
         wlan_emu_print(wlan_emu_log_level_err,
@@ -284,6 +284,8 @@ int copy_file(const char *source_path, const char *destination_path)
     wlan_emu_print(wlan_emu_log_level_dbg,
         "%s:%d: copying from source_path : %s destination_path : %s\n", __func__, __LINE__,
         source_path, destination_path);
+
+    source_file.seekg(source_offset, std::ios::beg);
     std::string line;
 
     while (std::getline(source_file, line)) {
@@ -315,7 +317,7 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
         return RETURN_ERR;
     }
     if (http_info->is_local_host_enabled == true) {
-        if (copy_file(url, output_file) != RETURN_OK) {
+        if (copy_file(url, 0, output_file) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to copy from %s to %s\n",
                 __func__, __LINE__, url, output_file);
             return RETURN_ERR;
@@ -401,7 +403,7 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
     }
 
     if (http_info->is_local_host_enabled == true) {
-        if (copy_file(input_file, post_url) != RETURN_OK) {
+        if (copy_file(input_file, 0, post_url) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to copy from %s to %s\n",
                 __func__, __LINE__, input_file, post_url);
             ret = RETURN_ERR;
