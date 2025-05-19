@@ -58,6 +58,8 @@ public:
         get_file_t *get_file;
         mgmt_frame_capture_t *mgmt_frame_capture;
         get_pattern_files_t *get_pattern_files;
+        gw_performance_t *gw_performance;
+        packet_generator_t *packet_generator;
     } u;
 
     virtual int step_execute() = 0;
@@ -369,5 +371,33 @@ public:
     void step_remove();
     test_step_param_config_onewifi();
     ~test_step_param_config_onewifi();
+};
+
+class test_step_param_gateway_performance : public test_step_params_t {
+public:
+    int step_execute();
+    int step_timeout();
+    int step_upload_files(FILE *output_file, bool *update_to_tda);
+    int step_frame_filter(wlan_emu_msg_t *msg);
+    void step_remove();
+    static int get_process_status(char *process_name, FILE *out);
+    static int write_to_file(FILE *out, FILE *in);
+    static void *performance_log(void *arg);
+    test_step_param_gateway_performance();
+    ~test_step_param_gateway_performance();
+};
+
+class test_step_param_packet_generator : public test_step_params_t {
+public:
+    int step_execute();
+    int step_timeout();
+    int step_upload_files(FILE *output_file, bool *update_to_tda);
+    void step_remove();
+    int step_frame_filter(wlan_emu_msg_t *msg);
+    static void *pkt_gen_cci_thread(void *arg);
+    static unsigned int update_pcap_bssids(char *pcap_location, test_step_params_t *step);
+    int update_brlan0_config();
+    test_step_param_packet_generator();
+    ~test_step_param_packet_generator();
 };
 #endif

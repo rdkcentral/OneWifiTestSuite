@@ -114,6 +114,7 @@ private:
     int decode_step_config(cJSON *config_entry, wlan_emu_test_case_config *configuration);
     int decode_step_radio_config(cJSON *step, test_step_params_t *step_config);
     int decode_step_vap_config(cJSON *step, test_step_params_t *step_config);
+    int decode_step_packet_generator_config(cJSON *step, test_step_params_t *step_config);
     int decode_step_station_management_config(cJSON *step, test_step_params_t *step_config);
     int decode_step_time_config(cJSON *step, test_step_params_t *step_config);
     int decode_step_command_config(cJSON *step, test_step_params_t *step_config);
@@ -141,6 +142,7 @@ private:
     int decode_step_get_pattern_files(cJSON *step, test_step_params_t *step_config);
     int decode_step_timed_wait(cJSON *step, test_step_params_t *step_config);
     int decode_step_config_onewifi(cJSON *step, test_step_params_t *step_config);
+    int decode_step_gateway_performance(cJSON *step, test_step_params_t *step_config);
 
 public:
     int init(void);

@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <cjson/cJSON.h>
 #include <string>
+#include <cstdint>
 
 #define RETURN_OK 0
 #define RETURN_ERR -1
@@ -31,6 +32,9 @@
 
 #define DUMMY_PORT_IN 67
 #define DUMMY_PORT_OUT 68
+
+#define CONVERT_MILLI_TO_NANO 1000000
+
 typedef unsigned char mac_addr_t[MAC_ADDR_LEN];
 
 typedef struct {
@@ -63,6 +67,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 int http_post_file(const std::string &url, const std::string &file_path, long &status_code);
 int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len);
 int decode_param_string_fn(cJSON *json, const char *key, cJSON *&value);
+int WaitForDuration(int timeInMs);
 
 const uint8_t MAC_BCAST_ADDR[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 

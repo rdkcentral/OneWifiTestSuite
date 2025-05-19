@@ -231,6 +231,95 @@ int wlan_emu_ui_mgr_t::decode_step_vap_config(cJSON *step, test_step_params_t *s
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::decode_step_packet_generator_config(cJSON *step,
+    test_step_params_t *step_config)
+{
+    cJSON *param = NULL;
+    cJSON *config = NULL;
+    cJSON *pcap_loc = NULL;
+    cJSON *pcap_file_path = NULL;
+
+    if (step_config == NULL || step_config->u.packet_generator == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: packet_generator is NULL or step_config is null\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    step_config->param_type = step_param_type_packet_generator;
+    config = cJSON_GetObjectItem(step, "PacketGenerator");
+    if (config != NULL) {
+        if (step_config->u.packet_generator == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: packet_generator is NULL\n", __func__,
+                __LINE__);
+            return RETURN_ERR;
+        }
+
+        param = cJSON_GetObjectItem(config, "VapName");
+        if (param != NULL && cJSON_IsString(param)) {
+            step_config->u.packet_generator->vapname = std::string(param->valuestring);
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: vap_name is NULL\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        param = cJSON_GetObjectItem(config, "Interval");
+        if (param != NULL && cJSON_IsNumber(param)) {
+            step_config->u.packet_generator->interval = param->valueint;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: interval is NULL\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        param = cJSON_GetObjectItem(config, "Iteration");
+        if (param != NULL && cJSON_IsNumber(param)) {
+            step_config->u.packet_generator->iteration = param->valueint;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: iteration is NULL\n", __func__,
+                __LINE__);
+            return RETURN_ERR;
+        }
+
+        param = cJSON_GetObjectItem(config, "ManagementFrameList");
+        if (param != NULL && cJSON_IsArray(param)) {
+            cJSON_ArrayForEach(pcap_loc, param) {
+                if (step_config->u.packet_generator->pcap_queue == NULL) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pcap_queue is NULL\n", __func__,
+                        __LINE__);
+                    return RETURN_ERR;
+                }
+                decode_param_string(pcap_loc, "PcapLocation", pcap_file_path);
+                if (pcap_file_path != NULL && cJSON_IsString(pcap_file_path)) {
+                    packet_capture_t *pcap_file_loc;
+                    pcap_file_loc = (packet_capture_t *)calloc(1, sizeof(packet_capture_t));
+                    if (pcap_file_loc == NULL) {
+                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pcap_file_loc is NULL\n",
+                            __func__, __LINE__);
+                        return RETURN_ERR;
+                    }
+
+                    strncpy(pcap_file_loc->pcap_location, pcap_file_path->valuestring,
+                        sizeof(pcap_file_loc->pcap_location) - 1);
+                    queue_push(step_config->u.packet_generator->pcap_queue, pcap_file_loc);
+                } else {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: pcap_file_path is NULL\n",
+                        __func__, __LINE__);
+                    return RETURN_ERR;
+                }
+            }
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ManagementFrameList is NULL\n", __func__,
+                __LINE__);
+            return RETURN_ERR;
+        }
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: object PacketGenerator is not found\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::decode_step_station_management_config(cJSON *step,
     test_step_params_t *step_config)
 {
@@ -1113,6 +1202,56 @@ int wlan_emu_ui_mgr_t::decode_step_radio_temperature_stats_set(cJSON *step,
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::decode_step_gateway_performance(cJSON *step, test_step_params_t *step_config)
+{
+    cJSON *param = NULL;
+    cJSON *config = NULL;
+    cJSON *process = NULL;
+    cJSON *process_obj = NULL;
+    char process_name[16] = { 0 };
+    char *p_name = NULL;
+
+    step_config->param_type = step_param_type_gateway_performance;
+
+    config = cJSON_GetObjectItem(step, "GatewayPerformance");
+
+    if (config == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Gateway performance object is NULL\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    decode_param_string(config, "PerformanceResultName", param);
+    step_config->u.gw_performance->result_file_name = param->valuestring;
+
+    decode_param_integer(config, "Interval", param);
+    step_config->u.gw_performance->interval = param->valuedouble;
+
+    decode_param_integer(config, "Iteration", param);
+    step_config->u.gw_performance->iteration = param->valuedouble;
+
+    decode_param_string(config, "TopCmdOptions", param);
+    if (strcmp(param->valuestring, "cpu") == 0) {
+        step_config->u.gw_performance->cmd_option = cmd_option_cpu;
+    } else if (strcmp(param->valuestring, "mem") == 0) {
+        step_config->u.gw_performance->cmd_option = cmd_option_mem;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid command option\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    if ((process_obj = cJSON_GetObjectItem(config, "ProcessNameList")) != NULL) {
+        cJSON_ArrayForEach(process, process_obj) {
+            decode_param_string(process, "ProcessName", param);
+            strncpy(process_name, param->valuestring, sizeof(process_name) - 1);
+            p_name = strdup(process_name);
+            queue_push(step_config->u.gw_performance->process_status, p_name);
+        }
+    }
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t **step_config)
 {
     cJSON *config = NULL;
@@ -1536,6 +1675,43 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
                 __func__, __LINE__);
             return RETURN_ERR;
         }
+        return RETURN_OK;
+    }
+
+    config = cJSON_GetObjectItem(step, "GatewayPerformance");
+    if (config != NULL) {
+        *step_config = new (std::nothrow) test_step_param_gateway_performance;
+        if ((*step_config)->is_step_initialized == false) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Failed allocating memory for gateway performance step\n", __func__,
+                __LINE__);
+            return RETURN_ERR;
+        }
+        if (decode_step_gateway_performance(step, *step_config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d Decode of gateway performance failed\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode gateway performance succeeded\n",
+            __func__, __LINE__);
+        return RETURN_OK;
+    }
+
+    config = cJSON_GetObjectItem(step, "PacketGenerator");
+    if (config != NULL) {
+        *step_config = new (std::nothrow) test_step_param_packet_generator;
+        if ((*step_config)->is_step_initialized == false) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Failed allocating memory for packet generator step\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        if (decode_step_packet_generator_config(step, *step_config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d decode_step_packet_generator_config failed\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d decode_step_packet_generator_config success\n", __func__, __LINE__);
         return RETURN_OK;
     }
 
@@ -2093,8 +2269,8 @@ int wlan_emu_ui_mgr_t::decode_json_config(char *raw_data)
             return RETURN_ERR;
         }
     }
-
     cJSON_Delete(root_json);
+
     return RETURN_OK;
 }
 
@@ -2299,13 +2475,8 @@ int wlan_emu_ui_mgr_t::download_step_param_config(test_step_params_t *step)
                         return RETURN_ERR;
                     }
                 }
-
                 current = current->next;
             }
-        } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q is NULL or empty\n",
-                __func__, __LINE__);
-            return RETURN_ERR;
         }
     } else if (step->param_type == step_param_type_config_onewifi) {
         if ((download_file(step->u.test_onewifi_subdoc, sizeof(step->u.test_onewifi_subdoc))) !=
@@ -2314,8 +2485,25 @@ int wlan_emu_ui_mgr_t::download_step_param_config(test_step_params_t *step)
                 __LINE__, step->u.test_onewifi_subdoc);
             return RETURN_ERR;
         }
-    }
+    } else if (step->param_type == step_param_type_packet_generator) {
+        queue_t *packet_gen_queue = step->u.packet_generator->pcap_queue;
+        element_t *current = packet_gen_queue->head;
+        while (current != NULL) {
+            packet_capture_t *packet_gen_config = (packet_capture_t *)current->data;
 
+            if (packet_gen_config != NULL) {
+                if (download_file(packet_gen_config->pcap_location,
+                        sizeof(packet_gen_config->pcap_location)) != RETURN_OK) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to download %s\n",
+                        __func__, __LINE__, packet_gen_config->pcap_location);
+                    return RETURN_ERR;
+                }
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Download of %s is succesful\n",
+                    __func__, __LINE__, packet_gen_config->pcap_location);
+            }
+            current = current->next;
+        }
+    }
     return RETURN_OK;
 }
 
@@ -2623,7 +2811,7 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
     while (test != NULL) {
         if (test->test_state == wlan_emu_tests_state_cmd_results) {
             steps_count = queue_count(test->test_steps_q);
-            if (steps_count = 0) {
+            if (steps_count == 0) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: No test steps are present for %s \n",
                     __func__, __LINE__, test->test_json);
                 fclose(output_file);
@@ -3021,7 +3209,7 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
                 break;
             }
             steps_count = queue_count(test->test_steps_q);
-            if (steps_count = 0) {
+            if (steps_count == 0) {
                 wlan_emu_print(wlan_emu_log_level_info,
                     "%s:%d: No test steps are present for %s \n", __func__, __LINE__,
                     test->test_json);

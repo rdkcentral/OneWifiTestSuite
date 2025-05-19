@@ -7,6 +7,9 @@
 #include "wlan_emu_common.h"
 #include <new> // For std::nothrow
 #include <pthread.h>
+#include <vector>
+#include <string>
+#include <cstdio>
 
 #ifdef __cplusplus
 extern "C" {
@@ -190,7 +193,9 @@ typedef enum {
     step_param_type_get_pattern_files,
     step_param_type_timed_wait,
     step_param_type_config_onewifi,
-    step_param_type_ext_station_management
+    step_param_type_ext_station_management,
+    step_param_type_gateway_performance,
+    step_param_type_packet_generator,
 } step_param_type_t;
 
 typedef struct {
@@ -355,6 +360,26 @@ typedef struct {
     } u;
 } sta_test_t;
 
+typedef struct __attribute__((packed)) {
+    uint8_t destination[6];
+    uint8_t source[6];
+    uint16_t protocol;
+} ethernet_header_t;
+
+typedef struct {
+    char pcap_location[128];
+} packet_capture_t;
+
+typedef struct {
+    std::string vapname;
+    int interval;
+    int iteration;
+    queue_t *pcap_queue; // packet_capture_t
+    mac_addr_t brlan0_mac;
+    pthread_t p_tid;
+    std::string bridge_name;
+} packet_generator_t;
+
 typedef struct {
     wlan_emu_msg_type_t type;
 
@@ -405,6 +430,22 @@ typedef struct {
     mac_address_t mac;
     sta_state_t status;
 } sta_info_t;
+
+typedef enum {
+    cmd_option_cpu,
+    cmd_option_mem
+} cmd_option_t;
+
+typedef struct {
+    std::string result_file_name;
+    std::string result_file;
+    int interval;
+    int iteration;
+    cmd_option_t cmd_option;
+    queue_t *process_status;
+    pthread_t process_tid;
+    queue_t *res_file_queue;
+} gw_performance_t;
 
 #ifdef __cplusplus
 }

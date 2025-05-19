@@ -902,3 +902,37 @@ int decode_param_string_fn(cJSON *json, const char *key, cJSON *&value)
     }
     return RETURN_OK;
 }
+
+int WaitForDuration(int timeInMs)
+{
+    struct timespec ts;
+    pthread_condattr_t cond_attr;
+    pthread_cond_t cond;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+    int ret = -1;
+
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    /* Add wait duration*/
+    if (timeInMs > 1000) {
+        ts.tv_sec += (timeInMs / 1000);
+    } else {
+        ts.tv_nsec = ts.tv_nsec + (timeInMs * CONVERT_MILLI_TO_NANO);
+        ts.tv_sec = ts.tv_sec + ts.tv_nsec / 1000000000L;
+        ts.tv_nsec = ts.tv_nsec % 1000000000L;
+    }
+    pthread_mutex_lock(&mutex);
+
+    while (ret != 0 && ret != ETIMEDOUT) {
+        ret = pthread_cond_timedwait(&cond, &mutex, &ts);
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: WaitForDuration completed successfully\n",
+        __func__, __LINE__);
+    pthread_mutex_unlock(&mutex);
+
+    return ret;
+}
