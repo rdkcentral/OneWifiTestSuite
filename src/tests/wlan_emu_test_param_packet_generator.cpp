@@ -646,18 +646,15 @@ int test_step_param_packet_generator::step_upload_files(FILE *output_file, bool 
 void test_step_param_packet_generator::step_remove()
 {
     test_step_param_packet_generator *step = static_cast<test_step_param_packet_generator *>(this);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: STEP : %d - Called for Step Remove\n", __func__,
-        __LINE__, this->step_number);
 
-    if (step == NULL) {
-        return;
-    }
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: STEP : %d - Called for Step Remove\n", __func__,
+        __LINE__, step->step_number);
+
     queue_destroy(step->u.packet_generator->pcap_queue);
     step->u.packet_generator->pcap_queue = NULL;
-    pthread_cancel(this->u.packet_generator->p_tid);
-    delete step;
-    step = NULL;
+    pthread_cancel(step->u.packet_generator->p_tid);
 
+    delete step;
     return;
 }
 
