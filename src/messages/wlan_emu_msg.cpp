@@ -226,9 +226,9 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
         cap_len = sizeof(radio_tap_header) + f_data->u.frm80211.u.frame.frame_len;
     } else {
         cap_len = sizeof(radio_tap_header) +
-            f_data->u.cfg80211.u.start_ap.ap_params.beacon.head_len +
+            f_data->u.cfg80211.u.start_ap.head_len +
             sizeof(traffic_indication_map) +
-            f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail_len;
+            f_data->u.cfg80211.u.start_ap.tail_len;
     }
 
     buff = malloc(cap_len);
@@ -295,23 +295,31 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
             step->test_case_id, step->step_number, timestamp, mac_str, "NA", step->test_case_name,
             get_msg_name(), radio_index);
 
-        head = (struct ieee80211_mgmt *)f_data->u.cfg80211.u.start_ap.ap_params.beacon.head;
+        head = (struct ieee80211_mgmt *)f_data->u.cfg80211.u.start_ap.beacon_head;
 
         // Filling timestamp.
         memcpy(head->u.beacon.timestamp, &tv.tv_sec, sizeof(head->u.beacon.timestamp));
 
         // Filling Head
-        memcpy(buff, head, f_data->u.cfg80211.u.start_ap.ap_params.beacon.head_len);
-        buff += f_data->u.cfg80211.u.start_ap.ap_params.beacon.head_len;
+        memcpy(buff, head, f_data->u.cfg80211.u.start_ap.head_len);
+        buff += f_data->u.cfg80211.u.start_ap.head_len;
 
         // Filling TIM.
         memcpy(buff, traffic_indication_map, sizeof(traffic_indication_map));
         buff += sizeof(traffic_indication_map);
 
         // Filling Tail.
-        memcpy(buff, f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail,
-            f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail_len);
-        buff += f_data->u.cfg80211.u.start_ap.ap_params.beacon.tail_len;
+        memcpy(buff, f_data->u.cfg80211.u.start_ap.beacon_tail,
+            f_data->u.cfg80211.u.start_ap.tail_len);
+        buff += f_data->u.cfg80211.u.start_ap.tail_len;
+
+        if (f_data->u.cfg80211.u.start_ap.beacon_head != NULL) {
+            free(f_data->u.cfg80211.u.start_ap.beacon_head);
+        }
+
+        if (f_data->u.cfg80211.u.start_ap.beacon_tail != NULL) {
+            free(f_data->u.cfg80211.u.start_ap.beacon_tail);
+        }
     }
 
     memcpy(to_queue, fname, 248);
