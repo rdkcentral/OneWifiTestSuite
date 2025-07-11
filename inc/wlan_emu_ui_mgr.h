@@ -78,6 +78,43 @@ class test_step_param_get_pattern_files;
 class test_step_param_timed_wait;
 class test_step_param_config_onewifi;
 
+class wlan_emu_ui_ssl_config {
+public:
+    char ssl_cert[128];
+    char ssl_key[64];
+    inline char *get_ssl_cert()
+    {
+        return ssl_cert;
+    }
+    inline char *get_ssl_key()
+    {
+        return ssl_key;
+    }
+
+    void set_ssl_cert(const char *cert)
+    {
+        if (cert) {
+            strncpy(ssl_cert, cert, sizeof(ssl_cert) - 1);
+            ssl_cert[sizeof(ssl_cert) - 1] = '\0';
+        } else {
+            ssl_cert[0] = '\0';
+        }
+    }
+
+    void set_ssl_key(const char *key)
+    {
+        if (key) {
+            strncpy(ssl_key, key, sizeof(ssl_key) - 1);
+            ssl_key[sizeof(ssl_key) - 1] = '\0';
+        } else {
+            ssl_key[0] = '\0';
+        }
+    }
+    int get_mtls_configuration();
+    wlan_emu_ui_ssl_config();
+    ~wlan_emu_ui_ssl_config();
+};
+
 class wlan_emu_ui_mgr_t {
     static unsigned int m_token;
     char m_path[128]; // tmp directory
@@ -100,8 +137,6 @@ class wlan_emu_ui_mgr_t {
     char remote_test_results_loc[256];
     webconfig_cci_t *m_webconfig_data;
     wifi_hal_capability_t *m_sta_hal_cap;
-    char ssl_cert[128];
-    char ssl_key[64];
     pthread_cond_t m_heartbeat_cond;
     pthread_mutex_t m_heartbeat_lock;
     pthread_t m_heartbeat_tid;
@@ -158,7 +193,6 @@ private:
     int download_step_param_config(test_step_params_t *step);
     int download_step_common_config(test_step_params_t *step);
     int cci_post_result_to_tda(unsigned int type, char *str);
-    int get_mlts_configuration();
     int decode_step_get_file(cJSON *step, test_step_params_t *step_config);
     int decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config);
     int decode_step_get_pattern_files(cJSON *step, test_step_params_t *step_config);
@@ -404,6 +438,7 @@ public:
     }
 
     http_info_t *fill_http_info();
+    wlan_emu_ui_ssl_config m_ssl_config;
 
     wlan_emu_ui_mgr_t();
     ~wlan_emu_ui_mgr_t();

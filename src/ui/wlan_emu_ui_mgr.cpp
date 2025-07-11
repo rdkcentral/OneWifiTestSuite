@@ -21,10 +21,6 @@
 #include <unistd.h>
 #include <fstream>
 
-#define dynamic_ssa_passwd_parameter "{STOR=GET,SRC=kquhqtoczcbx,DST=/dev/stdout}"
-#define static_ssa_passwd_parameter "{STOR=GET,SRC=mamjwwgtfwpa,DST=/dev/stdout}"
-#define KeyGenBinaryPath "/usr/bin/rdkssacli"
-
 namespace fs = std::experimental::filesystem;
 
 unsigned char cci_test_dir[] = "cci_res";
@@ -51,8 +47,14 @@ http_info_t *wlan_emu_ui_mgr_t::fill_http_info()
         return NULL;
     }
     http_info->is_local_host_enabled = is_local_host_enabled;
-    strncpy(http_info->ssl_cert, ssl_cert, sizeof(http_info->ssl_cert) - 1);
-    strncpy(http_info->ssl_key, ssl_key, sizeof(http_info->ssl_key) - 1);
+    if (this->m_ssl_config.get_ssl_cert() == NULL ||
+        this->m_ssl_config.get_ssl_key() == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d SSL cert or key is NULL\n", __func__, __LINE__);
+        free(http_info);
+        return NULL;
+    }
+    strncpy(http_info->ssl_cert, this->m_ssl_config.get_ssl_cert(), sizeof(http_info->ssl_cert) - 1);
+    strncpy(http_info->ssl_key, this->m_ssl_config.get_ssl_key(), sizeof(http_info->ssl_key) - 1);
     strncpy(http_info->interface, interface, sizeof(http_info->interface) - 1);
     strncpy(http_info->tda_url, tda_url, sizeof(http_info->tda_url) - 1);
 
@@ -3261,75 +3263,6 @@ wlan_emu_sig_type_t wlan_emu_ui_mgr_t::io_wait()
     return type;
 }
 
-int wlan_emu_ui_mgr_t::get_mlts_configuration()
-{
-#ifdef CONFIG_XB7_MTLS
-    char default_cpe_ssl_cert[] = "/nvram/certs/devicecert_1.pk12";
-#else
-    char default_cpe_ssl_cert[] = "/nvram/certs/devicecert_2.pk12";
-#endif
-    FILE *fp;
-    FILE *fp1;
-
-#ifdef CONFIG_XB7_MTLS
-    if (access(default_cpe_ssl_cert, F_OK) == -1) {
-        // The cpe file does not exist
-        snprintf(ssl_cert, sizeof(ssl_cert), "%s", "/etc/ssl/certs/staticXpkiCrt.pk12");
-        fp = v_secure_popen("r", "%s \"%s\"", KeyGenBinaryPath, static_ssa_passwd_parameter);
-
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs and static ssa assword\n",
-            __func__, __LINE__);
-    } else {
-        snprintf(ssl_cert, sizeof(ssl_cert), "%s", default_cpe_ssl_cert);
-        fp = v_secure_popen("r", "%s \"%s\"", KeyGenBinaryPath, dynamic_ssa_passwd_parameter);
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb7 certs and dynamic ssa pasword\n",
-            __func__, __LINE__);
-    }
-#else
-    if (access(default_cpe_ssl_cert, F_OK) == 0) {
-        snprintf(ssl_cert, sizeof(ssl_cert), "%s", default_cpe_ssl_cert);
-        fp1 = v_secure_popen("r", "%s \"%s\"", "GetConfigFile", "/tmp/.cfgDynamicSExpki");
-        if (fp1 == NULL) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: popen failed\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
-        v_secure_pclose(fp1); // Ensure GetConfigFile completes before reading the file
-
-        fp = v_secure_popen("r", "%s \"%s\"", "cat", "/tmp/.cfgDynamicSExpki");
-
-        // read from fp here
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Using Xb8 certs\n", __func__, __LINE__);
-    } else {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: No available certs for xb8 conf\n", __func__,
-            __LINE__);
-        return RETURN_ERR;
-    }
-#endif
-
-    if (fp == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: popen failed\n", __func__, __LINE__);
-        return RETURN_ERR;
-    } else {
-        memset(ssl_key, 0, sizeof(ssl_key));
-        if (fgets(ssl_key, sizeof(ssl_key) - 1, fp) == NULL) {
-            if (feof(fp)) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Command produced no output\n",
-                    __func__, __LINE__);
-            } else if (ferror(fp)) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error reading command output\n",
-                    __func__, __LINE__);
-            }
-            v_secure_pclose(fp);
-            return RETURN_ERR;
-        } else {
-            ssl_key[strcspn(ssl_key, "\n")] = '\0';
-        }
-        v_secure_pclose(fp);
-    }
-
-    return RETURN_OK;
-}
-
 void *wlan_emu_ui_mgr_t::heartbeat_function(void *arg)
 {
     wlan_emu_ui_mgr_t *ui_mgr = (wlan_emu_ui_mgr_t *)arg;
@@ -3356,8 +3289,6 @@ int wlan_emu_ui_mgr_t::init()
     char timestamp[24] = { 0 };
 
     memset(input_test_buff, 0, sizeof(input_test_buff));
-    memset(ssl_cert, 0, sizeof(ssl_cert));
-    memset(ssl_key, 0, sizeof(ssl_key));
     log_file_offset = 0;
 
     strncpy(m_path, "/tmp", sizeof(m_path));
@@ -3401,8 +3332,8 @@ int wlan_emu_ui_mgr_t::init()
         return RETURN_ERR;
     }
 
-    if (get_mlts_configuration() != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_mlts_configuration failed\n", __func__,
+    if (m_ssl_config.get_mtls_configuration() != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_mtls_configuration failed\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
