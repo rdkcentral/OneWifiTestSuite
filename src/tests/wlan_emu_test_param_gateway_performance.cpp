@@ -1,5 +1,6 @@
 #include "wlan_emu_test_params.h"
 #include "wlan_emu_log.h"
+#include "wlan_emu_err_code.h"
 #include "cci_wifi_utils.hpp"
 #include <secure_wrapper.h>
 
@@ -92,6 +93,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
         if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
                 __func__, __LINE__);
+            step->m_ui_mgr->cci_error_code = ETIMESTAMP;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return NULL;
         }
@@ -107,6 +109,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
         if (!out) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to open the result file %s\n",
                 __func__, __LINE__, step->u.gw_performance->result_file.c_str());
+            step->m_ui_mgr->cci_error_code = EFOPEN;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return NULL;
         }
@@ -124,6 +127,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to open pipe\n", __func__,
                 __LINE__);
             fclose(out);
+            step->m_ui_mgr->cci_error_code = EPOPEN;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return NULL;
         }
@@ -133,6 +137,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
                 __func__, __LINE__);
             v_secure_pclose(fp_process);
             fclose(out);
+            step->m_ui_mgr->cci_error_code = EFWRITE;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return NULL;
         }
@@ -144,6 +149,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
                 __func__, __LINE__);
 
             fclose(out);
+            step->m_ui_mgr->cci_error_code = EPROCSTATUS;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return NULL;
         }
@@ -158,6 +164,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
                             "%s:%d: failed to get the process status\n", __func__, __LINE__);
 
                         fclose(out);
+                        step->m_ui_mgr->cci_error_code = EPROCSTATUS;
                         step->test_state = wlan_emu_tests_state_cmd_abort;
                         return NULL;
                     }
@@ -170,7 +177,14 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
         fclose(out);
 
         res_file = strdup(step->u.gw_performance->result_file.c_str());
-        queue_push(step->u.gw_performance->res_file_queue, res_file);
+        if (step->m_ui_mgr->step_upload_files(res_file) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed for %s\n",
+                __func__, __LINE__, res_file);
+            free(res_file);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
+            return NULL;
+        }
         iteration++;
         // Skip wait for last iteration
         if (iteration < step->u.gw_performance->iteration) {
@@ -196,6 +210,7 @@ int test_step_param_gateway_performance::step_execute()
                 test_step_param_gateway_performance::performance_log, this) != 0) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Thread create error for step : %d\n",
                 __func__, __LINE__, step->step_number);
+            step->m_ui_mgr->cci_error_code = ETHREAD;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
@@ -228,6 +243,7 @@ int test_step_param_gateway_performance::step_timeout()
             __LINE__, step->step_number);
         return RETURN_OK;
     } else if (step->test_state == wlan_emu_tests_state_cmd_abort) {
+        step->m_ui_mgr->cci_error_code = ESTEPTIMEOUT;
         wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Test aborted for step %d\n", __func__,
             __LINE__, step->step_number);
         pthread_cancel(step->u.gw_performance->process_tid);
@@ -245,53 +261,6 @@ int test_step_param_gateway_performance::step_timeout()
     return RETURN_OK;
 }
 
-int test_step_param_gateway_performance::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    test_step_params_t *step = this;
-    char *remote_test_results_loc = NULL;
-    char *res_file_name;
-    char *temp_res_file = NULL;
-
-    if (step->u.gw_performance->res_file_queue == NULL) {
-        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: No files to upload for step %d\n", __func__,
-            __LINE__, step->step_number);
-        return RETURN_OK;
-    }
-
-    remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
-
-    res_file_name = (char *)queue_pop(step->u.gw_performance->res_file_queue);
-
-    while (res_file_name != NULL) {
-        if (res_file_name != NULL) {
-            if (step->m_ui_mgr->upload_file_to_server(res_file_name, remote_test_results_loc) !=
-                RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
-                    __LINE__, res_file_name);
-                return RETURN_ERR;
-            } else {
-                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
-                    res_file_name);
-                *update_to_tda = true;
-                temp_res_file = strdup(res_file_name);
-                if (get_last_substring_after_slash(temp_res_file, res_file_name, 128) !=
-                    RETURN_OK) {
-                    wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
-                        __LINE__, temp_res_file);
-                    free(temp_res_file);
-                    return RETURN_ERR;
-                }
-                fprintf(output_file, "%s\n", res_file_name);
-                free(temp_res_file);
-            }
-            free(res_file_name);
-        }
-        res_file_name = (char *)queue_pop(step->u.gw_performance->res_file_queue);
-    }
-    return RETURN_OK;
-}
-
 void test_step_param_gateway_performance::step_remove()
 {
     test_step_params_t *step = dynamic_cast<test_step_params_t *>(this);
@@ -304,10 +273,6 @@ void test_step_param_gateway_performance::step_remove()
         if (step->u.gw_performance->process_status != nullptr) {
             queue_destroy(step->u.gw_performance->process_status);
             step->u.gw_performance->process_status = nullptr;
-        }
-        if (step->u.gw_performance->res_file_queue != nullptr) {
-            queue_destroy(step->u.gw_performance->res_file_queue);
-            step->u.gw_performance->res_file_queue = nullptr;
         }
     }
     delete step;
@@ -339,13 +304,6 @@ test_step_param_gateway_performance::test_step_param_gateway_performance()
     step->u.gw_performance->cmd_option = cmd_option_mem;
     step->u.gw_performance->process_status = queue_create();
     if (step->u.gw_performance->process_status == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to create queue\n", __func__,
-            __LINE__);
-        step->is_step_initialized = false;
-        return;
-    }
-    step->u.gw_performance->res_file_queue = queue_create();
-    if (step->u.gw_performance->res_file_queue == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to create queue\n", __func__,
             __LINE__);
         step->is_step_initialized = false;

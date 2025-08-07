@@ -1,6 +1,7 @@
 #include "cci_wifi_utils.hpp"
 #include "common/ieee802_11_defs.h"
 #include "wlan_emu_log.h"
+#include "wlan_emu_err_code.h"
 #include <ctime>
 #include <sys/time.h>
 #include <curl/curl.h>
@@ -298,7 +299,7 @@ int copy_file(const char *source_path, long source_offset, const char *destinati
     return RETURN_OK;
 }
 
-int https_get_file(http_info_t *http_info, const char *url, const char *output_file)
+int https_get_file(http_info_t *http_info, const char *url, const char *output_file, int &error_code)
 {
     CURL *curl;
     CURLcode res;
@@ -311,6 +312,7 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
         url, output_file);
 
     if ((url == NULL) || (output_file == NULL)) {
+        error_code = ENULL;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: input arguements are NULL url : %p output_file : %p\n", __func__, __LINE__, url,
             output_file);
@@ -318,6 +320,7 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
     }
     if (http_info->is_local_host_enabled == true) {
         if (copy_file(url, 0, output_file) != RETURN_OK) {
+            error_code = EFCOPY;
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to copy from %s to %s\n",
                 __func__, __LINE__, url, output_file);
             return RETURN_ERR;
@@ -327,6 +330,7 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
     } else {
         fp = fopen(output_file, "wb");
         if (fp == NULL) {
+            error_code = EFOPEN;
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to open the file :%s\n", __func__,
                 __LINE__, output_file);
             return RETURN_ERR;
@@ -354,6 +358,7 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
             res = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
             res = curl_easy_perform(curl);
             if (res != CURLE_OK) {
+                error_code = ECURLGET;
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: curl_easy_perform() failed curl errno : %d errstr : %s for url : %s "
                     "len : %d\n",
@@ -373,6 +378,7 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
                 __LINE__, output_file);
             ret = RETURN_OK;
         } else {
+            error_code = ECURLGET;
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to initialize libcurl.\n",
                 __func__, __LINE__);
             ret = RETURN_ERR;
@@ -384,7 +390,7 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
     return ret;
 }
 
-int https_post_file(http_info_t *http_info, const char *post_url, const char *input_file)
+int https_post_file(http_info_t *http_info, const char *post_url, const char *input_file, int &error_code)
 {
     int ret = RETURN_ERR;
     CURL *curl;
@@ -393,6 +399,7 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
     char file_name[128] = { 0 };
 
     if ((post_url == NULL) || (input_file == NULL)) {
+        error_code = ENULL;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: input arguements are NULL url : %p input_file : %p\n", __func__, __LINE__,
             post_url, input_file);
@@ -401,6 +408,7 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
 
     if (http_info->is_local_host_enabled == true) {
         if (copy_file(input_file, 0, post_url) != RETURN_OK) {
+            error_code = EFCOPY;
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to copy from %s to %s\n",
                 __func__, __LINE__, input_file, post_url);
             ret = RETURN_ERR;
@@ -411,7 +419,7 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
         }
     } else {
 
-        if (get_last_substring_after_slash(input_file, file_name, sizeof(file_name)) != RETURN_OK) {
+        if (get_last_substring_after_slash(input_file, file_name, sizeof(file_name), error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: get_last_substring_after_slash failed for input_file : %s\n", __func__,
                 __LINE__, input_file);
@@ -456,6 +464,7 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
             res = curl_easy_perform(curl);
 
             if (res != CURLE_OK) {
+                error_code = ECURLPOST;
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: curl_easy_perform() failed: errno : %d error_str : %s for url : %s for "
                     "%s\n",
@@ -504,13 +513,14 @@ static size_t write_callback(void *contents, size_t size, size_t nmemb, std::str
     return total_size;
 }
 
-int http_get(const std::string &url, std::string &response, long &status_code)
+int http_get(const std::string &url, std::string &response, long &status_code, int &error_code)
 {
     CURLcode ret;
     CURL *curl = NULL;
 
     curl = curl_easy_init();
     if (curl == NULL) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d failed to initialize curl\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -519,6 +529,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -526,6 +537,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -533,6 +545,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -540,6 +553,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_setopt(curl, CURLOPT_TIMEOUT, 25L);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -547,6 +561,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_WHATEVER);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: curl setopt failed: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -554,6 +569,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -561,6 +577,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -568,6 +585,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -575,6 +593,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_perform(curl);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: GET %s request failed: %s\n", __func__,
             __LINE__, url.c_str(), curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -582,6 +601,7 @@ int http_get(const std::string &url, std::string &response, long &status_code)
 
     ret = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: curl getinfo failed: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -605,13 +625,14 @@ static size_t write_file_callback(void *contents, size_t size, size_t nmemb,
     return total_size;
 }
 
-int http_get_file(const std::string &url, const std::string &file_path, long &status_code)
+int http_get_file(const std::string &url, const std::string &file_path, long &status_code, int &error_code)
 {
     CURLcode ret;
     CURL *curl = NULL;
 
     curl = curl_easy_init();
     if (curl == NULL) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d failed to initialize curl\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -620,6 +641,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     ret = curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -627,6 +649,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     ret = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -634,6 +657,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     ret = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -641,6 +665,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     ret = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_file_callback);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -648,6 +673,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     std::ofstream out_file(file_path, std::ofstream::out | std::ios::binary);
     if (!out_file.is_open()) {
+        error_code = EFOPEN;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to open %s file, error: %d (%s)\n",
             __func__, __LINE__, file_path.c_str(), errno, strerror(errno));
         return RETURN_ERR;
@@ -655,6 +681,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     ret = curl_easy_setopt(curl, CURLOPT_WRITEDATA, &out_file);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -662,6 +689,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     ret = curl_easy_perform(curl);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: GET %s request failed: %s\n", __func__,
             __LINE__, url.c_str(), curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -669,6 +697,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     out_file.close();
     if (out_file.fail()) {
+        error_code = EFWRITE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed write to %s file, error: %d (%s)\n",
             __func__, __LINE__, file_path.c_str(), errno, strerror(errno));
         return RETURN_ERR;
@@ -676,6 +705,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
 
     ret = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
     if (ret != CURLE_OK) {
+        error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: curl getinfo failed: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -684,7 +714,7 @@ int http_get_file(const std::string &url, const std::string &file_path, long &st
     return RETURN_OK;
 }
 
-int http_post(const std::string &url, const std::string &data, long &status_code)
+int http_post(const std::string &url, const std::string &data, long &status_code, int &error_code)
 {
     CURLcode ret;
     CURL *curl = NULL;
@@ -692,6 +722,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     curl = curl_easy_init();
     if (curl == NULL) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d failed to initialize curl\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -700,6 +731,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     ret = curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -707,6 +739,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     ret = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -714,6 +747,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     ret = curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -721,6 +755,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     ret = curl_easy_setopt(curl, CURLOPT_POST, 1L);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -728,6 +763,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     headers = curl_slist_append(headers, "Content-Type: application/json");
     if (headers == NULL) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to create headers\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -737,6 +773,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     ret = curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -744,6 +781,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     ret = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -751,6 +789,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     ret = curl_easy_perform(curl);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: POST %s request failed: %s\n", __func__,
             __LINE__, url.c_str(), curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -758,6 +797,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
 
     ret = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: curl getinfo failed: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -766,7 +806,7 @@ int http_post(const std::string &url, const std::string &data, long &status_code
     return RETURN_OK;
 }
 
-int http_post_file(const std::string &url, const std::string &file_path, long &status_code)
+int http_post_file(const std::string &url, const std::string &file_path, long &status_code, int &error_code)
 {
     CURLcode ret;
     CURL *curl = NULL;
@@ -775,7 +815,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
     char file_name[128] = { 0 };
     std::string url_with_filename;
 
-    if (get_last_substring_after_slash(file_path.c_str(), file_name, sizeof(file_name)) !=
+    if (get_last_substring_after_slash(file_path.c_str(), file_name, sizeof(file_name), error_code) !=
         RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: get_last_substring_after_slash failed for input_file: %s\n", __func__, __LINE__,
@@ -787,6 +827,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 
     curl = curl_easy_init();
     if (curl == NULL) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d failed to initialize curl\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -795,6 +836,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 
     ret = curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, curl_debug);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -802,6 +844,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 
     ret = curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -809,6 +852,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 
     ret = curl_easy_setopt(curl, CURLOPT_URL, url_with_filename.c_str());
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -816,6 +860,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 
     ret = curl_easy_setopt(curl, CURLOPT_POST, 1L);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to set curl opt: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -823,6 +868,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 
     std::ifstream file(file_path, std::ios::binary);
     if (!file.is_open()) {
+        error_code = EFOPEN;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unabled to open the file %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -836,6 +882,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 
     ret = curl_easy_perform(curl);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: POST %s request failed: %s\n", __func__,
             __LINE__, url.c_str(), curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -845,6 +892,7 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 
     ret = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
     if (ret != CURLE_OK) {
+        error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: curl getinfo failed: %s\n", __func__,
             __LINE__, curl_easy_strerror(ret));
         return RETURN_ERR;
@@ -853,12 +901,13 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
     return RETURN_OK;
 }
 
-int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len)
+int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len, int &error_code)
 {
     char *last_slash = NULL;
     int ret = 0;
 
     if ((str == NULL) || (sub_string == NULL) || (sub_str_len == 0)) {
+        error_code = ENULL;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: input arguements are NULL str : %p file_name : %p  sub_str_len : %d\n",
             __func__, __LINE__, str, sub_string, sub_str_len);
@@ -876,6 +925,7 @@ int get_last_substring_after_slash(const char *str, char *sub_string, int sub_st
         ret = snprintf(sub_string, sub_str_len, "%s", tempstring);
 
         if ((ret < 0) || (ret >= sub_str_len)) {
+            error_code = ESNPRINTF;
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: snprintf failed return : %d input len : %d\n", __func__, __LINE__, ret,
                 sub_str_len);
@@ -887,6 +937,8 @@ int get_last_substring_after_slash(const char *str, char *sub_string, int sub_st
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: No '/' found in the string : %s\n", __func__,
             __LINE__, str);
     }
+
+    error_code = EFPRESENCE;
 
     return RETURN_ERR;
 }

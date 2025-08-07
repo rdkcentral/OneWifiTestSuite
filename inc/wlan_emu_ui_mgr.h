@@ -85,13 +85,18 @@ class wlan_emu_ui_mgr_t {
     wifi_hal_capability_t *m_sta_hal_cap;
     char ssl_cert[128];
     char ssl_key[64];
-    int cci_error_code;
     pthread_cond_t m_heartbeat_cond;
     pthread_mutex_t m_heartbeat_lock;
     pthread_t m_heartbeat_tid;
     wlan_emu_bus_t *m_bus_mgr;
     long log_file_offset;
     std::string reboot_url_file_name;
+    FILE *res_output_file_fp = NULL;
+    char res_output_file[128] = { 0 };
+    uint paused_logging_steps_count = 0;
+    uint *paused_logging_steps = NULL; // step_number_entry_t
+    uint last_executed_step_num = 0;
+    bool reboot_test_executed = false;
 
 private:
     int io_prep(void);
@@ -143,6 +148,7 @@ private:
     int decode_step_timed_wait(cJSON *step, test_step_params_t *step_config);
     int decode_step_config_onewifi(cJSON *step, test_step_params_t *step_config);
     int decode_step_gateway_performance(cJSON *step, test_step_params_t *step_config);
+    int decode_step_configure_upgrade_or_reboot(cJSON *step, test_step_params_t *step_config);
 
 public:
     int init(void);
@@ -150,6 +156,8 @@ public:
     int analyze_request(void);
     unsigned int upload_results(void);
     int upload_cci_log(char *test_case_id, char *test_case_name, FILE *fp);
+    int decode_reboot_case_json();
+    int cci_error_code;
 
     inline void add_bus_mgr(wlan_emu_bus_t *bus_mgr)
     {
@@ -188,13 +196,49 @@ public:
         return input_test_buff;
     }
 
-    int read_config_file(char *file_path, char **data); // can be moved it to utils classes
+    inline void set_reboot_test_executed(bool value)
+    {
+        reboot_test_executed = value;
+    }
 
+    inline bool get_reboot_test_executed(void)
+    {
+        return reboot_test_executed;
+    }
+
+    inline int alloc_paused_logging_steps(int count)
+    {
+        if (paused_logging_steps != NULL) {
+            free(paused_logging_steps);
+            paused_logging_steps = NULL;
+        }
+        paused_logging_steps = (uint *)malloc(count * sizeof(uint));
+        if (paused_logging_steps == NULL) {
+            return RETURN_ERR;
+        }
+        memset(paused_logging_steps, 0, count * sizeof(uint));
+        return RETURN_OK;
+    }
+
+    inline uint *get_paused_logging_steps()
+    {
+        return paused_logging_steps;
+    }
+
+    inline bool get_local_host_enabled()
+    {
+        return is_local_host_enabled;
+    }
+
+    int read_config_file(char *file_path, char **data); // can be moved it to utils classes
+    int check_reboot_step_config( cJSON *step);
     int cci_report_failure_to_tda(void);
     int cci_report_complete_to_tda(void);
     int cci_report_reboot_to_tda(void);
     int cci_report_heartbeat_to_tda(void);
     void update_log_file_offset(void);
+    int cci_report_pause_to_tda(void);
+    int cci_report_resume_to_tda(void);
 
     long get_log_file_offset()
     {
@@ -275,6 +319,7 @@ public:
     }
 
     int upload_file_to_server(char *file_name, char *path);
+    int step_upload_files(char *output_file);
     int wlan_emu_get_station_capability(wifi_hal_capability_t *sta_hal_cap);
 
     inline void update_station_capability(wifi_hal_capability_t *sta_hal_cap)
@@ -295,6 +340,11 @@ public:
     inline char *get_tda_url()
     {
         return tda_url;
+    }
+
+    inline char *get_server_address()
+    {
+        return server_address;
     }
 
     inline char *get_tda_interface()

@@ -4,6 +4,7 @@
 #include "wlan_emu_tests.h"
 #include "wlan_emu_cjson.h"
 #include "wlan_emu_ui_mgr.h"
+#include "wlan_emu_err_code.h"
 #include <string.h>
 #include <memory>
 #include <fstream>
@@ -473,7 +474,7 @@ int wlan_emu_ext_agent_interface_t::get_external_agent_capabilities(hash_map_t *
         snprintf(capability_url, sizeof(capability_url), "%s:%d/%s",
             agent_details->agent_ip_address, 1234, "Capability");
 
-        if (http_get(capability_url, response, status_code) != RETURN_OK) {
+        if (http_get(capability_url, response, status_code, m_ui_mgr->cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: http_get failed for %s\n", __func__,
                 __LINE__, capability_url);
             agent_details = (wlan_emu_ext_agent_interface_t *)hash_map_get_next(ext_agent_map,
@@ -503,19 +504,21 @@ int wlan_emu_ext_agent_interface_t::get_external_agent_test_status(ext_agent_sta
 
     url = agent_proto + std::string(agent_ip_address) + agent_port + status_endpoint;
 
-    if (http_get(url, response, status_code) != RETURN_OK) {
+    if (http_get(url, response, status_code, m_ui_mgr->cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to send get status request\n",
             __func__, __LINE__);
         return RETURN_ERR;
     }
 
     if (status_code != http_status_code_ok) {
+        m_ui_mgr->cci_error_code = EEXTAGENT;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: http status code: %d\n", __func__, __LINE__,
             status_code);
         return RETURN_ERR;
     }
 
     if (decode_external_agent_test_status(response, status) != RETURN_OK) {
+        m_ui_mgr->cci_error_code = EEXTAGENT;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: failed to decode status\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -530,13 +533,14 @@ int wlan_emu_ext_agent_interface_t::send_external_agent_command(const std::strin
     std::string url;
 
     url = agent_proto + std::string(agent_ip_address) + agent_port + command_endpoint;
-    if (http_post(url, command, status_code) != RETURN_OK) {
+    if (http_post(url, command, status_code, m_ui_mgr->cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to send %s command\n", __func__,
             __LINE__, command.c_str());
         return RETURN_ERR;
     }
 
     if (status_code != http_status_code_ok) {
+        m_ui_mgr->cci_error_code = EEXTAGENT;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: http status code: %d\n", __func__, __LINE__,
             status_code);
         return RETURN_ERR;
@@ -650,13 +654,14 @@ int wlan_emu_ext_agent_interface_t::download_external_agent_result_files(
         std::string file_path = file_name;
         long status_code;
 
-        if (http_get_file(url, file_path, status_code) != RETURN_OK) {
+        if (http_get_file(url, file_path, status_code, m_ui_mgr->cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download %s\n", __func__,
                 __LINE__, file_name.c_str());
             return RETURN_ERR;
         }
 
         if (status_code != http_status_code_ok) {
+            m_ui_mgr->cci_error_code = EEXTAGENT;
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: http status code: %d\n", __func__,
                 __LINE__, status_code);
             return RETURN_ERR;

@@ -1,5 +1,6 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_err_code.h"
 #include <assert.h>
 #include <experimental/filesystem>
 
@@ -21,6 +22,7 @@ int test_step_param_get_pattern_files::step_execute()
     if (access(step->u.get_pattern_files->file_location, F_OK) == -1) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Directory %s is not present for step : %d\n",
             __func__, __LINE__, step->u.get_pattern_files->file_location, step->step_number);
+        step->m_ui_mgr->cci_error_code = EFPRESENCE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -29,6 +31,7 @@ int test_step_param_get_pattern_files::step_execute()
     if (file_pattern_len == 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid string %s for step : %d\n", __func__,
             __LINE__, step->u.get_pattern_files->file_pattern, step->step_number);
+        step->m_ui_mgr->cci_error_code = ESTEP;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -52,6 +55,7 @@ int test_step_param_get_pattern_files::step_execute()
                         wlan_emu_print(wlan_emu_log_level_err,
                             "%s:%d: memory allocation failed for step : %d\n", __func__, __LINE__,
                             step->step_number);
+                        step->m_ui_mgr->cci_error_code = EMALLOC;
                         step->test_state = wlan_emu_tests_state_cmd_abort;
                         return RETURN_ERR;
                     }
@@ -60,13 +64,25 @@ int test_step_param_get_pattern_files::step_execute()
                         entry.path().filename().string().c_str());
                     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: file string is : %s\n", __func__,
                         __LINE__, temp_file_info);
-                    queue_push(step->u.get_pattern_files->get_pattern_files_queue, temp_file_info);
+                    if (step->m_ui_mgr->step_upload_files(temp_file_info) != RETURN_OK) {
+                        wlan_emu_print(wlan_emu_log_level_err,
+                            "%s:%d: step_upload_files failed for %s\n", __func__, __LINE__,
+                            temp_file_info);
+                        step->test_state = wlan_emu_tests_state_cmd_abort;
+                        step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
+                        return RETURN_ERR;
+                    } else if (step->u.get_pattern_files->delete_pattern_files == true) {
+                        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Deleted %s\n", __func__,
+                            __LINE__, temp_file_info);
+                        fs::remove(temp_file_info);
+                    }
                 }
             }
         }
     } catch (const fs::filesystem_error &ex) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: File system error for step : %d\n", __func__,
             __LINE__, step->step_number);
+        step->m_ui_mgr->cci_error_code = ESYSOPS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -89,56 +105,6 @@ int test_step_param_get_pattern_files::step_timeout()
     return RETURN_OK;
 }
 
-int test_step_param_get_pattern_files::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    char *temp_res_file = NULL;
-    char *res_file_name = { 0 };
-    char *remote_test_results_loc = NULL;
-    test_step_params_t *step = this;
-
-    remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
-    res_file_name = (char *)queue_pop(step->u.get_pattern_files->get_pattern_files_queue);
-
-    while (res_file_name != NULL) {
-        if (res_file_name != NULL) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__,
-                res_file_name);
-            if (step->m_ui_mgr->upload_file_to_server(res_file_name, remote_test_results_loc) !=
-                RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
-                    __LINE__, res_file_name);
-                pthread_mutex_unlock(&step->s_lock);
-                return RETURN_ERR;
-            } else {
-                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
-                    res_file_name);
-                if (step->u.get_pattern_files->delete_pattern_files == true) {
-                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Deleted %s\n", __func__,
-                        __LINE__, res_file_name);
-                    fs::remove(res_file_name);
-                }
-                *update_to_tda = true;
-                temp_res_file = strdup(res_file_name);
-                if (get_last_substring_after_slash(temp_res_file, res_file_name, 128) !=
-                    RETURN_OK) {
-                    wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
-                        __LINE__, temp_res_file);
-                    free(temp_res_file);
-                    pthread_mutex_unlock(&step->s_lock);
-                    return RETURN_ERR;
-                }
-                fprintf(output_file, "%s\n", res_file_name);
-                free(temp_res_file);
-            }
-            free(res_file_name);
-        }
-        res_file_name = (char *)queue_pop(step->u.get_pattern_files->get_pattern_files_queue);
-    }
-
-    return RETURN_OK;
-}
-
 void test_step_param_get_pattern_files::step_remove()
 {
     test_step_param_get_pattern_files *step = dynamic_cast<test_step_param_get_pattern_files *>(
@@ -149,13 +115,7 @@ void test_step_param_get_pattern_files::step_remove()
     if (step == NULL) {
         return;
     }
-    if (step->is_step_initialized == true) {
-        if (step->u.get_pattern_files->get_pattern_files_queue != nullptr) {
-            queue_destroy(step->u.get_pattern_files->get_pattern_files_queue);
-            step->u.get_pattern_files->get_pattern_files_queue = nullptr;
-        }
-        delete step->u.get_pattern_files;
-    }
+    delete step->u.get_pattern_files;
     delete step;
     step = NULL;
 
@@ -195,15 +155,6 @@ test_step_param_get_pattern_files::test_step_param_get_pattern_files()
         return;
     } else {
         memset(step->u.get_pattern_files, 0, sizeof(get_pattern_files_t));
-    }
-
-    step->u.get_pattern_files->get_pattern_files_queue = queue_create();
-    if (step->u.get_pattern_files->get_pattern_files_queue == nullptr) {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: queue create failed for pattern files for %d\n", __func__, __LINE__,
-            step->step_number);
-        delete step->u.get_pattern_files;
-        step->is_step_initialized = false;
     }
 
     step->execution_time = 5;

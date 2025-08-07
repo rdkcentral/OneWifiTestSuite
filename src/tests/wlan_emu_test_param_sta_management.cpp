@@ -2,6 +2,7 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_sta_mgr.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_err_code.h"
 #include "wlan_common_utils.h"
 #include <assert.h>
 #define STATION_STEP_EXEC_TIMEOUT 3
@@ -393,6 +394,12 @@ int test_step_param_sta_management::step_execute()
     char file_to_read[128] = { 0 };
     int ret = 0;
     std::string cli_subdoc;
+    char timestamp[24] = { 0 };
+    cJSON *json;
+    char mac_str[32] = { 0 };
+    FILE *fp;
+    char *json_str;
+    char sta_connect_info[256] = { 0 };
 
     test_step_params_t *step = this;
 
@@ -437,7 +444,50 @@ int test_step_param_sta_management::step_execute()
             step->test_state = wlan_emu_tests_state_cmd_continue;
         }
     }
+    // Creation of json for station
+    if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
 
+    json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
+    uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, mac_str);
+    cJSON_AddStringToObject(json, "StationMacAddress", mac_str);
+
+    snprintf(sta_connect_info, sizeof(sta_connect_info), "%s/%s_%d_%s_STATION_%d.json",
+        step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number,
+        timestamp, step->u.sta_test->sta_vap_config->radio_index);
+
+    fp = fopen(sta_connect_info, "w");
+    if (fp == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__, __LINE__,
+            sta_connect_info);
+        step->m_ui_mgr->cci_error_code = EFOPEN;
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+
+    json_str = cJSON_Print(json);
+
+    fputs(json_str, fp);
+    fclose(fp);
+    free(json_str);
+    cJSON_Delete(json);
+
+    if (step->m_ui_mgr->step_upload_files(sta_connect_info) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed\n", __func__,
+            __LINE__);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
+        return RETURN_ERR;
+    }
+
+    if (remove(sta_connect_info) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error Removing the file : %s\n", __func__,
+            __LINE__, sta_connect_info);
+    }
     return RETURN_OK;
 }
 
@@ -446,12 +496,6 @@ int test_step_param_sta_management::push_ext_sta_result_files(const std::vector<
     int ret;
     wlan_emu_pcap_captures *capture;
     test_step_params_t *step = this;
-
-    if (step->test_results_queue == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test results queue is null\n", __func__,
-            __LINE__);
-        return RETURN_ERR;
-    }
 
     for (const std::string &file : files) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: result file: %s\n", __func__, __LINE__,
@@ -473,12 +517,15 @@ int test_step_param_sta_management::push_ext_sta_result_files(const std::vector<
             return RETURN_ERR;
         }
 
-        if (queue_push(step->test_results_queue, capture) == -1) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed push to queue\n", __func__,
+        if (step->m_ui_mgr->step_upload_files(capture->pcap_file) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed\n", __func__,
                 __LINE__);
             delete capture;
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
             return RETURN_ERR;
         }
+        delete capture;
     }
 
     return RETURN_OK;
@@ -497,6 +544,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     if (ext_agent == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to find external agent for key: %s\n",
             __func__, __LINE__, step->u.sta_test->key);
+        step->m_ui_mgr->cci_error_code = EEXTAGENT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -504,6 +552,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     if (ext_agent->get_external_agent_test_status(status) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to get external agent status\n",
             __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = EEXTAGENT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -526,6 +575,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     if ((step->timeout_count == 3) && (status.state == ext_agent_test_state_idle)) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: agent state : %s for step : %d\n", __func__,
             __LINE__, ext_agent->agent_state_as_string(status.state).c_str(), step->step_number);
+        step->m_ui_mgr->cci_error_code = ETIMEOUT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -546,6 +596,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     if (status.state == ext_agent_test_state_fail) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: external agent state failed for %d\n",
             __func__, __LINE__, step->step_number);
+        step->m_ui_mgr->cci_error_code = EEXTAGENT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -582,6 +633,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
         if (ext_agent->download_external_agent_result_files(step_iter->result_files) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
                 __func__, __LINE__);
+            step->m_ui_mgr->cci_error_code = EDNLDTSTRESFILE;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
@@ -589,10 +641,12 @@ int test_step_param_sta_management::step_timeout_ext_sta()
         if (push_ext_sta_result_files(step_iter->result_files) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to push test results\n", __func__,
                 __LINE__);
+            step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
     } else if (step->test_state == wlan_emu_tests_state_cmd_abort) {
+        step->m_ui_mgr->cci_error_code = ESTEPSTOPPED;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: abort step number: %d\n", __func__, __LINE__,
             step_number);
         return RETURN_ERR;
@@ -737,131 +791,6 @@ int test_step_param_sta_management::step_timeout()
     return RETURN_OK;
 }
 
-int test_step_param_sta_management::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    wlan_emu_pcap_captures *res_file = NULL;
-    unsigned int results_count = 0;
-    char *temp_res_file = NULL;
-    char res_file_name[128] = { 0 };
-    char *remote_test_results_loc = NULL;
-    char sta_connect_info[256] = { 0 };
-    char timestamp[24] = { 0 };
-    cJSON *json;
-    char mac_str[32] = { 0 };
-    FILE *fp;
-    char *json_str;
-
-    test_step_params_t *step = this;
-
-    remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
-    if (step->capture_frames == true) {
-        if (step->test_results_queue == NULL) {
-            return RETURN_ERR;
-        }
-        results_count = queue_count(step->test_results_queue);
-        if (results_count == 0) {
-            wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: No test results files to upload for for step case %d \n", __func__,
-                __LINE__, step->step_number);
-            return RETURN_ERR;
-        }
-
-        res_file = (wlan_emu_pcap_captures *)queue_pop(step->test_results_queue);
-
-        while (res_file != NULL) {
-            if (res_file != NULL) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__,
-                    res_file->pcap_file);
-                if (step->m_ui_mgr->upload_file_to_server(res_file->pcap_file,
-                        remote_test_results_loc) != RETURN_OK) {
-                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
-                        __LINE__, res_file->pcap_file);
-                    return RETURN_ERR;
-                } else {
-                    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__,
-                        __LINE__, res_file->pcap_file);
-                    *update_to_tda = true;
-                    temp_res_file = strdup(res_file->pcap_file);
-                    if (get_last_substring_after_slash(temp_res_file, res_file_name,
-                            sizeof(res_file_name)) != RETURN_OK) {
-                        wlan_emu_print(wlan_emu_log_level_err,
-                            "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
-                            __LINE__, temp_res_file);
-                        free(temp_res_file);
-                        return RETURN_ERR;
-                    }
-                    fprintf(output_file, "%s\n", res_file_name);
-                    free(temp_res_file);
-                }
-                delete res_file;
-            }
-            res_file = (wlan_emu_pcap_captures *)queue_pop(step->test_results_queue);
-        }
-        queue_destroy(step->test_results_queue);
-        step->test_results_queue = NULL;
-    }
-
-    // Creation of json for station
-    if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
-            __LINE__);
-        return RETURN_ERR;
-    }
-
-    json = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
-    uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, mac_str);
-    cJSON_AddStringToObject(json, "StationMacAddress", mac_str);
-
-    snprintf(sta_connect_info, sizeof(sta_connect_info), "%s/%s_%d_%s_STATION_%d.json",
-        step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number,
-        timestamp, step->u.sta_test->sta_vap_config->radio_index);
-
-    fp = fopen(sta_connect_info, "w");
-    if (fp == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__, __LINE__,
-            sta_connect_info);
-        step->test_state = wlan_emu_tests_state_cmd_abort;
-        return RETURN_ERR;
-    }
-
-    json_str = cJSON_Print(json);
-
-    fputs(json_str, fp);
-    fclose(fp);
-    free(json_str);
-    cJSON_Delete(json);
-
-    if (step->m_ui_mgr->upload_file_to_server(sta_connect_info, remote_test_results_loc) !=
-        RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__, __LINE__,
-            sta_connect_info);
-        return RETURN_ERR;
-    } else {
-        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
-            sta_connect_info);
-        *update_to_tda = true;
-        temp_res_file = strdup(sta_connect_info);
-        if (get_last_substring_after_slash(temp_res_file, res_file_name, sizeof(res_file_name)) !=
-            RETURN_OK) {
-            wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__, __LINE__,
-                temp_res_file);
-            free(temp_res_file);
-            return RETURN_ERR;
-        }
-        fprintf(output_file, "%s\n", res_file_name);
-        free(temp_res_file);
-    }
-
-    if (remove(sta_connect_info) != 0) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error Removing the file : %s\n", __func__,
-            __LINE__, sta_connect_info);
-    }
-
-    return RETURN_OK;
-}
-
 void test_step_param_sta_management::step_remove()
 {
     test_step_param_sta_management *step = dynamic_cast<test_step_param_sta_management *>(this);
@@ -891,14 +820,6 @@ void test_step_param_sta_management::step_remove()
         }
 
         delete step->u.sta_test->radio_oper_param;
-
-        // Below check to remove on error cases
-        if (step->capture_frames == true) {
-            if (step->test_results_queue != nullptr) {
-                queue_destroy(step->test_results_queue);
-                step->test_results_queue = nullptr;
-            }
-        }
 
         if (step->u.sta_test->station_prototype != nullptr) {
             queue_destroy(step->u.sta_test->station_prototype->fc_prototype_q);
@@ -1098,7 +1019,6 @@ test_step_param_sta_management::test_step_param_sta_management()
 
     step->execution_time = 3;
     step->timeout_count = 0;
-    step->test_results_queue = nullptr;
     step->capture_frames = false;
     memset(step->u.sta_test->sta_vap_config, 0, sizeof(wifi_vap_info_t));
     step->u.sta_test->u.sta_management.is_sta_management_timer = false;

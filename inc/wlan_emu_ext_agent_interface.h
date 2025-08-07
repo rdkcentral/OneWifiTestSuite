@@ -101,6 +101,7 @@ public:
     unsigned int total_supported_clients;
     unsigned int free_clients; // get_num_free_clients
     wlan_emu_tests_t *test;
+    wlan_emu_ui_mgr_t* m_ui_mgr;
 
     // Get the capability file to decode
     int get_external_agent_capabilities(hash_map_t *ext_agent_map);

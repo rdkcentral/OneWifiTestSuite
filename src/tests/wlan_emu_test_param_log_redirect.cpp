@@ -1,5 +1,6 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_err_code.h"
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -44,6 +45,7 @@ void *test_step_param_logredirect::log_thread_function(void *arg)
                     if (destination_file == NULL) {
                         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n",
                             __func__, __LINE__, step->u.log_capture->log_result_file);
+                        step->m_ui_mgr->cci_error_code = EFOPEN;
                         step->test_state = wlan_emu_tests_state_cmd_abort;
                         free(buff);
                         return NULL;
@@ -78,6 +80,7 @@ int test_step_param_logredirect::step_execute()
             if (step->u.log_capture->redirect_fd == -1) {
                 wlan_emu_print(wlan_emu_log_level_err, "open failed for step %d : %d\n",
                     step->step_number, errno);
+                step->m_ui_mgr->cci_error_code = ESTEP;
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return RETURN_ERR;
             }
@@ -101,6 +104,7 @@ int test_step_param_logredirect::step_execute()
                     test_step_param_logredirect::log_thread_function, this) != 0) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Thread create error for step : %d\n",
                     __func__, __LINE__, step->step_number);
+                step->m_ui_mgr->cci_error_code = ETHREAD;
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return RETURN_ERR;
             }
@@ -135,12 +139,19 @@ int test_step_param_logredirect::step_execute()
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: Invalid log stop step  : %d in step : %d\n", __func__, __LINE__,
                 step->u.log_capture->stop_step_number, step->step_number);
+            step->m_ui_mgr->cci_error_code = ESTEPSTOPPED;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
         log_step->u.log_capture->log_operation = log_operation_type_stop;
         pthread_cancel(log_step->u.log_capture->thread_id);
         close(log_step->u.log_capture->redirect_fd);
+        if (step->m_ui_mgr->step_upload_files(log_step->u.log_capture->log_result_file) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed for %s\n",
+                __func__, __LINE__, log_step->u.log_capture->log_result_file);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            return RETURN_ERR;
+        }
         step->test_state = wlan_emu_tests_state_cmd_results;
         return RETURN_OK;
     }
@@ -150,54 +161,15 @@ int test_step_param_logredirect::step_execute()
 
 int test_step_param_logredirect::step_timeout()
 {
-
     test_step_params_t *step = this;
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test Step Num : %d timeout_count : %d\n",
         __func__, __LINE__, step->step_number, step->timeout_count);
     if (step->test_state == wlan_emu_tests_state_cmd_abort) {
+        step->m_ui_mgr->cci_error_code = ESTEPTIMEOUT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
     } else {
         step->test_state = wlan_emu_tests_state_cmd_results;
     }
-    return RETURN_OK;
-}
-
-int test_step_param_logredirect::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    char *temp_res_file = NULL;
-    char res_file_name[128] = { 0 };
-    char *remote_test_results_loc = NULL;
-    test_step_params_t *step = this;
-
-    if (step->u.log_capture->log_result_file[0] != '\0') {
-
-        remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
-
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__,
-            step->u.log_capture->log_result_file);
-        if (step->m_ui_mgr->upload_file_to_server(step->u.log_capture->log_result_file,
-                remote_test_results_loc) != RETURN_OK) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
-                __LINE__, step->u.log_capture->log_result_file);
-            return RETURN_ERR;
-        } else {
-            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
-                step->u.log_capture->log_result_file);
-            *update_to_tda = true;
-            temp_res_file = strdup(step->u.log_capture->log_result_file);
-            if (get_last_substring_after_slash(temp_res_file, res_file_name,
-                    sizeof(res_file_name)) != RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err,
-                    "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
-                    __LINE__, temp_res_file);
-                free(temp_res_file);
-                return RETURN_ERR;
-            }
-            fprintf(output_file, "%s\n", res_file_name);
-            free(temp_res_file);
-        }
-    }
-
     return RETURN_OK;
 }
 

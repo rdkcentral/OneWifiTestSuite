@@ -1,6 +1,7 @@
 #include "wlan_emu_tests.h"
 #include "timespec_macro.h"
 #include "wlan_emu_log.h"
+#include "wlan_emu_err_code.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -182,18 +183,6 @@ void *wlan_emu_tests_t::test_function(void *arg)
             step->step_add_mgr_data(tmp_msg_mgr, tmp_ui_mgr, tmp_sta_mgr, tmp_ext_sta_mgr,
                 temp_test_config, tmp_bus_mgr);
             test_config->current_test_step = (step_total - (step->step_seq_num) - 1);
-            if (step->capture_frames == true) {
-                step->test_results_queue = queue_create();
-                if (step->test_results_queue == nullptr) {
-                    wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: test_results_queue allocation failed\n", __func__, __LINE__);
-                    step->test_state = wlan_emu_tests_state_cmd_abort;
-                    test_config->test_state = wlan_emu_tests_state_cmd_abort;
-                    pthread_mutex_unlock(&test->m_lock);
-                    pthread_exit(NULL);
-                    return NULL;
-                }
-            }
             snprintf(step->test_case_name, sizeof(step->test_case_name), "%s",
                 test_config->test_case_name);
             snprintf(step->test_case_id, sizeof(step->test_case_id), "%s",
@@ -244,6 +233,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
                 if (ret == RETURN_ERR) {
                     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: next pending step failed\n",
                         __func__, __LINE__);
+                    test->get_ui_mgr()->cci_error_code = ESTEP;
                     step->test_state = wlan_emu_tests_state_cmd_abort;
                     test_config->test_state = wlan_emu_tests_state_cmd_abort;
                     pthread_mutex_unlock(&test->m_lock);
@@ -327,6 +317,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
                 if (ret == RETURN_ERR) {
                     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: next pending step failed\n",
                         __func__, __LINE__);
+                    step->m_ui_mgr->cci_error_code = ESTEPSTOPPED;
                     step->test_state = wlan_emu_tests_state_cmd_abort;
                     test_config->test_state = wlan_emu_tests_state_cmd_abort;
                     pthread_mutex_unlock(&test->m_lock);
@@ -386,6 +377,7 @@ void wlan_emu_tests_t::wlan_emu_handle_emu80211_msg(wlan_emu_msg_t *msg)
             if (curr_step->step_execute() != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: execute step failed for %d\n",
                     __func__, __LINE__, curr_step->step_number);
+                curr_step->m_ui_mgr->cci_error_code = ESTEP;
                 curr_step->test_state = wlan_emu_tests_state_cmd_abort;
             } else {
                 wlan_emu_print(wlan_emu_log_level_info, "%s:%d: execute step successful for %d\n",

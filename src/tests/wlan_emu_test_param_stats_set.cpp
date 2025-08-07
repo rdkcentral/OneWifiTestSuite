@@ -3,6 +3,7 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
 #include "wlan_emu_bus.h"
+#include "wlan_emu_err_code.h"
 #include <assert.h>
 #include <cjson/cJSON.h>
 #include <errno.h>
@@ -65,6 +66,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_stop()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Stop for Radio_Channel_Stats failed. Radio index : %d, Step number : %d\n",
             __func__, __LINE__, radio_index, step->step_number);
+        step->m_ui_mgr->cci_error_code = ERADIOSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     } else {
@@ -93,6 +95,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_stop()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Stop for Neighbor_Stats failed. Radio index : %d, Step number : %d\n", __func__,
             __LINE__, radio_index, step->step_number);
+        step->m_ui_mgr->cci_error_code = ENEIGHSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     } else {
@@ -125,6 +128,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_stop()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Stop for Assoc_Clients_Stats failed. VAP index : %d, Step number : %d\n",
             __func__, __LINE__, vap_index, step->step_number);
+        step->m_ui_mgr->cci_error_code = ECLIENTSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     } else {
@@ -157,6 +161,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_stop()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Stop for Radio_Diag_Stats failed. Radio index : %d, Step number : %d\n",
             __func__, __LINE__, radio_index, step->step_number);
+        step->m_ui_mgr->cci_error_code = ERADIOSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     } else {
@@ -190,6 +195,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sto
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Stop for Radio_Temperature_Stats failed. Radio index : %d, Step number : %d\n",
             __func__, __LINE__, radio_index, step->step_number);
+        step->m_ui_mgr->cci_error_code = ERADIOTEMP;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     } else {
@@ -226,6 +232,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
         step->u.wifi_stats_set->stats_set_q, step->u.wifi_stats_set->current_stats_set_count);
     if (reference == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_peek failed\n", __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = EQPEEK;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -234,6 +241,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: snprintf failed returned : %d, file_length : %d for input_file_json : %s\n",
             __func__, __LINE__, ret, sizeof(file_to_read), reference->input_file_json);
+        step->m_ui_mgr->cci_error_code = ESNPRINTF;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -242,6 +250,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
     if (ret != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: read_config_file failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EFREAD;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -256,6 +265,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed\n", __func__,
             __LINE__);
+        step->m_ui_mgr->cci_error_code = EWEBDECODE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         free(json_data);
         return RETURN_ERR;
@@ -273,6 +283,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
     if (chan_stat == nullptr) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation of memory failed for %d\n",
             __func__, __LINE__, step->step_number);
+        step->m_ui_mgr->cci_error_code = EMALLOC;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         free(json_data);
         return RETURN_ERR;
@@ -329,6 +340,7 @@ int test_step_param_set_radio_channel_stats::webconfig_stats_set_execute_start()
             response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: wifi_hal_emu_set_radio_channel_stats failed\n", __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = ERADIOSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         delete[] chan_stat;
         free(response->stat_pointer);
@@ -369,6 +381,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: queue_peek failed for current_stats_set_count : %d\n", __func__, __LINE__,
             step->u.wifi_stats_set->current_stats_set_count);
+        step->m_ui_mgr->cci_error_code = EQPEEK;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -377,6 +390,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: snprintf failed returned : %d, file_length : %d for input_file_json : %s\n",
             __func__, __LINE__, ret, sizeof(file_to_read), reference->input_file_json);
+        step->m_ui_mgr->cci_error_code = ESNPRINTF;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -385,6 +399,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
     if (ret != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: read_config_file failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EFREAD;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -399,6 +414,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EWEBDECODE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         free(json_data);
         return RETURN_ERR;
@@ -415,6 +431,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
                 response->stat_array_size) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: wifi_hal_emu_set_neighbor_stats failed\n", __func__, __LINE__);
+            step->m_ui_mgr->cci_error_code = ENEIGHSTATS;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             free(response->stat_pointer);
             free(response);
@@ -436,6 +453,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
         free(response->stat_pointer);
         free(response);
         free(json_data);
+        step->m_ui_mgr->cci_error_code = EMALLOC;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -547,6 +565,7 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
             response->stat_array_size) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_neighbor_stats failed\n",
             __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = ENEIGHSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         delete[] neighbor_stats;
         free(response->stat_pointer);
@@ -588,6 +607,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: queue_peek failed for current_stats_set_count : %d\n", __func__, __LINE__,
             step->u.wifi_stats_set->current_stats_set_count);
+        step->m_ui_mgr->cci_error_code = EQPEEK;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -596,6 +616,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: snprintf failed returned : %d, file_length : %d for input_file_json : %s\n",
             __func__, __LINE__, ret, sizeof(file_to_read), reference->input_file_json);
+        step->m_ui_mgr->cci_error_code = ESNPRINTF;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -604,6 +625,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
     if (ret != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: read_config_file failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EFREAD;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -618,6 +640,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EWEBDECODE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         free(json_data);
         return RETURN_ERR;
@@ -637,6 +660,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
                 response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: wifi_hal_emu_set_assoc_clients_stats failed\n", __func__, __LINE__);
+            step->m_ui_mgr->cci_error_code = ECLIENTSTATS;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             free(response->stat_pointer);
             free(response);
@@ -658,6 +682,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         free(response->stat_pointer);
         free(response);
         free(json_data);
+        step->m_ui_mgr->cci_error_code = EMALLOC;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -822,6 +847,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
             response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: wifi_hal_emu_set_assoc_clients_stats failed\n", __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = ECLIENTSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         delete[] assoc_stats;
         free(response->stat_pointer);
@@ -862,6 +888,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: queue_peek failed for current_stats_set_count : %d\n", __func__, __LINE__,
             step->u.wifi_stats_set->current_stats_set_count);
+        step->m_ui_mgr->cci_error_code = EQPEEK;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -870,6 +897,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: snprintf failed returned : %d, file_length : %d for input_file_json : %s\n",
             __func__, __LINE__, ret, sizeof(file_to_read), reference->input_file_json);
+        step->m_ui_mgr->cci_error_code = ESNPRINTF;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -878,6 +906,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
     if (ret != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: read_config_file failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EFREAD;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -892,6 +921,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EWEBDECODE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         free(json_data);
         return RETURN_ERR;
@@ -914,6 +944,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
         free(response->stat_pointer);
         free(response);
         free(json_data);
+        step->m_ui_mgr->cci_error_code = EMALLOC;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1021,6 +1052,7 @@ int test_step_param_set_radio_diag_stats::webconfig_stats_set_execute_start()
             response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_radio_diag_stats failed\n",
             __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = ERADIOSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         delete[] radioTrafficStats;
         free(response->stat_pointer);
@@ -1062,6 +1094,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: queue_peek failed for current_stats_set_count : %d\n", __func__, __LINE__,
             step->u.wifi_stats_set->current_stats_set_count);
+        step->m_ui_mgr->cci_error_code = EQPEEK;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1070,6 +1103,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: snprintf failed returned : %d, file_length : %d for input_file_json : %s\n",
             __func__, __LINE__, ret, sizeof(file_to_read), reference->input_file_json);
+        step->m_ui_mgr->cci_error_code = ESNPRINTF;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1078,6 +1112,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
     if (ret != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: read_config_file failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EFREAD;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1092,6 +1127,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_decode failed for file : %s\n",
             __func__, __LINE__, file_to_read);
+        step->m_ui_mgr->cci_error_code = EWEBDECODE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         free(json_data);
         return RETURN_ERR;
@@ -1112,6 +1148,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
         free(response->stat_pointer);
         free(response);
         free(json_data);
+        step->m_ui_mgr->cci_error_code = EMALLOC;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1132,6 +1169,7 @@ int test_step_param_set_radio_temperature_stats::webconfig_stats_set_execute_sta
             interface_index) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_hal_emu_set_radio_temp failed\n",
             __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = ERADIOTEMP;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         delete[] radiotemp_stats;
         free(response->stat_pointer);
@@ -1164,6 +1202,7 @@ int test_step_param_set_stats_t::webconfig_stats_set_instance()
             if (reference == NULL) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_peek failed\n", __func__,
                     __LINE__);
+                step->m_ui_mgr->cci_error_code = EQPEEK;
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return RETURN_ERR;
             }
@@ -1174,6 +1213,7 @@ int test_step_param_set_stats_t::webconfig_stats_set_instance()
             if (ret != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: webconfig_stats_set_execute_start failed\n", __func__, __LINE__);
+                step->m_ui_mgr->cci_error_code = EWEBSET;
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return RETURN_ERR;
             } else {
@@ -1183,6 +1223,7 @@ int test_step_param_set_stats_t::webconfig_stats_set_instance()
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q is NULL\n", __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = EQALLOC;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1199,6 +1240,7 @@ int test_step_param_set_stats_t::step_execute()
 
     if (step == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step is NULL\n", __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = ESTEP;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1206,6 +1248,7 @@ int test_step_param_set_stats_t::step_execute()
     if (step->u.wifi_stats_set == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: wifi_stats_set is NULL\n", __func__,
             __LINE__);
+        step->m_ui_mgr->cci_error_code = EWIFISTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1225,6 +1268,7 @@ int test_step_param_set_stats_t::step_execute()
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: webconfig_stats_set_instance failed\n",
                 __func__, __LINE__);
+            step->m_ui_mgr->cci_error_code = EWEBSET;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         } else {
@@ -1239,6 +1283,7 @@ int test_step_param_set_stats_t::step_execute()
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: stats_set_q is NULL\n", __func__, __LINE__);
+        step->m_ui_mgr->cci_error_code = EQALLOC;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -1262,6 +1307,7 @@ int test_step_param_set_stats_t::step_timeout()
             if (reference == NULL) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_peek failed\n", __func__,
                     __LINE__);
+                step->m_ui_mgr->cci_error_code = EQPEEK;
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return RETURN_ERR;
             }
@@ -1297,6 +1343,7 @@ int test_step_param_set_stats_t::step_timeout()
                 if (new_reference == NULL) {
                     wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue_pop failed\n", __func__,
                         __LINE__);
+                    step->m_ui_mgr->cci_error_code = EQPOP;
                     step->test_state = wlan_emu_tests_state_cmd_abort;
                     return RETURN_ERR;
                 }
@@ -1310,6 +1357,7 @@ int test_step_param_set_stats_t::step_timeout()
                 if (ret != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err,
                             "%s:%d: webconfig_stats_set_instance failed\n", __func__, __LINE__);
+                    step->m_ui_mgr->cci_error_code = EWEBSET;
                     step->test_state = wlan_emu_tests_state_cmd_abort;
                     return RETURN_ERR;
                 } else {
@@ -1339,6 +1387,7 @@ int test_step_param_set_stats_t::step_timeout()
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: webconfig_stats_set_execute_stop failed\n", __func__, __LINE__);
+            step->m_ui_mgr->cci_error_code = EWEBSET;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         } else {
@@ -1357,22 +1406,18 @@ int test_step_param_set_stats_t::step_timeout()
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: webconfig_stats_set_execute_stop failed\n", __func__, __LINE__);
+            step->m_ui_mgr->cci_error_code = EWEBSET;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: webconfig_stats_set_execute_stop success\n", __func__, __LINE__);
         }
+        step->m_ui_mgr->cci_error_code = EWEBSET;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
 
-    return RETURN_OK;
-}
-
-int test_step_param_set_stats_t::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -1422,7 +1467,6 @@ test_step_param_set_radio_channel_stats::test_step_param_set_radio_channel_stats
     }
     step->execution_time = 0;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
 }
 
@@ -1453,7 +1497,6 @@ test_step_param_set_neighbor_stats::test_step_param_set_neighbor_stats()
     }
     step->execution_time = 0;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
 }
 
@@ -1485,7 +1528,6 @@ test_step_param_set_assoc_clients_stats::test_step_param_set_assoc_clients_stats
     }
     step->execution_time = 0;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
 }
 
@@ -1518,7 +1560,6 @@ test_step_param_set_radio_diag_stats::test_step_param_set_radio_diag_stats()
 
     step->execution_time = 0;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
 }
 
@@ -1542,7 +1583,6 @@ test_step_param_set_radio_temperature_stats::test_step_param_set_radio_temperatu
     memset(step->u.wifi_stats_set, 0, sizeof(wifi_stats_set_t));
     step->execution_time = 0;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
 }
 

@@ -1,5 +1,6 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_err_code.h"
 #include <assert.h>
 #include <experimental/filesystem>
 
@@ -19,6 +20,7 @@ int test_step_param_get_file::step_execute()
     if (access(step->u.get_file->source_file, F_OK) == -1) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: File %s is not present for step : %d\n",
             __func__, __LINE__, step->u.get_file->source_file, step->step_number);
+        step->m_ui_mgr->cci_error_code = EFPRESENCE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -28,7 +30,15 @@ int test_step_param_get_file::step_execute()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: File copy failed from src %s to dest %s step : %d\n", __func__, __LINE__,
             step->u.get_file->source_file, step->u.get_file->dest_filename, step->step_number);
+        step->m_ui_mgr->cci_error_code = EFCOPY;
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+    if (step->m_ui_mgr->step_upload_files(step->u.get_file->dest_filename) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed for step : %d\n",
+            __func__, __LINE__, step->step_number);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
         return RETURN_ERR;
     }
 
@@ -47,6 +57,7 @@ int test_step_param_get_file::step_execute()
         } catch (const fs::filesystem_error &ex) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error deleting the file %s for %d\n",
                 __func__, __LINE__, step->u.get_file->source_file, step->step_number);
+            step->m_ui_mgr->cci_error_code = EFDELETE;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
@@ -65,47 +76,9 @@ int test_step_param_get_file::step_timeout()
         __func__, __LINE__, step->step_number, step->timeout_count);
 
     if (step->test_state != wlan_emu_tests_state_cmd_results) {
+        step->m_ui_mgr->cci_error_code = ESTEPTIMEOUT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
     }
-    return RETURN_OK;
-}
-
-int test_step_param_get_file::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    char *temp_res_file = NULL;
-    char res_file_name[128] = { 0 };
-    char *remote_test_results_loc = NULL;
-    test_step_params_t *step = this;
-
-    if (step->u.get_file->dest_filename[0] != '\0') {
-
-        remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
-
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__,
-            step->u.get_file->dest_filename);
-        if (step->m_ui_mgr->upload_file_to_server(step->u.get_file->dest_filename,
-                remote_test_results_loc) != RETURN_OK) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
-                __LINE__, step->u.get_file->dest_filename);
-            return RETURN_ERR;
-        } else {
-            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
-                step->u.get_file->dest_filename);
-            *update_to_tda = true;
-            temp_res_file = strdup(step->u.get_file->dest_filename);
-            if (get_last_substring_after_slash(temp_res_file, res_file_name,
-                    sizeof(res_file_name)) != RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err,
-                    "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
-                    __LINE__, temp_res_file);
-                free(temp_res_file);
-                return RETURN_ERR;
-            }
-            fprintf(output_file, "%s\n", res_file_name);
-            free(temp_res_file);
-        }
-    }
-
     return RETURN_OK;
 }
 

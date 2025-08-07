@@ -1,5 +1,6 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_err_code.h"
 #include <assert.h>
 
 webconfig_subdoc_data_t dml_data;
@@ -31,6 +32,7 @@ int test_step_param_dml_reset::step_execute()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: snprintf failed return : %d input len : %d\n", __func__, __LINE__, ret,
             sizeof(file_to_read));
+        step->m_ui_mgr->cci_error_code = ESNPRINTF;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -39,6 +41,7 @@ int test_step_param_dml_reset::step_execute()
     if (ret != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_read_config_file failed\n", __func__,
             __LINE__);
+        step->m_ui_mgr->cci_error_code = EFREAD;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -50,6 +53,7 @@ int test_step_param_dml_reset::step_execute()
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s %d webconfig_decode fail \n", __FUNCTION__,
             __LINE__);
+        step->m_ui_mgr->cci_error_code = EWEBDECODE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -60,6 +64,7 @@ int test_step_param_dml_reset::step_execute()
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: Encode failed for Test Step Num : %d for subdoc : %d\n", __func__, __LINE__,
                 step->step_number, subdoc_array[count]);
+            step->m_ui_mgr->cci_error_code = EENCODE;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
@@ -70,6 +75,7 @@ int test_step_param_dml_reset::step_execute()
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: bus send failed for Test Step Num : %d for subdoc : %d\n", __func__,
                 __LINE__, step->step_number, subdoc_array[count]);
+            step->m_ui_mgr->cci_error_code = EBUS;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             free(json_data);
             return RETURN_ERR;
@@ -83,6 +89,7 @@ int test_step_param_dml_reset::step_execute()
         step->test_state = wlan_emu_tests_state_cmd_results;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Dml reset Succesful\n", __func__, __LINE__);
     } else {
+        step->m_ui_mgr->cci_error_code = EWEBSET;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Abort called for dml reset, execute update for %d from %d\n", __func__,
@@ -96,16 +103,12 @@ int test_step_param_dml_reset::step_timeout()
 {
     test_step_params_t *step = this;
     if (step->test_state != wlan_emu_tests_state_cmd_results) {
+        step->m_ui_mgr->cci_error_code = ESTEPTIMEOUT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Abort for step : %d\n", __func__, __LINE__,
             step->step_number);
     }
 
-    return RETURN_OK;
-}
-
-int test_step_param_dml_reset::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
     return RETURN_OK;
 }
 

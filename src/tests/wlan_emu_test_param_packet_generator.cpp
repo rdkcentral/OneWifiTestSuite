@@ -3,6 +3,7 @@
 #include "common/ieee802_11_defs.h"
 #include "wlan_common_utils.h"
 #include "wlan_emu_common.h"
+#include "wlan_emu_err_code.h"
 #include "radiotap_iter.h"
 #include <assert.h>
 #include <stdio.h>
@@ -555,6 +556,7 @@ void *test_step_param_packet_generator::pkt_gen_cci_thread(void *arg)
     if (self->update_brlan0_config() != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to update brlan0 config\n", __func__,
             __LINE__);
+        step->m_ui_mgr->cci_error_code = EBRLANCFG;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return NULL;
     }
@@ -570,6 +572,7 @@ void *test_step_param_packet_generator::pkt_gen_cci_thread(void *arg)
             if (update_pcap_bssids(packet_gen_config->pcap_location, step) != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: Failed to update BSSIDs in pcap file\n", __func__, __LINE__);
+                step->m_ui_mgr->cci_error_code = EBSSID;
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return NULL;
             }
@@ -598,6 +601,7 @@ int test_step_param_packet_generator::step_execute()
             test_step_param_packet_generator::pkt_gen_cci_thread, static_cast<void *>(this)) != 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to create thread\n", __func__,
             __LINE__);
+        step->m_ui_mgr->cci_error_code = ETHREAD;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -632,15 +636,6 @@ int test_step_param_packet_generator::step_frame_filter(wlan_emu_msg_t *msg)
         break;
     }
     return RETURN_UNHANDLED;
-}
-
-int test_step_param_packet_generator::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    test_step_params_t *step = this;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: STEP : %d - Not Applicable for this step\n",
-        __func__, __LINE__, this->step_number);
-
-    return RETURN_OK;
 }
 
 void test_step_param_packet_generator::step_remove()
@@ -707,7 +702,6 @@ test_step_param_packet_generator::test_step_param_packet_generator()
     this->is_step_initialized = true;
     this->execution_time = 15;
     this->timeout_count = 0;
-    this->test_results_queue = NULL;
     this->capture_frames = false;
 }
 

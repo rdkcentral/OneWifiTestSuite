@@ -1,4 +1,5 @@
 #include "wlan_emu_ext_sta_mgr.h"
+#include "wlan_emu_err_code.h"
 #include "cci_wifi_utils.hpp"
 #include "wlan_emu_log.h"
 //#include "http_request.h"
@@ -106,6 +107,7 @@ int wlan_emu_ext_sta_mgr_t::add_sta(test_step_params_t *step, const std::string 
 
     // find first free dev
     if ((agent_info = find_first_free_dev()) == NULL) {
+        step->m_ui_mgr->cci_error_code = EEXTAGENT;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to get first free device\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -113,12 +115,16 @@ int wlan_emu_ext_sta_mgr_t::add_sta(test_step_params_t *step, const std::string 
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: send start command\n", __func__, __LINE__);
     if (agent_info->send_external_agent_start_command() != RETURN_OK) {
+        step->m_ui_mgr->cci_error_code = EEXTAGENT;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: failed to send external agent start command\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
     if (agent_info->get_external_agent_test_status(status) != RETURN_OK) {
+        if (step->m_ui_mgr->cci_error_code == ENONE) {
+            step->m_ui_mgr->cci_error_code = EEXTAGENT;
+        }
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to get external agent status\n",
             __func__, __LINE__);
         return RETURN_ERR;
@@ -204,11 +210,13 @@ int wlan_emu_ext_sta_mgr_t::add_sta(test_step_params_t *step, const std::string 
         sta_connect_info);
 
     if ((fp = fopen(sta_connect_info, "w")) == NULL) {
+        step->m_ui_mgr->cci_error_code = EFOPEN;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__, __LINE__,
             sta_connect_info);
         return RETURN_ERR;
     }
     if (fwrite(cli_subdoc.c_str(), cli_subdoc.length(), 1, fp) != 1) {
+        step->m_ui_mgr->cci_error_code = EFWRITE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fwrite failed\n", __func__, __LINE__);
         fclose(fp);
         return RETURN_ERR;
@@ -216,7 +224,7 @@ int wlan_emu_ext_sta_mgr_t::add_sta(test_step_params_t *step, const std::string 
     fclose(fp);
     long status_code;
 
-    http_post_file(agent_url, sta_connect_info, status_code);
+    http_post_file(agent_url, sta_connect_info, status_code, step->m_ui_mgr->cci_error_code);
     if (status_code != http_status_code_ok) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: http_post_file failed : %d\n", __func__,
             __LINE__, status_code);

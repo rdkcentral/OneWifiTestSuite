@@ -7,6 +7,9 @@
 #include <string.h>
 #include <memory>
 #include <curl/curl.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <errno.h>
 
 #if !defined(CONFIG_EXT_AGENT_CCI)
 #include "syscfg/syscfg.h"
@@ -71,7 +74,6 @@ int wlan_emu_t::run()
     // wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test program started on %d\n", __func__,
     // __LINE__,
     //        get_platform_type());
-
     m_msg_mgr.start();
     m_sim_sta_mgr.start();
     //    std::signal(SIGTERM, StationDisconnectHandler);
@@ -566,6 +568,34 @@ int wlan_emu_t::init()
             __func__, __LINE__);
         return RETURN_ERR;
     }
+    FILE *fp = fopen(CCI_TEST_REBOOT_STEP_CONFIG_JSON, "r");
+    if (fp != NULL) {
+        fclose(fp);
+
+        if (m_ui_mgr.decode_reboot_case_json() != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: decode_reboot_case_json failed\n",
+                __func__, __LINE__);
+            free(sta_cap);
+            return RETURN_ERR;
+        }
+
+        if (m_ui_mgr.cci_report_resume_to_tda() != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_report_resume_to_tda failed\n",
+                __func__, __LINE__);
+            free(sta_cap);
+            return RETURN_ERR;
+        }
+
+        if (remove(CCI_TEST_REBOOT_STEP_CONFIG_JSON) != 0) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: remove upgrade_step_config.json failed\n", __func__, __LINE__);
+            free(sta_cap);
+            return RETURN_ERR;
+        }
+
+        m_ui_mgr.set_reboot_test_executed(true);
+    }
+    m_ext_sta_mgr.ext_agent_iface.m_ui_mgr = &m_ui_mgr;
 
     // wlan_emu_print(wlan_emu_log_level_info, "%s:%d: wlan emu msg collection started on platform
     // type: %d\n", __func__, __LINE__,

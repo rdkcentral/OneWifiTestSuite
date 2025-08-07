@@ -17,6 +17,7 @@
 #define CCI_TEST_SIMULATED_CLIENTDEVICES "Device.WiFi.Tests.SimulatedClientDevices"
 #define CCI_TEST_START "Device.WiFi.Tests.Start"
 #define CCI_TEST_STATUS "Device.WiFi.Tests.Status"
+#define CCI_TEST_REBOOT_STEP_CONFIG_JSON "/nvram/upgrade_step_config.json"
 
 class wlan_emu_tests_radio_t;
 class wlan_emu_tests_private_vap_t;

@@ -325,41 +325,46 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
     pkthdr.caplen = cap_len;
     pkthdr.len = cap_len;
 
-    if (step->test_results_queue != NULL) {
-        wlan_emu_pcap_captures *capture = NULL;
-        capture = new wlan_emu_pcap_captures;
-        if (capture == NULL) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to allocate memory for capture\n",
-                __func__, __LINE__);
-            return RETURN_ERR;
-        }
-
-        if (msg_type == wlan_emu_msg_type_frm80211) {
-            capture->type = msg_type;
-            capture->u.frm80211_ops = get_frm80211_ops_type();
-        } else if (msg_type == wlan_emu_msg_type_cfg80211) {
-            capture->type = msg_type;
-            capture->u.cfg80211_ops = get_cfg80211_ops_type();
-        }
-
-        int ret = snprintf(capture->pcap_file, sizeof(capture->pcap_file), "%s", fname);
-
-        if ((ret < 0) || (ret >= sizeof(capture->pcap_file))) {
-            wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: snprintf failed return : %d input len : %d\n", __func__, __LINE__, ret,
-                sizeof(capture->pcap_file));
-            return RETURN_ERR;
-        }
-        wlan_emu_print(wlan_emu_log_level_info,
-            "%s:%d: updated the file : %s type : %d at step_number : %d\n", __func__, __LINE__,
-            capture->pcap_file, capture->type, step->step_number);
-        queue_push(step->test_results_queue, capture);
+    wlan_emu_pcap_captures *capture = NULL;
+    capture = new wlan_emu_pcap_captures;
+    if (capture == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to allocate memory for capture\n",
+            __func__, __LINE__);
+        return RETURN_ERR;
     }
+
+    if (msg_type == wlan_emu_msg_type_frm80211) {
+        capture->type = msg_type;
+        capture->u.frm80211_ops = get_frm80211_ops_type();
+    } else if (msg_type == wlan_emu_msg_type_cfg80211) {
+        capture->type = msg_type;
+        capture->u.cfg80211_ops = get_cfg80211_ops_type();
+    }
+
+    int ret = snprintf(capture->pcap_file, sizeof(capture->pcap_file), "%s", fname);
+
+    if ((ret < 0) || (ret >= sizeof(capture->pcap_file))) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: snprintf failed return : %d input len : %d\n", __func__, __LINE__, ret,
+            sizeof(capture->pcap_file));
+        return RETURN_ERR;
+    }
+    wlan_emu_print(wlan_emu_log_level_info,
+        "%s:%d: updated the file : %s type : %d at step_number : %d\n", __func__, __LINE__,
+        capture->pcap_file, capture->type, step->step_number);
 
     pcap_dump((u_char *)dump_handle, &pkthdr, tmp_buff);
     pcap_dump_flush(dump_handle);
     pcap_close(handle);
 
+    if (step->m_ui_mgr->step_upload_files(capture->pcap_file) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed\n", __func__,
+            __LINE__);
+        delete capture;
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+    delete capture;
     return RETURN_OK;
 }
 

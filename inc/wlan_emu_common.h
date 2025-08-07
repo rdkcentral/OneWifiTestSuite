@@ -196,6 +196,7 @@ typedef enum {
     step_param_type_ext_station_management,
     step_param_type_gateway_performance,
     step_param_type_packet_generator,
+    step_param_type_upgrade_or_reboot
 } step_param_type_t;
 
 typedef struct {
@@ -213,7 +214,9 @@ typedef enum {
     tc_endpoint_type_heartbeat = 0,
     tc_endpoint_type_complete,
     tc_endpoint_type_fail,
-    tc_endpoint_type_reboot
+    tc_endpoint_type_reboot,
+    tc_endpoint_type_pause,
+    tc_endpoint_type_resume
 } tc_endpoint_type_t;
 
 typedef struct {
@@ -234,8 +237,8 @@ typedef struct {
     int vap_index;
     char output_file_name[128];
     int stop_log_step_number;
-    queue_t *get_stats_queue;
     bool is_stat_response_type_set;
+    uint get_stats_count = 0;
 } wifi_stats_get_t;
 
 typedef struct {
@@ -314,7 +317,6 @@ typedef struct {
     char file_location[128];
     char file_pattern[128];
     bool delete_pattern_files;
-    queue_t *get_pattern_files_queue; // char *
 } get_pattern_files_t;
 
 typedef struct {
@@ -444,8 +446,17 @@ typedef struct {
     cmd_option_t cmd_option;
     queue_t *process_status;
     pthread_t process_tid;
-    queue_t *res_file_queue;
 } gw_performance_t;
+
+typedef struct {
+    uint step_number;
+} step_number_entry_t;
+
+typedef struct {
+    std::string image_name;
+    bool is_logging_enabled;
+    queue_t *logging_step_numbers; // step_number_entry_t
+} device_upgrade_t;
 
 #ifdef __cplusplus
 }

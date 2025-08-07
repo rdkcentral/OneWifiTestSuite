@@ -2,6 +2,7 @@
 #include "wlan_emu_common.h"
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
+#include "wlan_emu_err_code.h"
 #include <assert.h>
 #include <iostream>
 
@@ -43,6 +44,7 @@ int test_step_param_config_onewifi::step_execute()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: STEP : %d - snprintf failed return : %d input len : %d\n", __func__, __LINE__,
             step->step_number, ret, strlen(step->u.test_onewifi_subdoc));
+        step->m_ui_mgr->cci_error_code = ESNPRINTF;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -52,6 +54,7 @@ int test_step_param_config_onewifi::step_execute()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: STEP : %d - read_config_file failed for file : %s\n", __func__, __LINE__,
             step->step_number, file_to_read);
+        step->m_ui_mgr->cci_error_code = EFREAD;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -63,6 +66,7 @@ int test_step_param_config_onewifi::step_execute()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: STEP : %d - cJSON_Parse failed for file : %s\n", __func__, __LINE__,
             step->step_number, file_to_read);
+        step->m_ui_mgr->cci_error_code = EJSONPARSE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         free(json_data);
         return RETURN_ERR;
@@ -78,6 +82,7 @@ int test_step_param_config_onewifi::step_execute()
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: STEP : %d - Onewifi publish update is not supported for subdoc_type : %d\n",
                 __func__, __LINE__, step->step_number, step->frame_request.subdoc_type);
+            step->m_ui_mgr->cci_error_code = EUNSUPPORTEDSUBDOC;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             cJSON_Delete(json_str);
             free(json_data);
@@ -90,6 +95,7 @@ int test_step_param_config_onewifi::step_execute()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: STEP : %d - bus_send failed for subdoc_type : %d file : %s\n", __func__,
             __LINE__, step->step_number, step->frame_request.subdoc_type, file_to_read);
+        step->m_ui_mgr->cci_error_code = EBUS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         cJSON_Delete(json_str);
         free(json_data);
@@ -120,21 +126,13 @@ int test_step_param_config_onewifi::step_timeout()
                 "%s:%d: continue for step : %d execution_time : %d timeout_count : %d\n", __func__,
                 __LINE__, step->step_number, step->execution_time, step->timeout_count);
         } else {
+            step->m_ui_mgr->cci_error_code = ESTEPTIMEOUT;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: abort for step : %d execution_time : %d timeout_count : %d\n", __func__,
                 __LINE__, step->step_number, step->execution_time, step->timeout_count);
         }
     }
-
-    return RETURN_OK;
-}
-
-int test_step_param_config_onewifi::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    test_step_params_t *step = this;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: STEP : %d - Not Applicable for this step\n",
-        __func__, __LINE__, this->step_number);
 
     return RETURN_OK;
 }
@@ -221,7 +219,6 @@ test_step_param_config_onewifi::test_step_param_config_onewifi()
     step->is_step_initialized = true;
     step->execution_time = 15;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
 }
 

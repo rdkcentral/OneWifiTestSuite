@@ -3,6 +3,7 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
 #include "wlan_emu_bus.h"
+#include "wlan_emu_err_code.h"
 #include <assert.h>
 #include <cjson/cJSON.h>
 #include <errno.h>
@@ -47,6 +48,7 @@ char *test_step_param_get_stats_t::getStatsClass()
     default:
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown data type %d\n", __func__, __LINE__,
             step->u.wifi_stats_get->data_type);
+        step->m_ui_mgr->cci_error_code = EUNKNOWNTYPE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return nullptr;
     }
@@ -68,6 +70,7 @@ char *test_step_param_get_stats_t::get_scanmode()
     default:
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown scan mode %d\n", __func__, __LINE__,
             step->u.wifi_stats_get->scan_mode);
+        step->m_ui_mgr->cci_error_code = EUNKNOWNSCAN;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return nullptr;
     }
@@ -127,6 +130,7 @@ char *test_step_param_get_stats_t::get_scanmode_str()
     default:
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown scan mode %d\n", __func__, __LINE__,
             step->u.wifi_stats_get->scan_mode);
+        step->m_ui_mgr->cci_error_code = EUNKNOWNSCAN;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return nullptr;
     }
@@ -188,6 +192,7 @@ int test_step_param_get_stats_t::update_output_file_name()
     default:
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unknown data type %d\n", __func__, __LINE__,
             step->u.wifi_stats_get->data_type);
+        step->m_ui_mgr->cci_error_code = EUNKNOWNTYPE;
         step->test_state = wlan_emu_tests_state_cmd_abort;
     }
 
@@ -200,7 +205,6 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
     const char *json_str = NULL;
     int len = 0;
     test_step_params_t *step = NULL;
-    unsigned int count = 0;
     char file_name[128] = { 0 };
     char *temp_file_name;
     FILE *fp = NULL;
@@ -234,7 +238,7 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
     }
 
     pthread_mutex_lock(&step->s_lock);
-    count = queue_count(step->u.wifi_stats_get->get_stats_queue);
+    step->u.wifi_stats_get->get_stats_count++;
 
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
@@ -245,7 +249,7 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
 
     snprintf(file_name, sizeof(file_name), "%s/%s_%d_%s_%s_%d.json",
         step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number,
-        timestamp, step->u.wifi_stats_get->output_file_name, count);
+        timestamp, step->u.wifi_stats_get->output_file_name, step->u.wifi_stats_get->get_stats_count);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d file_name : %s\n", __FUNCTION__, __LINE__,
         file_name);
 
@@ -253,6 +257,7 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
     if (fp == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__, __LINE__,
             file_name);
+        step->m_ui_mgr->cci_error_code = EFOPEN;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         pthread_mutex_unlock(&step->s_lock);
         free((void *)json_str);
@@ -262,7 +267,15 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
 
     fclose(fp);
     temp_file_name = strdup(file_name);
-    queue_push(step->u.wifi_stats_get->get_stats_queue, temp_file_name);
+    if (step->m_ui_mgr->step_upload_files(temp_file_name) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed for %s\n",
+            __func__, __LINE__, temp_file_name);
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
+        free((void *)json_str);
+        pthread_mutex_unlock(&step->s_lock);
+        return;
+    }
 
     pthread_mutex_unlock(&step->s_lock);
 }
@@ -294,6 +307,7 @@ int test_step_param_get_stats_t::start_subscription()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: Subscription failed for string : %s for step : %d rc : %d\n", __func__,
             __LINE__, subscription, step->step_number, rc);
+        step->m_ui_mgr->cci_error_code = EBUS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     } else {
@@ -323,6 +337,7 @@ int test_step_param_get_stats_t::stop_subscription(test_step_params_t *step)
     if (rc != bus_error_success) {
         wlan_emu_print(wlan_emu_log_level_err, "Failed to UnSubscribe to %s: %d\n", subscription,
             rc);
+        step->m_ui_mgr->cci_error_code = EBUS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     } else {
@@ -375,6 +390,7 @@ int test_step_param_get_stats_t::step_execute()
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: Invalid log stop step  : %d in step : %d\n", __func__, __LINE__,
                 step->u.wifi_stats_get->stop_log_step_number, step->step_number);
+            step->m_ui_mgr->cci_error_code = ESTEPSTOPPED;
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
@@ -439,76 +455,9 @@ int test_step_param_get_stats_t::step_timeout()
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: abort Test Step Num : %d execution_time : %d timeout_count %d\n", __func__,
             __LINE__, step->step_number, step->execution_time, step->timeout_count);
+        step->m_ui_mgr->cci_error_code = ESTEPTIMEOUT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
     }
-    return RETURN_OK;
-}
-
-int test_step_param_get_stats_t::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    test_step_params_t *step = this;
-    char *remote_test_results_loc = NULL;
-    char *res_file_name;
-    char *temp_res_file;
-
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: %s\n", __func__, __LINE__, getStatsClass());
-
-    if (step->u.wifi_stats_get == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: abort Test Step Num : %d wifi_stats_get is NULL\n", __func__, __LINE__,
-            step->step_number);
-        return RETURN_ERR;
-    }
-
-    if (step->u.wifi_stats_get->log_operation == log_operation_type_stop) {
-        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Nothing to upload for stop step\n",
-            __func__, __LINE__, step->step_number);
-        return RETURN_OK;
-    }
-
-    if (step->u.wifi_stats_get->get_stats_queue == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: abort Test Step Num : %d get_stats_queue is NULL\n", __func__, __LINE__,
-            step->step_number);
-        return RETURN_ERR;
-    }
-    remote_test_results_loc = step->m_ui_mgr->get_remote_test_results_loc();
-
-    pthread_mutex_lock(&step->s_lock);
-    res_file_name = (char *)queue_pop(step->u.wifi_stats_get->get_stats_queue);
-
-    while (res_file_name != NULL) {
-        if (res_file_name != NULL) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__,
-                res_file_name);
-            if (step->m_ui_mgr->upload_file_to_server(res_file_name, remote_test_results_loc) !=
-                RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
-                    __LINE__, res_file_name);
-                pthread_mutex_unlock(&step->s_lock);
-                return RETURN_ERR;
-            } else {
-                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
-                    res_file_name);
-                *update_to_tda = true;
-                temp_res_file = strdup(res_file_name);
-                if (get_last_substring_after_slash(temp_res_file, res_file_name,
-                        128) != RETURN_OK) {
-                    wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
-                        __LINE__, temp_res_file);
-                    free(temp_res_file);
-                    pthread_mutex_unlock(&step->s_lock);
-                    return RETURN_ERR;
-                }
-                fprintf(output_file, "%s\n", res_file_name);
-                free(temp_res_file);
-            }
-            free(res_file_name);
-        }
-        res_file_name = (char *)queue_pop(step->u.wifi_stats_get->get_stats_queue);
-    }
-    pthread_mutex_unlock(&step->s_lock);
     return RETURN_OK;
 }
 
@@ -520,10 +469,6 @@ void test_step_param_get_stats_t::step_remove()
         return;
     }
     if (step->is_step_initialized == true) {
-        if (step->u.wifi_stats_get->get_stats_queue != nullptr) {
-            queue_destroy(step->u.wifi_stats_get->get_stats_queue);
-            step->u.wifi_stats_get->get_stats_queue = nullptr;
-        }
         pthread_mutex_destroy(&step->s_lock);
         delete step->u.wifi_stats_get;
     }
@@ -547,7 +492,6 @@ test_step_param_get_radio_channel_stats::test_step_param_get_radio_channel_stats
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
     step->execution_time = 15;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
     pthread_mutex_init(&step->s_lock, NULL);
 }
@@ -574,7 +518,6 @@ test_step_param_get_neighbor_stats::test_step_param_get_neighbor_stats()
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
     step->execution_time = 15;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
     pthread_mutex_init(&step->s_lock, NULL);
 }
@@ -601,7 +544,6 @@ test_step_param_get_assoc_clients_stats::test_step_param_get_assoc_clients_stats
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
     step->execution_time = 15;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
     pthread_mutex_init(&step->s_lock, NULL);
 }
@@ -628,7 +570,6 @@ test_step_param_get_radio_diag_stats::test_step_param_get_radio_diag_stats()
     memset(step->u.wifi_stats_get, 0, sizeof(wifi_stats_get_t));
     step->execution_time = 15;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
     pthread_mutex_init(&step->s_lock, NULL);
 }
@@ -657,7 +598,6 @@ test_step_param_get_radio_temperature_stats::test_step_param_get_radio_temperatu
 
     step->execution_time = 15;
     step->timeout_count = 0;
-    step->test_results_queue = NULL;
     step->capture_frames = false;
     pthread_mutex_init(&step->s_lock, NULL);
 }

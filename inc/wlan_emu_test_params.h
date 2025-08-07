@@ -33,7 +33,6 @@ public:
     bool is_step_initialized; // To check errors in constructor
 
     bool capture_frames; // TestCapture
-    queue_t *test_results_queue; // is output wlan_emu_pcap_captures
     queue_t *test_reference_queue; // is of type  wlan_emu_pcap_captures
     frame_capture_request_t frame_request;
     wlan_emu_tests_state_t test_state;
@@ -41,7 +40,6 @@ public:
     pthread_mutex_t s_lock; // if running in parallel
     int execution_time;
     int timeout_count;
-
     /* Common End*/
     union {
         // Based on type : wlan_emu_test_param_type.
@@ -60,11 +58,11 @@ public:
         get_pattern_files_t *get_pattern_files;
         gw_performance_t *gw_performance;
         packet_generator_t *packet_generator;
+        device_upgrade_t *upgrade_or_reboot;
     } u;
 
     virtual int step_execute() = 0;
     virtual int step_timeout() = 0;
-    virtual int step_upload_files(FILE *output_file, bool *update_to_tda) = 0;
     virtual void step_remove() = 0;
     virtual int step_frame_filter(wlan_emu_msg_t *msg) = 0;
     int bus_send(char *data, wlan_emu_bus_t *bus_mgr);
@@ -126,7 +124,6 @@ class test_step_param_vap : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_vap();
@@ -137,7 +134,6 @@ class test_step_param_radio : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_radio();
@@ -148,7 +144,6 @@ class test_step_param_sta : public test_step_params_t {
 public:
     virtual int step_execute() = 0;
     virtual int step_timeout() = 0;
-    virtual int step_upload_files(FILE *output_file, bool *update_to_tda) = 0;
     virtual int step_frame_filter(wlan_emu_msg_t *msg) = 0;
     virtual void step_remove() = 0;
 };
@@ -165,7 +160,6 @@ public:
     int decode_step_sta_management_config();
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     int encode_external_sta_management_subdoc(std::string &cli_subdoc);
@@ -177,7 +171,6 @@ class test_step_param_command : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_command();
@@ -188,7 +181,6 @@ class test_step_param_dmlsubdoc : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_dmlsubdoc();
@@ -199,7 +191,6 @@ class test_step_param_logredirect : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_logredirect();
@@ -211,7 +202,6 @@ class test_step_param_dml_reset : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_dml_reset();
@@ -222,7 +212,6 @@ class test_step_param_get_stats_t : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int start_subscription();
     int stop_subscription(test_step_params_t *step);
@@ -270,7 +259,6 @@ class test_step_param_set_stats_t : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int webconfig_stats_set_instance();
     int step_frame_filter(wlan_emu_msg_t *msg);
@@ -322,7 +310,6 @@ class test_step_param_get_file : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_get_file();
@@ -333,7 +320,6 @@ class test_step_param_mgmt_frame_capture : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_mgmt_frame_capture();
@@ -344,7 +330,6 @@ class test_step_param_get_pattern_files : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_get_pattern_files();
@@ -355,7 +340,6 @@ class test_step_param_timed_wait : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     test_step_param_timed_wait();
@@ -366,7 +350,6 @@ class test_step_param_config_onewifi : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     int step_frame_filter(wlan_emu_msg_t *msg);
     void step_remove();
     test_step_param_config_onewifi();
@@ -377,7 +360,6 @@ class test_step_param_gateway_performance : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     int step_frame_filter(wlan_emu_msg_t *msg);
     void step_remove();
     static int get_process_status(char *process_name, FILE *out);
@@ -391,7 +373,6 @@ class test_step_param_packet_generator : public test_step_params_t {
 public:
     int step_execute();
     int step_timeout();
-    int step_upload_files(FILE *output_file, bool *update_to_tda);
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     static void *pkt_gen_cci_thread(void *arg);
@@ -399,5 +380,16 @@ public:
     int update_brlan0_config();
     test_step_param_packet_generator();
     ~test_step_param_packet_generator();
+};
+
+class test_step_param_upgrade_or_reboot : public test_step_params_t {
+public:
+    int step_execute();
+    int step_timeout();
+    int step_frame_filter(wlan_emu_msg_t *msg);
+    void step_remove();
+    int create_reboot_case_json(test_step_params_t *step);
+    test_step_param_upgrade_or_reboot();
+    ~test_step_param_upgrade_or_reboot();
 };
 #endif

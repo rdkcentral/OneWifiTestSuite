@@ -1,6 +1,7 @@
 #include "wlan_emu_ui_mgr.h"
 #include "wifi_util.h"
 #include "wlan_emu.h"
+#include "wlan_emu_err_code.h"
 #include <secure_wrapper.h>
 #include <assert.h>
 #include <dirent.h>
@@ -134,6 +135,7 @@ int wlan_emu_ui_mgr_t::get_file_name_from_url(char *str, char *file_name, int le
     char timestamp[16] = { 0 };
     http_info_t *http_info = NULL;
     if ((str == NULL) || (file_name == NULL)) {
+        cci_error_code = EFPRESENCE;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: input arguements are NULL str : %p file_name : %p\n", __func__, __LINE__, str,
             file_name);
@@ -142,12 +144,13 @@ int wlan_emu_ui_mgr_t::get_file_name_from_url(char *str, char *file_name, int le
 
     http_info = fill_http_info();
     if (http_info == NULL) {
+        cci_error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to fill http_data\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
 
-    if (get_last_substring_after_slash(str, file_name_substr, sizeof(file_name_substr)) !=
+    if (get_last_substring_after_slash(str, file_name_substr, sizeof(file_name_substr), cci_error_code) !=
         RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__, __LINE__, str);
@@ -490,7 +493,7 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
             "%s", param->valuestring);
         log_redirect->redirect_fd = -1;
         if (get_last_substring_after_slash(log_redirect->log_redirect_filename, temp_result_file,
-                sizeof(temp_result_file)) != RETURN_OK) {
+                sizeof(temp_result_file), cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: get_last_substring_after_slash failed for file : %s\n", __func__, __LINE__,
                 log_redirect->log_redirect_filename);
@@ -520,6 +523,7 @@ int wlan_emu_ui_mgr_t::decode_step_log_redirect(cJSON *step, test_step_params_t 
     }
 
     if (log_redirect->log_operation == log_operation_type_invalid) {
+        cci_error_code = ESTEP;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid log operation\n", __func__,
             __LINE__);
         delete log_redirect;
@@ -698,12 +702,6 @@ int wlan_emu_ui_mgr_t::decode_stats_get_common_params(cJSON *step, test_step_par
     } else {
         decode_param_bool(step, "StatResponseType", config);
         wifi_stats_get->is_stat_response_type_set = (config->type & cJSON_True) ? true : false;
-        wifi_stats_get->get_stats_queue = queue_create();
-        if (wifi_stats_get->get_stats_queue == NULL) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_stats_queue failed\n", __func__,
-                __LINE__);
-            return RETURN_ERR;
-        }
     }
 
     return RETURN_OK;
@@ -1715,8 +1713,97 @@ int wlan_emu_ui_mgr_t::decode_step_param_config(cJSON *step, test_step_params_t 
         return RETURN_OK;
     }
 
+    config = cJSON_GetObjectItem(step, "UpgradeOrReboot");
+    if (config != NULL) {
+        *step_config = new (std::nothrow) test_step_param_upgrade_or_reboot;
+        if ((*step_config)->is_step_initialized == false) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Failed allocating memory for get ethernet client step\n", __func__,
+                __LINE__);
+            return RETURN_ERR;
+        }
+        if (decode_step_configure_upgrade_or_reboot(step, *step_config) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d decode_step_configure_upgrade_or_reboot failed\n", __func__, __LINE__);
+            step_config = NULL;
+            return RETURN_ERR;
+        }
+        return RETURN_OK;
+    }
     wlan_emu_print(wlan_emu_log_level_err, "%s:%d Invalid step param\n\n", __func__, __LINE__);
     return RETURN_ERR;
+}
+
+int wlan_emu_ui_mgr_t::decode_step_configure_upgrade_or_reboot(cJSON *step,
+    test_step_params_t *step_config)
+{
+    if (step == NULL || step_config == NULL || step_config->u.upgrade_or_reboot == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: step or upgrade_or_reboot is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    cJSON *config = cJSON_GetObjectItem(step, "UpgradeOrReboot");
+    if (config == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: UpgradeOrReboot object not found\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    step_config->param_type = step_param_type_upgrade_or_reboot;
+
+    cJSON *param = cJSON_GetObjectItem(config, "is_logging_enabled");
+    if (cJSON_IsBool(param)) {
+        step_config->u.upgrade_or_reboot->is_logging_enabled = cJSON_IsTrue(param);
+        if (step_config->u.upgrade_or_reboot->is_logging_enabled == true) {
+            step_config->u.upgrade_or_reboot->logging_step_numbers = queue_create();
+            if (step_config->u.upgrade_or_reboot->logging_step_numbers == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: Failed to create logging_step_numbers queue\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+        }
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: is_logging_enabled is missing or invalid\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (step_config->u.upgrade_or_reboot->is_logging_enabled == true) {
+        cJSON *item;
+        cJSON *step_list = cJSON_GetObjectItem(config, "logging_step_numbers");
+        if (step_list == NULL || cJSON_IsArray(step_list) == false) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: logging_step_numbers is missing or not an array\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        cJSON_ArrayForEach(item, step_list) {
+            cJSON *num = cJSON_GetObjectItem(item, "step_numbers");
+            if (num && cJSON_IsNumber(num)) {
+                step_number_entry_t *entry = (step_number_entry_t *)calloc(1,
+                    sizeof(step_number_entry_t));
+                if (entry == NULL) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Memory allocation failed\n",
+                        __func__, __LINE__);
+                    return RETURN_ERR;
+                }
+                entry->step_number = num->valueint;
+                if (step_config->u.upgrade_or_reboot->logging_step_numbers == NULL) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: logging_step_numbers is NULL\n",
+                        __func__, __LINE__);
+                    free(entry);
+                    return RETURN_ERR;
+                }
+                queue_push(step_config->u.upgrade_or_reboot->logging_step_numbers, entry);
+            } else {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid or missing step_numbers\n",
+                    __func__, __LINE__);
+                return RETURN_ERR;
+            }
+        }
+    }
+    return RETURN_OK;
 }
 
 void wlan_emu_ui_mgr_t::dump_json(cJSON *json_buff, const char *func, int line)
@@ -1727,6 +1814,35 @@ void wlan_emu_ui_mgr_t::dump_json(cJSON *json_buff, const char *func, int line)
     cJSON_free(str);
 }
 
+int wlan_emu_ui_mgr_t::check_reboot_step_config(cJSON *step)
+{
+    cJSON *param = NULL;
+    uint step_number = 0;
+
+    decode_param_string(step, "StepNumber", param);
+    step_number = atoi(param->valuestring);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: current_test_step : %d\n", __func__, __LINE__,
+        step_number);
+    if (step_number == 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: StepNumber cannot be zero\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (step_number <= last_executed_step_num) {
+        for (int i = 0; i < paused_logging_steps_count; i++) {
+            if (paused_logging_steps[i] == step_number) {
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: Re-executing the paused logging step %d\n", __func__, __LINE__,
+                    step_number);
+                return RETURN_OK;
+            }
+        }
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
     wlan_emu_test_case_config *configuration)
 {
@@ -1735,6 +1851,16 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
     unsigned int count = 0;
 
     cJSON_ArrayForEach(step, config_entry) {
+        if (last_executed_step_num != 0) {
+            if (check_reboot_step_config(step) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: check_reboot_step_config failed\n",
+                    __func__, __LINE__);
+                // Note: need to remove all the step config
+                dump_json(step, __func__, __LINE__);
+                continue;
+            }
+        }
+
         if (decode_step_param_config(step, &step_config) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: decode_step_param_config failed\n",
                 __func__, __LINE__);
@@ -1765,6 +1891,7 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
             __LINE__, step_config->step_seq_num, step_config->step_number, step_config->param_type);
         queue_push(configuration->test_steps_q, step_config);
     }
+    last_executed_step_num = 0;
 
     return RETURN_OK;
 }
@@ -1800,6 +1927,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_config(cJSON *config_entry,
     }
 
     if (decode_step_config(config_entry, configuration) != RETURN_OK) {
+        cci_error_code = EWEBDECODE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_config failed\n", __func__,
             __LINE__);
         // Note: delete the configuration and test_steps
@@ -2362,12 +2490,16 @@ int wlan_emu_ui_mgr_t::download_file(char *input_file_name, unsigned int input_f
     int ret = 0;
 
     if ((input_file_name == NULL) || (strlen(input_file_name) == 0)) {
+        cci_error_code = EFPRESENCE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: input config file is NULL\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
 
     if (get_file_name_from_url(input_file_name, file_name, sizeof(file_name)) != RETURN_OK) {
+        if (cci_error_code == ENONE) {
+            cci_error_code = EDNLDTSTRESFILE;
+        }
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_file_name_from_url failed\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -2389,12 +2521,13 @@ int wlan_emu_ui_mgr_t::download_file(char *input_file_name, unsigned int input_f
 
     http_info = fill_http_info();
     if (http_info == NULL) {
+        cci_error_code = EDNLDTSTRESFILE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to fill http_data\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
 
-    if (https_get_file(http_info, file_download_url, download_test_file) != RETURN_OK) {
+    if (https_get_file(http_info, file_download_url, download_test_file, cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: https_get_file failed for %s\n", __func__,
             __LINE__, file_download_url);
         free(http_info);
@@ -2404,6 +2537,7 @@ int wlan_emu_ui_mgr_t::download_file(char *input_file_name, unsigned int input_f
 
     ret = snprintf(input_file_name, input_file_name_len, "%s", download_test_file);
     if ((ret < 0) || (ret >= input_file_name_len)) {
+        cci_error_code = ESNPRINTF;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: snprintf failed return : %d input len : %d\n", __func__, __LINE__, ret,
             input_file_name_len);
@@ -2562,6 +2696,162 @@ int wlan_emu_ui_mgr_t::download_test_files()
     return RETURN_OK;
 }
 
+#define STR_LEN 127
+#define INTERFACE_LEN 15
+
+int wlan_emu_ui_mgr_t::decode_reboot_case_json()
+{
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Entered decode_reboot_case_json\n", __func__,
+        __LINE__);
+
+    char temp_local_buf[STR_LEN + 1] = { 0 };
+    char *check_local = NULL;
+    FILE *fp = fopen(CCI_TEST_REBOOT_STEP_CONFIG_JSON, "r");
+    if (fp == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to open file for reading\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    long len = ftell(fp);
+    if (len < 0) {
+        fclose(fp);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ftell failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    rewind(fp);
+
+    char *data = (char *)malloc(len + 1);
+    if (data == NULL) {
+        fclose(fp);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: malloc failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    fread(data, 1, len, fp);
+    data[len] = '\0';
+    fclose(fp);
+
+    cJSON *root = cJSON_Parse(data);
+    free(data);
+
+    if (root == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: JSON parse error\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    // "config file"
+    cJSON *cfg_file = cJSON_GetObjectItem(root, "config file");
+    if (cJSON_IsString(cfg_file) && cfg_file->valuestring) {
+        strncpy(get_tda_url(), cfg_file->valuestring, STR_LEN);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Parsed config file: %s\n", __func__,
+            __LINE__, cfg_file->valuestring);
+        strncpy(temp_local_buf, tda_url, sizeof(temp_local_buf) - 1);
+        check_local = strstr(temp_local_buf, "localhost");
+        if (check_local) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: locahost is present in \"URL:\" in %s\n",
+                __func__, __LINE__, tda_url);
+            is_local_host_enabled = true;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: locahost is not present in \"URL:\" in %s\n", __func__, __LINE__, tda_url);
+            is_local_host_enabled = false;
+        }
+    }
+
+        // "result_file"
+    cJSON *server_addr = cJSON_GetObjectItem(root, "server_address");
+    if (cJSON_IsString(server_addr) && cfg_file->valuestring) {
+        strncpy(server_address, server_addr->valuestring, STR_LEN);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Parsed server address is : %s\n", __func__,
+            __LINE__, server_addr->valuestring);
+    }
+
+    // "interface"
+    cJSON *iface = cJSON_GetObjectItem(root, "interface");
+    if (cJSON_IsString(iface) && iface->valuestring) {
+        strncpy(get_tda_interface(), iface->valuestring, INTERFACE_LEN);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Parsed interface: %s\n", __func__, __LINE__,
+            iface->valuestring);
+    }
+
+    // "simulated_client_count"
+    cJSON *sim_count = cJSON_GetObjectItem(root, "simulated_client_count");
+    if (cJSON_IsNumber(sim_count)) {
+        set_simulated_client_count(sim_count->valueint);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Parsed simulated_client_count: %d\n",
+            __func__, __LINE__, sim_count->valueint);
+    }
+
+    // "ResultsFileName"
+    cJSON *results_file = cJSON_GetObjectItem(root, "ResultsFileName");
+    if (cJSON_IsString(results_file) && results_file->valuestring) {
+        strncpy(get_tda_output_file(), results_file->valuestring, STR_LEN);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Parsed ResultsFileName: %s\n", __func__,
+            __LINE__, results_file->valuestring);
+    }
+
+    // "is_logging_enabled" (if false, we skip logging_step_numbers)
+    cJSON *log_enabled = cJSON_GetObjectItem(root, "is_logging_enabled");
+    bool logging_on = cJSON_IsBool(log_enabled) && cJSON_IsTrue(log_enabled);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Parsed is_logging_enabled: %s\n", __func__,
+        __LINE__, logging_on ? "true" : "false");
+
+    // "logging_step_numbers"
+    if (logging_on) {
+        cJSON *no_paused_logging = cJSON_GetObjectItem(root, "count_logging_step_numbers");
+        if (cJSON_IsNumber(no_paused_logging)) {
+            if (alloc_paused_logging_steps(no_paused_logging->valueint) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: alloc_paused_logging_steps failed\n",
+                    __func__, __LINE__);
+                cJSON_Delete(root);
+                return RETURN_ERR;
+            }
+            paused_logging_steps_count = (uint)no_paused_logging->valueint;
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Parsed count_logging_step_numbers: %d\n",
+                __func__, __LINE__, no_paused_logging->valueint);
+        }
+
+        cJSON *log_array = cJSON_GetObjectItem(root, "logging_step_numbers");
+        if (cJSON_IsArray(log_array)) {
+            int arr_size = cJSON_GetArraySize(log_array);
+            uint *paused_logging_steps = get_paused_logging_steps();
+
+            if (paused_logging_steps == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_paused_logging_steps failed\n",
+                    __func__, __LINE__);
+                cJSON_Delete(root);
+                return RETURN_ERR;
+            }
+            for (int i = 0; i < arr_size; i++) {
+                cJSON *item = cJSON_GetArrayItem(log_array, i);
+                cJSON *step_num = cJSON_GetObjectItem(item, "step_number");
+                if (cJSON_IsNumber(step_num)) {
+                    paused_logging_steps[i] = step_num->valueint;
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: Parsed logging_step_numbers[%d]: %d\n", __func__, __LINE__, i,
+                        step_num->valueint);
+                }
+            }
+        }
+    }
+
+    // "last_executed_step_number"
+    cJSON *last_step = cJSON_GetObjectItem(root, "last_executed_step_number");
+    if (cJSON_IsNumber(last_step)) {
+        last_executed_step_num = last_step->valueint;
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Parsed last_executed_step_number: %d\n",
+            __func__, __LINE__, last_step->valueint);
+    }
+
+    cJSON_Delete(root);
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decoded JSON successfully\n", __func__,
+        __LINE__);
+
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::upload_file_to_server(char *upload_file, char *path)
 {
     unsigned int count = 0;
@@ -2571,6 +2861,7 @@ int wlan_emu_ui_mgr_t::upload_file_to_server(char *upload_file, char *path)
     http_info_t *http_info = NULL;
 
     if ((upload_file == NULL) || (strlen(upload_file) == 0)) {
+        cci_error_code = EFPRESENCE;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: invalid arguement upload_file : %p or len of upload_file == 0\n", __func__,
             __LINE__, upload_file);
@@ -2578,6 +2869,7 @@ int wlan_emu_ui_mgr_t::upload_file_to_server(char *upload_file, char *path)
     }
 
     if ((path == NULL) || (strlen(path) == 0)) {
+        cci_error_code = EPUSHTSTRESFILE;
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: invalid arguement path : %p or len of path == 0\n", __func__, __LINE__, path);
         return RETURN_ERR;
@@ -2590,12 +2882,13 @@ int wlan_emu_ui_mgr_t::upload_file_to_server(char *upload_file, char *path)
     http_info = fill_http_info();
 
     if (http_info == NULL) {
+        cci_error_code = EPUSHTSTRESFILE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to fill http_data\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
 
-    if (https_post_file(http_info, file_upload_url, upload_file) != RETURN_OK) {
+    if (https_post_file(http_info, file_upload_url, upload_file, cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: https_post_file failed for url %s upload_file : %s\n", __func__, __LINE__,
             file_upload_url, upload_file);
@@ -2606,6 +2899,42 @@ int wlan_emu_ui_mgr_t::upload_file_to_server(char *upload_file, char *path)
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: succesfully uploaded file  %s at  %s\n",
         __func__, __LINE__, upload_file, file_upload_url);
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::step_upload_files(char *output_file)
+{
+    char *temp_res_file = NULL;
+    char res_file_name[128] = { 0 };
+    char *remote_test_results_loc = NULL;
+    if (output_file[0] != '\0') {
+
+        remote_test_results_loc = get_remote_test_results_loc();
+
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__,
+            output_file);
+        if (upload_file_to_server(output_file,
+                remote_test_results_loc) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
+                __LINE__, output_file);
+            return RETURN_ERR;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
+                output_file);
+            temp_res_file = strdup(output_file);
+            if (get_last_substring_after_slash(temp_res_file, res_file_name,
+                    sizeof(res_file_name), cci_error_code) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
+                    __LINE__, temp_res_file);
+                free(temp_res_file);
+                return RETURN_ERR;
+            }
+            fprintf(res_output_file_fp, "%s\n", res_file_name);
+            free(temp_res_file);
+        }
+    }
 
     return RETURN_OK;
 }
@@ -2642,6 +2971,9 @@ int wlan_emu_ui_mgr_t::process_input_request()
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: fetch url: %s\n", __func__, __LINE__, tda_url);
 
     if (get_file_name_from_url(tda_url, file_name, sizeof(file_name)) != RETURN_OK) {
+        if (cci_error_code == ENONE) {
+            cci_error_code = EFREAD;
+        }
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_file_name_from_url failed\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -2653,12 +2985,13 @@ int wlan_emu_ui_mgr_t::process_input_request()
 
     http_info = fill_http_info();
     if (http_info == NULL) {
+        cci_error_code = ECURLGET;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to fill http_data\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
 
-    if (https_get_file(http_info, tda_url, test_config_file) != RETURN_OK) {
+    if (https_get_file(http_info, tda_url, test_config_file, cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: https_get_file failed for %s\n", __func__,
             __LINE__, tda_url);
         free(http_info);
@@ -2683,6 +3016,9 @@ int wlan_emu_ui_mgr_t::process_input_request()
       */
 
     if (decode_config_file() != RETURN_OK) {
+        if (cci_error_code == ENONE) {
+            cci_error_code = EWEBDECODE;
+        }
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: decode_config_file failed for %s\n",
             __func__, __LINE__, test_config_file);
         return RETURN_ERR;
@@ -2693,6 +3029,9 @@ int wlan_emu_ui_mgr_t::process_input_request()
         test_config_file);
 
     if (download_test_files() != RETURN_OK) {
+        if (cci_error_code == ENONE) {
+            cci_error_code = EDNLDTSTRESFILE;
+        }
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: download_test_files failed for %s\n",
             __func__, __LINE__, test_config_file);
         return RETURN_ERR;
@@ -2709,6 +3048,17 @@ int wlan_emu_ui_mgr_t::analyze_request()
     if (process_input_request() == RETURN_ERR) {
         return RETURN_ERR;
     }
+    if (res_output_file_fp == NULL) {
+        snprintf(res_output_file, sizeof(res_output_file), "%s%s", m_path, cci_out_file_list);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: res_output_file : %s\n", __func__, __LINE__,
+            res_output_file);
+        res_output_file_fp = fopen(res_output_file, "a");
+        if (res_output_file_fp == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__,
+                __LINE__, res_output_file);
+            return RETURN_ERR;
+        }
+    }
 
     return RETURN_OK;
 }
@@ -2721,15 +3071,18 @@ int wlan_emu_ui_mgr_t::upload_cci_log(char *test_case_id, char *test_case_name, 
     long src_log_file_offset = 0;
 
     if ((test_case_id == NULL) || (strlen(test_case_id) == 0)) {
+        cci_error_code = EPUSHTSTRESFILE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_case_id is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
     if ((test_case_name == NULL) || (strlen(test_case_name) == 0)) {
+        cci_error_code = EPUSHTSTRESFILE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_case_name is NULL\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+        cci_error_code = ETIMESTAMP;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
             __LINE__);
         return RETURN_ERR;
@@ -2740,19 +3093,21 @@ int wlan_emu_ui_mgr_t::upload_cci_log(char *test_case_id, char *test_case_name, 
     src_log_file_offset = get_log_file_offset();
 
     if (copy_file(CCI_LOG_FILE, src_log_file_offset, cci_log_copy) != RETURN_OK) {
+        cci_error_code = EFCOPY;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to copy from %s to %s\n", __func__,
             __LINE__, CCI_LOG_FILE, cci_log_copy);
         return RETURN_ERR;
     }
 
     if (upload_file_to_server(cci_log_copy, remote_test_results_loc) != RETURN_OK) {
+        cci_error_code = EPUSHTSTRESFILE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__, __LINE__,
             cci_log_copy);
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
             cci_log_copy);
-        if (get_last_substring_after_slash(cci_log_copy, res_file_name, sizeof(res_file_name)) !=
+        if (get_last_substring_after_slash(cci_log_copy, res_file_name, sizeof(res_file_name), cci_error_code) !=
             RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__, __LINE__,
@@ -2774,12 +3129,6 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
     unsigned int count = 0;
     struct dirent *entry;
     wlan_emu_test_case_config *test;
-    unsigned int results_count = 0;
-    wlan_emu_pcap_captures *res_file = NULL;
-    char res_output_file[128] = { 0 };
-    bool update_to_tda = false;
-    unsigned int steps_count = 0;
-    test_step_params_t *step;
     int ret = RETURN_OK;
 
     // start uploading test results
@@ -2789,14 +3138,7 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
     count = queue_count(test_cov_cases_q);
     if (count == 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: queue count is 0\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    snprintf(res_output_file, sizeof(res_output_file), "%s%s", m_path, cci_out_file_list);
-    FILE *output_file = fopen(res_output_file, "w");
-    if (output_file == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to open the file :%s\n", __func__,
-            __LINE__, res_output_file);
+        fclose(res_output_file_fp);
         return RETURN_ERR;
     }
 
@@ -2809,30 +3151,8 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
         return RETURN_ERR;
     }
     while (test != NULL) {
-        if (test->test_state == wlan_emu_tests_state_cmd_results) {
-            steps_count = queue_count(test->test_steps_q);
-            if (steps_count == 0) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: No test steps are present for %s \n",
-                    __func__, __LINE__, test->test_json);
-                fclose(output_file);
-                return RETURN_ERR;
-            }
-
-            step = (test_step_params_t *)queue_pop(test->test_steps_q);
-            while (step != NULL) {
-                if (ret == RETURN_ERR) {
-                    step->step_remove();
-                    step = (test_step_params_t *)queue_pop(test->test_steps_q);
-                    continue;
-                }
-                ret = step->step_upload_files(output_file, &update_to_tda);
-                step->step_remove();
-                step = (test_step_params_t *)queue_pop(test->test_steps_q);
-            }
-            queue_destroy(test->test_steps_q);
-        }
         // Call function to upload cci file
-        if (upload_cci_log(test->test_case_id, test->test_case_name, output_file) == RETURN_ERR) {
+        if (upload_cci_log(test->test_case_id, test->test_case_name, res_output_file_fp) == RETURN_ERR) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to upload cci log for %s_%s\n",
                 __func__, __LINE__, test->test_case_id, test->test_case_name);
         }
@@ -2840,11 +3160,11 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
         test = (wlan_emu_test_case_config *)queue_pop(test_cov_cases_q);
     }
 
-    if (output_file != NULL) {
-        fclose(output_file);
-        output_file = NULL;
+    if (res_output_file_fp != NULL) {
+        fclose(res_output_file_fp);
+        res_output_file_fp = NULL;
     }
-    if ((update_to_tda == true) && (ret == RETURN_OK)) {
+    if (ret == RETURN_OK) {
         ret = upload_file_to_server(res_output_file, remote_test_results_loc);
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
@@ -2908,6 +3228,12 @@ wlan_emu_sig_type_t wlan_emu_ui_mgr_t::io_wait()
 
     io_prep();
 
+    if (get_reboot_test_executed() == true) {
+        set_reboot_test_executed(false);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: reboot_test_executed set to false\n",
+            __func__, __LINE__);
+        signal_input();
+    }
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Waiting ... max desc: %d\n", __func__, __LINE__,
         m_nfds + 1);
     if ((ret = select(m_nfds + 1, &m_set, NULL, NULL, NULL)) > 0) {
@@ -3133,6 +3459,150 @@ int wlan_emu_ui_mgr_t::io_prep()
     return 0;
 }
 
+int wlan_emu_ui_mgr_t::cci_report_resume_to_tda()
+{
+    cJSON *json;
+    char value[64] = { 0 };
+    char timestamp[24] = { 0 };
+    char *str = NULL;
+
+    if (is_local_host_enabled == false) {
+        json = cJSON_CreateObject();
+
+        get_cm_mac_address(value);
+        value[strcspn(value, "\n")] = '\0';
+
+        cJSON_AddStringToObject(json, "cm_mac", value);
+        cJSON_AddStringToObject(json, "result_file", cci_out_file_list);
+        cJSON_AddStringToObject(json, "status", "resume");
+        // NOTE : Need to read the different error codes
+        // use get_cci_error_code() to get the error code
+        // use set_cci_error_code for setting error code
+        cJSON_AddStringToObject(json, "error_code", "0");
+
+        if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        cJSON_AddStringToObject(json, "timestamp", timestamp);
+        str = cJSON_Print(json);
+
+        if (cci_post_result_to_tda(tc_endpoint_type_resume, str) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
+                __func__, __LINE__);
+            cJSON_free(str);
+            cJSON_Delete(json);
+            return RETURN_ERR;
+        }
+        cJSON_free(str);
+        cJSON_Delete(json);
+    }
+
+    return RETURN_OK;
+}
+
+int wlan_emu_ui_mgr_t::cci_report_pause_to_tda()
+{
+    unsigned int count = 0, i = 0;
+    wlan_emu_test_case_config *test;
+    unsigned int steps_count = 0;
+    cJSON *json;
+    char value[64] = { 0 };
+    char timestamp[24] = { 0 };
+    char *str;
+
+    if (is_local_host_enabled == false) {
+        json = cJSON_CreateObject();
+
+        get_cm_mac_address(value);
+        value[strcspn(value, "\n")] = '\0';
+
+        cJSON_AddStringToObject(json, "cm_mac", value);
+        if (access(CCI_TEST_REBOOT_STEP_CONFIG_JSON, R_OK) == 0) {
+            cJSON_AddStringToObject(json, "result_file", cci_out_file_list);
+        } else {
+            cJSON_AddStringToObject(json, "result_file", "NA");
+        }
+        cJSON_AddStringToObject(json, "status", "pause");
+        // NOTE : Need to read the different error codes
+        // use get_cci_error_code() to get the error code
+        // use set_cci_error_code for setting error code
+        cJSON_AddStringToObject(json, "error_code", "0");
+
+        if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        cJSON_AddStringToObject(json, "timestamp", timestamp);
+        str = cJSON_Print(json);
+
+        if (cci_post_result_to_tda(tc_endpoint_type_pause, str) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
+                __func__, __LINE__);
+            cJSON_free(str);
+            cJSON_Delete(json);
+            return RETURN_ERR;
+        }
+        cJSON_free(str);
+        cJSON_Delete(json);
+    }
+
+    if (test_cov_cases_q == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_cov_cases_q is NULL\n", __func__,
+            __LINE__);
+        return RETURN_OK;
+    }
+
+    // Free the queue elements here
+    count = queue_count(test_cov_cases_q);
+    if (count == 0) {
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: queue count is 0\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+
+    for (i = 0; i < count; i++) {
+        //    test = (wlan_emu_test_case_config *)queue_remove(test_cov_cases_q, i);
+        test = (wlan_emu_test_case_config *)queue_pop(test_cov_cases_q);
+        if (test == NULL) {
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Test is NULL at %d of %d\n", __func__,
+                __LINE__, i, count);
+            // return RETURN_ERR;
+            continue;
+        }
+
+        while (test != NULL) {
+            if (test->test_steps_q == NULL) {
+                break;
+            }
+            steps_count = queue_count(test->test_steps_q);
+            if (steps_count == 0) {
+                wlan_emu_print(wlan_emu_log_level_info,
+                    "%s:%d: No test steps are present for %s \n", __func__, __LINE__,
+                    test->test_json);
+                break;
+            } else {
+                test_step_params_t *step = (test_step_params_t *)queue_pop(test->test_steps_q);
+                while (step != NULL) {
+                    step->step_remove();
+                    step = (test_step_params_t *)queue_pop(test->test_steps_q);
+                }
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: No test steps are present\n",
+                    __func__, __LINE__);
+                free(test->test_steps_q);
+                test->test_steps_q = NULL;
+            }
+        }
+
+        delete test;
+    }
+
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
 {
     unsigned int count = 0, i = 0;
@@ -3142,6 +3612,7 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
     char value[64] = { 0 };
     char timestamp[24] = { 0 };
     char *str;
+    char error_code_str[12];
 
     if (is_local_host_enabled == false) {
         cJSON *json;
@@ -3159,7 +3630,8 @@ int wlan_emu_ui_mgr_t::cci_report_failure_to_tda()
         // NOTE : Need to read the different error codes
         // use get_cci_error_code() to get the error code
         // use set_cci_error_code for setting error code
-        cJSON_AddStringToObject(json, "error_code", "2");
+        sprintf(error_code_str, "%d", cci_error_code);
+        cJSON_AddStringToObject(json, "error_code", error_code_str);
 
         if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
@@ -3412,6 +3884,7 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
     std::string reboot_url;
 
     if (str == NULL) {
+        cci_error_code = ENULL;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: str is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
@@ -3424,6 +3897,10 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
         snprintf(result_url, sizeof(result_url), "%s/complete", server_address);
     } else if (endpoint_type == tc_endpoint_type_fail) {
         snprintf(result_url, sizeof(result_url), "%s/fail", server_address);
+    } else if (endpoint_type == tc_endpoint_type_pause) {
+        snprintf(result_url, sizeof(result_url), "%s/pause", server_address);
+    } else if (endpoint_type == tc_endpoint_type_resume) {
+        snprintf(result_url, sizeof(result_url), "%s/resume", server_address);
     } else if (endpoint_type == tc_endpoint_type_reboot) {
         std::ifstream source_file(reboot_url_file_name);
         if (source_file) {
@@ -3438,6 +3915,7 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
             source_file.close();
         }
     } else {
+        cci_error_code = ECURLPOST;
         return RETURN_ERR;
     }
 
@@ -3445,6 +3923,7 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
 
     fp = fopen(post_res_file, "wb");
     if (fp == NULL) {
+        cci_error_code = EFOPEN;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__, __LINE__,
             post_res_file);
         return RETURN_ERR;
@@ -3456,12 +3935,13 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
     http_info = fill_http_info();
 
     if (http_info == NULL) {
+        cci_error_code = ECURLPOST;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to fill http_data\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
 
-    if (https_post_file(http_info, result_url, post_res_file) != RETURN_OK) {
+    if (https_post_file(http_info, result_url, post_res_file, cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: https_post_file failed for url %s upload_file : %s\n", __func__, __LINE__,
             result_url, post_res_file);

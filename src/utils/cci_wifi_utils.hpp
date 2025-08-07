@@ -57,15 +57,15 @@ int send_raw_packet(const void *data, size_t data_len, uint32_t source_nip, int 
     uint32_t dest_nip, int dest_port, const uint8_t *dest_arp, int ifindex);
 unsigned int ieee_frame_hdr_len(__le16 fc);
 bool is_zero_mac(mac_address_t mac);
-int https_get_file(http_info_t *http_info, const char *get_url, const char *output_file);
+int https_get_file(http_info_t *http_info, const char *get_url, const char *output_file, int &error_code);
 void copy_string(char *destination, char *source, int len);
 int copy_file(const char *source_path, long source_offset, const char *destination_path);
-int https_post_file(http_info_t *http_info, const char *post_url, const char *input_file);
-int http_get(const std::string &url, std::string &response, long &status_code);
-int http_get_file(const std::string &url, const std::string &file_path, long &status_code);
-int http_post(const std::string &url, const std::string &data, long &status_code);
-int http_post_file(const std::string &url, const std::string &file_path, long &status_code);
-int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len);
+int https_post_file(http_info_t *http_info, const char *post_url, const char *input_file, int &error_code);
+int http_get(const std::string &url, std::string &response, long &status_code, int &error_code);
+int http_get_file(const std::string &url, const std::string &file_path, long &status_code, int &error_code);
+int http_post(const std::string &url, const std::string &data, long &status_code, int &error_code);
+int http_post_file(const std::string &url, const std::string &file_path, long &status_code, int &error_code);
+int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len, int &error_code);
 int decode_param_string_fn(cJSON *json, const char *key, cJSON *&value);
 int WaitForDuration(int timeInMs);
 

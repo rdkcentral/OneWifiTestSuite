@@ -30,11 +30,6 @@ int test_step_param_timed_wait::step_timeout()
     return RETURN_OK;
 }
 
-int test_step_param_timed_wait::step_upload_files(FILE *output_file, bool *update_to_tda)
-{
-    return RETURN_OK;
-}
-
 void test_step_param_timed_wait::step_remove()
 {
     test_step_param_timed_wait *step = dynamic_cast<test_step_param_timed_wait *>(this);
