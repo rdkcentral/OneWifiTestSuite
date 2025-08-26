@@ -661,7 +661,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
-
+    memset(assoc_stats, 0 , sizeof(wifi_associated_dev3_t));
     for (assoc_count = 0; assoc_count < (unsigned int)response->stat_array_size; assoc_count++) {
         uint8_mac_to_string_mac((uint8_t *)assoc_data[assoc_count].cli_MACAddress, str);
         string_mac_to_uint8_mac((uint8_t *)assoc_stats[assoc_count].cli_MACAddress, str);
