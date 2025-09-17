@@ -389,6 +389,7 @@ public:
     int step_frame_filter(wlan_emu_msg_t *msg);
     void step_remove();
     int create_reboot_case_json(test_step_params_t *step);
+    int upgrade_image(test_step_params_t *step);
     test_step_param_upgrade_or_reboot();
     ~test_step_param_upgrade_or_reboot();
 };

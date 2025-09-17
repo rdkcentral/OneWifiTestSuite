@@ -1752,6 +1752,11 @@ int wlan_emu_ui_mgr_t::decode_step_configure_upgrade_or_reboot(cJSON *step,
 
     step_config->param_type = step_param_type_upgrade_or_reboot;
 
+    cJSON *build_name = cJSON_GetObjectItem(config, "build_name");
+    if (cJSON_IsString(build_name) && build_name->valuestring != NULL) {
+        step_config->u.upgrade_or_reboot->build_name = build_name->valuestring;
+    }
+
     cJSON *param = cJSON_GetObjectItem(config, "is_logging_enabled");
     if (cJSON_IsBool(param)) {
         step_config->u.upgrade_or_reboot->is_logging_enabled = cJSON_IsTrue(param);

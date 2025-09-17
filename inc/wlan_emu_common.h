@@ -453,7 +453,7 @@ typedef struct {
 } step_number_entry_t;
 
 typedef struct {
-    std::string image_name;
+    std::string build_name;
     bool is_logging_enabled;
     queue_t *logging_step_numbers; // step_number_entry_t
 } device_upgrade_t;
