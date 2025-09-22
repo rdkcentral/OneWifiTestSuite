@@ -2877,7 +2877,7 @@ int wlan_emu_ui_mgr_t::upload_file_to_server(char *upload_file, char *path)
 
     // Download the Testconfig file from the URL
     memset(file_upload_url, 0, sizeof(file_upload_url));
-    snprintf(file_upload_url, sizeof(file_upload_url), "%s/%s", server_address, path);
+    snprintf(file_upload_url, sizeof(file_upload_url), "%s%s", server_address, path);
 
     http_info = fill_http_info();
 
@@ -3905,7 +3905,7 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
         std::ifstream source_file(reboot_url_file_name);
         if (source_file) {
             if (std::getline(source_file, reboot_url)) {
-                snprintf(result_url, sizeof(result_url), "%s/reboot", reboot_url.c_str());
+                snprintf(result_url, sizeof(result_url), "%sreboot", reboot_url.c_str());
             } else {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to read line of %s\n",
                     __func__, __LINE__, post_res_file);
