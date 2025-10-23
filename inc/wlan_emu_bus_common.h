@@ -19,8 +19,13 @@
 #ifndef WLAN_EMU_BUS_COMMON_H
 #define WLAN_EMU_BUS_COMMON_H
 
+#ifndef BANANA_PI_PORT
 #include <ccsp/bus_common.h>
 #include <ccsp/bus.h>
+#else
+#include <bus_common.h>
+#include <bus.h>
+#endif
 
 typedef bus_error_t (*wifi_bus_event_unsubs_t)(bus_handle_t *handle, char const *name);
 typedef bus_error_t (*wifi_bus_unreg_data_elements_t)(bus_handle_t *handle, uint32_t num_of_element,

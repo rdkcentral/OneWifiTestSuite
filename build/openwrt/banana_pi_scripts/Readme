@@ -1,0 +1,30 @@
+This Readme  contains list of changes to be made on Banana pi OpenWrt build to be configured 
+onewifi test suite external agent.
+
+
+List of files to be added to Banana pi openwrt build:
+----------------------------------------------------
+InterfaceMap.json = this json file has wireless interfaces to be configured on Banana pi 
+99-lan3_OTS_bringup.sh = lan3 hotplug script for configuring network namespace 
+ots_init_file = this file is executed at init, to configure the wireless interface as per 
+InterfaceMap.json and start the cci process.
+network = this file network configuration for banana pi openwrt build
+
+Changes to be added on openwrt build
+------------------------------------
+1) mkdir /nvram
+
+2) copy InterfaceMap.json to /nvram directory
+$ cp InterfaceMap.json /nvram/.
+
+3) copy the file 99-lan3_OTS_bringup.sh to directory /etc/hotplug.d/iface
+$ cp 99-lan3_OTS_bringup.sh /etc/hotplug.d/iface/.
+$ chmod +x /etc/hotplug.d/iface/99-lan3_OTS_bringup.sh
+
+4) copy the file ots_init_file to /etc/init.d/.
+$ cp ots_init_file /etc/init.d/.
+$ chmod +x /etc/init.d/ots_init_file
+$ ln -sf /etc/init.d/ots_init_file /etc/rc.d/S99xots_init_file
+
+5) replace /etc/config/network with this network.
+$ cp network /etc/config/network

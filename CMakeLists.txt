@@ -3,8 +3,8 @@ project(wifi_emu)
 set(EXECUTABLE_NAME cci)
 
 file(GLOB_RECURSE MAIN_SRC  "src/utils/*.c"
-    "src/ui/*.cpp"
     "src/tests/*.cpp"
+    "src/ui/*.cpp"
     "src/messages/*.cpp"
     "src/utils/*.cpp"
     "src/utils/*.hpp"

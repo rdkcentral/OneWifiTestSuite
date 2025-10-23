@@ -7,6 +7,24 @@
 #include <curl/curl.h>
 #include <fstream>
 #include <memory>
+#include <spawn.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <vector>
+#include <sys/wait.h>
+#include <sstream>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sched.h>
+
+#include <ifaddrs.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 char *mac_to_str(unsigned char *mac, char *s_mac)
 {
@@ -987,4 +1005,357 @@ int WaitForDuration(int timeInMs)
     pthread_mutex_unlock(&mutex);
 
     return ret;
+}
+
+
+int execute_process_once(std::string dhcp_cmd, pid_t *pid, bool wait_pid)
+{
+    pid_t pid_ret;
+    int status;
+    std::string temp_cmd = dhcp_cmd.c_str();
+
+    std::istringstream iss(dhcp_cmd);
+    std::vector<std::string> tokens;
+    std::string token;
+    posix_spawnattr_t attr;
+    posix_spawnattr_init(&attr);
+
+    while (iss >> token)
+        tokens.push_back(token);
+
+    // Convert to char* array
+    std::vector<char *> argv;
+    for (auto &t : tokens)
+        argv.push_back(&t[0]); // get mutable char* pointer
+    argv.push_back(NULL); // argv must be NULL-terminated
+
+    // Set child to run in new process group
+    posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETPGROUP);
+    posix_spawnattr_setpgroup(&attr, 0); // 0 = new pgid == pid
+
+    //  int ret = posix_spawn(&pid_ret, "/sbin/udhcpc", NULL, NULL, argv.data(), NULL);
+    //    int ret = posix_spawn(&pid_ret, argv[0], NULL, NULL, argv.data(), NULL);
+    int ret = posix_spawn(&pid_ret, argv[0], NULL, &attr, argv.data(), NULL);
+    if (ret != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: spawn failed with %d \n", __func__, __LINE__,
+            ret);
+        return RETURN_ERR;
+    }
+
+    posix_spawnattr_destroy(&attr);
+
+    if (wait_pid == false) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: waitpid is false\n", __func__, __LINE__);
+        *pid = pid_ret;
+        return RETURN_OK;
+    }
+
+    if (waitpid(pid_ret, &status, 0) == -1) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: waitpid failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (WIFEXITED(status)) {
+        int exit_code = WEXITSTATUS(status);
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: %s exited with code %d\n", __func__,
+            __LINE__, argv[0], exit_code);
+        *pid = pid_ret;
+        return exit_code;
+    } else if (WIFSIGNALED(status)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: %s killed by signal %d\n", __func__,
+            __LINE__, argv[0], WTERMSIG(status));
+        return RETURN_ERR;
+    }
+
+    return RETURN_ERR;
+}
+
+int get_ip_from_interface_name(const std::string &if_name, std::string &ip_address)
+{
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Socket Error\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, if_name.c_str(), IFNAMSIZ - 1);
+
+    if (ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Ioctl Error\n", __func__, __LINE__);
+        close(fd);
+        return RETURN_ERR;
+    }
+
+    close(fd);
+
+    struct sockaddr_in *ipaddr = (struct sockaddr_in *)&ifr.ifr_addr;
+    ip_address = inet_ntoa(ipaddr->sin_addr);
+
+    return RETURN_OK;
+}
+
+int is_process_running(pid_t pid)
+{
+    struct stat info;
+    std::string path = "/proc/" + std::to_string(pid);
+    return stat(path.c_str(), &info) == 0;
+}
+
+// Get MAC and IPv4 address from interface name
+int get_mac_ip_from_ifname(const char *ifname, unsigned char *mac, char *ip)
+{
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to open socket for %s\n", __func__,
+            __LINE__, ifname);
+        return RETURN_ERR;
+    }
+
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+
+    // Get MAC address
+    if (ioctl(fd, SIOCGIFHWADDR, &ifr) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ioctl SIOCGIFHWADDR failed for %s\n",
+            __func__, __LINE__, ifname);
+        close(fd);
+        return RETURN_ERR;
+    }
+    memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
+
+    // Get IP address
+    if (ioctl(fd, SIOCGIFADDR, &ifr) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ioctl SIOCGIFADDR failed for %s\n", __func__,
+            __LINE__, ifname);
+        close(fd);
+        return RETURN_ERR;
+    }
+    struct sockaddr_in *sin = (struct sockaddr_in *)&ifr.ifr_addr;
+    strncpy(ip, inet_ntoa(sin->sin_addr), 16);
+    close(fd);
+    return RETURN_OK;
+}
+
+int list_interfaces_in_namespace()
+{
+    struct ifaddrs *ifaddr, *ifa;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+        return -1;
+    }
+
+    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (!ifa->ifa_name)
+            continue;
+
+        // wlan_emu_print(wlan_emu_log_level_info, "\n Interface: %s\t", ifa->ifa_name);
+
+        if (ifa->ifa_addr && ifa->ifa_addr->sa_family == AF_INET) {
+            char ip[INET_ADDRSTRLEN];
+            struct sockaddr_in *sa = (struct sockaddr_in *)ifa->ifa_addr;
+            inet_ntop(AF_INET, &(sa->sin_addr), ip, INET_ADDRSTRLEN);
+            wlan_emu_print(wlan_emu_log_level_info, "\n Interface: %s  IP: %s", ifa->ifa_name, ip);
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    return 0;
+}
+
+int get_mac_ip_from_ifname_ns(const char *ifname, const char *netns_path, unsigned char *mac,
+    char *ip)
+{
+    int orig_ns = -1, ns_fd = -1, fd = -1;
+    int ret = RETURN_ERR;
+    struct ifreq ifr;
+    struct sockaddr_in *sin;
+
+    if (!ifname || !netns_path || !mac || !ip) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid arguments\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    // Open current namespace to restore later
+    orig_ns = open("/proc/self/ns/net", O_RDONLY);
+    if (orig_ns == -1) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to open current netns\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    // Open target namespace
+    ns_fd = open(netns_path, O_RDONLY);
+    if (ns_fd == -1) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to open netns %s\n", __func__,
+            __LINE__, netns_path);
+        close(orig_ns);
+        return RETURN_ERR;
+    }
+
+    // Switch to target namespace
+    if (setns(ns_fd, CLONE_NEWNET) == -1) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: setns failed for %s\n", __func__, __LINE__,
+            netns_path);
+        close(ns_fd);
+        close(orig_ns);
+        return RETURN_ERR;
+    }
+    close(ns_fd);
+
+    // Open socket
+    fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to open socket\n", __func__,
+            __LINE__);
+        goto cleanup; // jump to cleanup to restore namespace and close fds
+    }
+
+    memset(&ifr, 0, sizeof(ifr));
+    strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+
+    // Get MAC address
+    if (ioctl(fd, SIOCGIFHWADDR, &ifr) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ioctl SIOCGIFHWADDR failed for %s\n",
+            __func__, __LINE__, ifname);
+        goto cleanup;
+    }
+    memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
+
+    // Get IP address
+    if (ioctl(fd, SIOCGIFADDR, &ifr) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ioctl SIOCGIFADDR failed for %s\n", __func__,
+            __LINE__, ifname);
+        goto cleanup;
+    }
+    sin = (struct sockaddr_in *)&ifr.ifr_addr;
+    strncpy(ip, inet_ntoa(sin->sin_addr), 16);
+
+    ret = RETURN_OK;
+
+cleanup:
+    if (fd >= 0)
+        close(fd);
+
+    // Restore original namespace
+    if (orig_ns >= 0) {
+        if (setns(orig_ns, CLONE_NEWNET) != 0) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: restore setns failed\n", __func__,
+                __LINE__);
+        }
+        close(orig_ns);
+    }
+
+    return ret;
+}
+
+int open_current_namespace()
+{
+    int fd = open("/proc/self/ns/net", O_RDONLY);
+    if (fd < 0) {
+        perror("open /proc/self/ns/net");
+    }
+    return fd;
+}
+
+int switch_to_namespace(const char *netns_path)
+{
+    int orig_ns_fd = open_current_namespace();
+    if (orig_ns_fd < 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: invalid fd\n", __func__, __LINE__);
+        return -1;
+    }
+
+    int new_ns_fd = open(netns_path, O_RDONLY);
+    if (new_ns_fd < 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: open %s error\n", __func__, __LINE__,
+            netns_path);
+        close(orig_ns_fd);
+        return -1;
+    }
+
+    if (setns(new_ns_fd, CLONE_NEWNET) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: setns error\n", __func__, __LINE__);
+        close(orig_ns_fd);
+        close(new_ns_fd);
+        return -1;
+    }
+    close(new_ns_fd);
+
+    return orig_ns_fd;
+}
+
+int restore_original_namespace(int orig_ns_fd)
+{
+    if (orig_ns_fd < 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: invalid fd\n", __func__, __LINE__);
+        return -1;
+    }
+
+    if (setns(orig_ns_fd, CLONE_NEWNET) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: restore setns error\n", __func__, __LINE__);
+        close(orig_ns_fd);
+        return -1;
+    }
+    close(orig_ns_fd);
+    return 0;
+}
+
+std::string get_current_namespace()
+{
+    char path[PATH_MAX];
+    char link[PATH_MAX];
+    ssize_t len;
+
+    snprintf(path, sizeof(path), "/proc/self/ns/net");
+
+    len = readlink(path, link, sizeof(link) - 1);
+    if (len != -1) {
+        link[len] = '\0';
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: namespace : %s\n", __func__, __LINE__,
+            link);
+        return std::string(link);
+    } else {
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: unknown namespace\n", __func__, __LINE__);
+        return std::string("unknown");
+    }
+}
+
+int is_valid_ip(const char *addr)
+{
+    struct sockaddr_in sa;
+    struct sockaddr_in6 sa6;
+
+    if (inet_pton(AF_INET, addr, &(sa.sin_addr)) == 1) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to resolve ipv4 addr: %s\n", __func__,
+            __LINE__, addr);
+        return RETURN_ERR;
+    }
+
+    // Try IPv6
+    if (inet_pton(AF_INET6, addr, &(sa6.sin6_addr)) == 1) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to resolve ipv6 addr: %s\n", __func__,
+            __LINE__, addr);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
+int is_resolvable_hostname(const char *hostname)
+{
+    struct addrinfo hints = { 0 }, *res = NULL;
+    hints.ai_family = AF_UNSPEC; // Both IPv4 and IPv6
+
+    if (getaddrinfo(hostname, NULL, &hints, &res) == 0) {
+        freeaddrinfo(res);
+        return RETURN_OK;
+    }
+
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to resolve hostname : %s\n", __func__,
+        __LINE__, hostname);
+    return RETURN_ERR;
 }

@@ -281,7 +281,6 @@ void *wlan_ext_emu_tests_t::test_function(void *arg)
             cJSON_AddNumberToObject(agent_status, "ExternalAgentStepCount", step_total);
             cJSON *steps_status_arr = cJSON_CreateArray();
             cJSON_AddItemToObject(agent_status, "ExternalAgentStepStatus", steps_status_arr);
-
             for (step_count = (step_total - 1); step_count >= 0; step_count--) {
                 temp_step = test->get_ext_step_from_index(step_count);
                 if (temp_step == NULL) {

@@ -1,6 +1,10 @@
 #ifndef WLAN_EXT_EMU_TEST_STEP_PARAMS_H
 #define WLAN_EXT_EMU_TEST_STEP_PARAMS_H
+#ifndef BANANA_PI_PORT
 #include "cJSON.h"
+#else
+#include <cjson/cJSON.h>
+#endif
 #include "cci_wifi_utils.hpp"
 #include "wlan_emu_common.h"
 #include "wlan_emu_ext_agent_interface.h"
@@ -23,10 +27,10 @@ private:
 public:
     // along with location
     std::string step_config_file_name;
-    //refer to inc/wlan_emu_tests.h
+    // refer to inc/wlan_emu_tests.h
     char test_case_name[128];
     char test_case_id[8];
-    unsigned int radio_index; //EA not aware of radio index, Gateway needs to provide it
+    unsigned int radio_index; // EA not aware of radio index, Gateway needs to provide it
     unsigned int step_number; // User input
     unsigned int step_seq_num; // step Sequence number
     bool is_step_initialized; // To check errors in constructor
@@ -39,9 +43,13 @@ public:
     bool is_step_result_updated;
     bool capture_frames;
     frame_capture_request_t frame_request;
+    bool fork;
 
     union {
         sta_test_t *sta_test;
+        iperf_server_t *iperf_server;
+        iperf_client_t *iperf_client;
+        eth_lan_interface_t *eth_lan_client;
     } u;
 
     virtual int wlan_ext_step_execute() = 0;
@@ -90,7 +98,7 @@ public:
         param_add_agent_sta_mgr(sta_mgr);
     }
 
-    void update_step_status_json(cJSON *agent_status);
+    void update_step_status_json(cJSON *agent_status, cJSON *step_private);
     int create_pcap(wlan_emu_msg_t *msg);
 
     virtual ~wlan_ext_test_step_params_t()
@@ -119,6 +127,48 @@ public:
     int wlan_ext_step_decode_subdocument(cJSON *root_json, wlan_ext_test_step_params_t *step);
     wlan_ext_test_step_param_sta_management();
     ~wlan_ext_test_step_param_sta_management();
+};
+
+class wlan_ext_test_step_param_iperf_server : public wlan_ext_test_step_params_t {
+public:
+    int wlan_ext_step_execute();
+    int wlan_ext_step_timeout();
+    int wlan_ext_step_frame_filter(wlan_emu_msg_t *msg);
+    void wlan_ext_step_remove();
+    void wlan_ext_step_status_update(cJSON *agent_status);
+    int wlan_ext_step_decode_subdocument(cJSON *root_json, wlan_ext_test_step_params_t *step);
+    int wlan_ext_step_decode_server_stop(cJSON *root_json, wlan_ext_test_step_params_t *step);
+    int wlan_ext_step_decode_server_start(cJSON *root_json, wlan_ext_test_step_params_t *step);
+
+    wlan_ext_test_step_param_iperf_server();
+    ~wlan_ext_test_step_param_iperf_server();
+};
+
+class wlan_ext_test_step_param_iperf_client : public wlan_ext_test_step_params_t {
+public:
+    int wlan_ext_step_execute();
+    int wlan_ext_step_timeout();
+    int wlan_ext_step_frame_filter(wlan_emu_msg_t *msg);
+    void wlan_ext_step_remove();
+    void wlan_ext_step_status_update(cJSON *agent_status);
+    int wlan_ext_step_decode_subdocument(cJSON *root_json, wlan_ext_test_step_params_t *step);
+    int wlan_ext_step_decode_client_stop(cJSON *root_json, wlan_ext_test_step_params_t *step);
+    int wlan_ext_step_decode_client_start(cJSON *root_json, wlan_ext_test_step_params_t *step);
+
+    wlan_ext_test_step_param_iperf_client();
+    ~wlan_ext_test_step_param_iperf_client();
+};
+
+class wlan_ext_test_step_param_eth_lan_client : public wlan_ext_test_step_params_t {
+public:
+    int wlan_ext_step_execute();
+    int wlan_ext_step_timeout();
+    int wlan_ext_step_frame_filter(wlan_emu_msg_t *msg);
+    void wlan_ext_step_remove();
+    void wlan_ext_step_status_update(cJSON *agent_status);
+    int wlan_ext_step_decode_subdocument(cJSON *root_json, wlan_ext_test_step_params_t *step);
+    wlan_ext_test_step_param_eth_lan_client();
+    ~wlan_ext_test_step_param_eth_lan_client();
 };
 
 #endif // WLAN_EXT_EMU_TEST_STEP_PARAMS_H

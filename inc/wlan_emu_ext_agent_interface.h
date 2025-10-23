@@ -77,30 +77,6 @@ private:
             { "fail",     ext_agent_test_state_fail     }
     };
 
-    // Enum to String mapping
-    static inline const std::unordered_map<wlan_emu_tests_state_t, std::string>
-        step_state_to_str = {
-            { wlan_emu_tests_state_cmd_none,     "none"     },
-            { wlan_emu_tests_state_cmd_wait,     "wait"     },
-            { wlan_emu_tests_state_cmd_request,  "request"  },
-            { wlan_emu_tests_state_cmd_start,    "start"    },
-            { wlan_emu_tests_state_cmd_results,  "results"  },
-            { wlan_emu_tests_state_cmd_continue, "continue" },
-            { wlan_emu_tests_state_cmd_abort,    "abort"    }
-    };
-
-    // String to Enum mapping
-    static inline const std::unordered_map<std::string, wlan_emu_tests_state_t>
-        str_to_step_state = {
-            { "none",     wlan_emu_tests_state_cmd_none     },
-            { "wait",     wlan_emu_tests_state_cmd_wait     },
-            { "request",  wlan_emu_tests_state_cmd_request  },
-            { "start",    wlan_emu_tests_state_cmd_start    },
-            { "results",  wlan_emu_tests_state_cmd_results  },
-            { "continue", wlan_emu_tests_state_cmd_continue },
-            { "abort",    wlan_emu_tests_state_cmd_abort    }
-    };
-
     const std::string agent_proto = "http://";
     const std::string agent_port = ":1234";
     const std::string status_endpoint = "/Status";
@@ -123,6 +99,8 @@ public:
     queue_t *eth_client_interfaces; // eth_dev_info_t
     unsigned int total_supported_eth_clients;
     wlan_emu_ui_mgr_t* m_ui_mgr;
+    queue_t *eth_client_interfaces; // eth_dev_info_t
+    unsigned int total_supported_eth_clients;
 
     // Get the capability file to decode
     int get_external_agent_capabilities(hash_map_t *ext_agent_map);
@@ -172,20 +150,6 @@ public:
     {
         auto it = str_to_agent_state.find(str);
         return (it != str_to_agent_state.end()) ? it->second : ext_agent_test_state_invalid;
-    }
-
-    // Convert Enum to String
-    static std::string step_state_as_string(wlan_emu_tests_state_t state)
-    {
-        auto it = step_state_to_str.find(state);
-        return (it != step_state_to_str.end()) ? it->second : "Unknown";
-    }
-
-    // Convert String to Enum
-    static wlan_emu_tests_state_t step_state_as_enum(const std::string &str)
-    {
-        auto it = str_to_step_state.find(str);
-        return (it != str_to_step_state.end()) ? it->second : wlan_emu_tests_state_cmd_none;
     }
 
     const std::string &get_agent_hostname()

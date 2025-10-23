@@ -39,6 +39,8 @@ private:
     wlan_ext_emu_msg_mgr_t m_ext_msg_mgr;
     wlan_emu_ext_agent_interface_t m_ext_agent_interface;
 
+    static wlan_ext_emu_t *instance;
+
     fd_set m_fd_set;
     unsigned int m_num_fds;
     pthread_t m_http_server_tid;
@@ -87,8 +89,22 @@ private:
     void http_report_status_ok(const httplib::Request &req, httplib::Response &res,
         std::string msg);
     void http_report_internal_svr_err(const httplib::Request &req, httplib::Response &res);
+    int get_interface_mac_from_ifindex(int ifindex, unsigned char *mac);
+    int send_agent_wifi_sta_notification(wlan_emu_msg_type_ext_wifi_sta_notif_t *notif);
+    int sta_connection_status(int ap_index, wifi_bss_info_t *bss_dev, wifi_station_stats_t *sta);
+
+    static int sta_connection_status_wrapper(int ap_index, wifi_bss_info_t *bss_dev,
+        wifi_station_stats_t *sta)
+    {
+        if (instance) {
+            return instance->sta_connection_status(ap_index, bss_dev, sta);
+        }
+        return -1;
+    }
 
 public:
+    int original_ns_fd;
+
     int init();
 
     inline void ext_emu_send_signal_idle(void)
@@ -139,6 +155,8 @@ public:
 
     static void *http_server_handler(void *arg);
 
+    static void *netlink_event_listener(void *arg);
+
     const std::string &get_ext_emu_test_results_dir_path()
     {
         return ext_emu_test_results_dir_path;
@@ -188,9 +206,35 @@ public:
         std::lock_guard<std::mutex> lock(agent_step_status_mutex);
         m_state = state;
     }
+
     int decode_step_param(std::string &cjson_str, wlan_ext_test_step_params_t **step_config);
     int decode_step_param_common(cJSON *root_json, wlan_ext_test_step_params_t *step_config);
-    int decode_step_param_ext_sta_management(cJSON *root_json, wlan_ext_test_step_params_t *step_config);
+    int decode_step_param_ext_sta_management(cJSON *root_json,
+        wlan_ext_test_step_params_t *step_config);
+    int decode_step_param_ext_sta_iperf_server(cJSON *root_json,
+        wlan_ext_test_step_params_t *step_config);
+    int decode_step_param_ext_sta_iperf_client(cJSON *root_json,
+        wlan_ext_test_step_params_t *step_config);
+    int decode_step_param_ext_ethernet_client(cJSON *root_json,
+        wlan_ext_test_step_params_t *step_config);
+
+    wlan_ext_test_step_params_t *get_ext_step_from_step_number(int step_number);
+
+    bool enter_namespace(const char *ns_path)
+    {
+        original_ns_fd = switch_to_namespace(ns_path);
+        return (original_ns_fd >= 0);
+    }
+
+    bool leave_namespace()
+    {
+        if (original_ns_fd < 0)
+            return false;
+
+        int ret = restore_original_namespace(original_ns_fd);
+        original_ns_fd = -1;
+        return (ret == 0);
+    }
 
     wlan_ext_emu_t();
     ~wlan_ext_emu_t();

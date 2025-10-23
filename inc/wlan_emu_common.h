@@ -249,7 +249,6 @@ typedef enum {
     step_param_type_get_pattern_files,
     step_param_type_timed_wait,
     step_param_type_config_onewifi,
-    step_param_type_ext_station_management,
     step_param_type_gateway_performance,
     step_param_type_packet_generator,
     step_param_type_config_iperf_server,
@@ -508,10 +507,7 @@ typedef struct {
     sta_state_t status;
 } sta_info_t;
 
-typedef enum {
-    cmd_option_cpu,
-    cmd_option_mem
-} cmd_option_t;
+typedef enum { cmd_option_cpu, cmd_option_mem } cmd_option_t;
 
 typedef struct {
     std::string result_file_name;
@@ -617,6 +613,85 @@ typedef struct {
     queue_t *logging_step_numbers; // step_number_entry_t
     bool is_fr_enabled;
 } device_upgrade_t;
+
+typedef enum {
+    interface_type_ethernet = 1,
+    interface_type_wifi,
+} interface_type_t;
+
+typedef enum {
+    iperf_operation_type_start = 1,
+    iperf_operation_type_stop,
+    iperf_operation_type_invalid,
+} iperf_operation_type_t;
+
+typedef struct {
+    unsigned int interface_step_number;
+    char input_filename[128];
+    char interface_name[128];
+    char cmd_options[128];
+    char result_file[128];
+    pid_t iperf_server_pid;
+} iperf_server_start_conf_t;
+
+typedef struct {
+    unsigned int stop_step_number;
+} iperf_server_stop_conf_t;
+
+typedef struct {
+    iperf_operation_type_t input_operation;
+    interface_type_t interface_type;
+    std::string sta_key;
+
+    union {
+        iperf_server_stop_conf_t stop_conf;
+        iperf_server_start_conf_t start_conf;
+    } u;
+} iperf_server_t;
+
+typedef struct {
+    unsigned int interface_step_number;
+    unsigned int server_step_number;
+    char input_filename[128];
+    char interface_name[128];
+    char cmd_options[128];
+    char result_file[128];
+    pid_t iperf_client_pid;
+} iperf_client_start_conf_t;
+
+typedef struct {
+    unsigned int stop_step_number;
+} iperf_client_stop_conf_t;
+
+typedef struct {
+    iperf_operation_type_t input_operation;
+    interface_type_t interface_type;
+    std::string sta_key;
+
+    union {
+        iperf_client_stop_conf_t stop_conf;
+        iperf_client_start_conf_t start_conf;
+    } u;
+} iperf_client_t;
+
+typedef enum { eth_interface_state_free = 0, eth_interface_state_in_use } eth_interface_state_t;
+
+typedef struct {
+    std::string interface_name;
+    mac_address_t interface_mac;
+    std::string ip_address;
+    bool is_ip_assigned;
+    eth_interface_state_t state;
+} eth_dev_info_t;
+
+typedef struct {
+    unsigned int test_id;
+    eth_dev_info_t eth_dev_info;
+    std::string result_file;
+    sta_key_t key;
+    int duration;
+
+} eth_lan_interface_t;
 
 #ifdef __cplusplus
 }

@@ -24,7 +24,7 @@ static unsigned char eapol_qos_info[] = { 0x88, 0x02, 0x3c, 0x00, 0x04, 0xf0, 0x
 
 static unsigned char llc_info[] = { 0xaa, 0xaa, 0x03, 0x00, 0x00, 0x00, 0x88, 0x8e };
 
-void wlan_ext_test_step_params_t::update_step_status_json(cJSON *agent_status)
+void wlan_ext_test_step_params_t::update_step_status_json(cJSON *agent_status, cJSON *step_private)
 {
     wlan_ext_test_step_params_t *step = this;
     cJSON *step_status_json;
@@ -36,16 +36,36 @@ void wlan_ext_test_step_params_t::update_step_status_json(cJSON *agent_status)
     std::string dir_path;
     std::string host_name;
 
+    if (ext_emu == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ext_emu is NULL\n", __func__, __LINE__);
+        return;
+    }
+    if (agent_status == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: agent_status is NULL\n", __func__, __LINE__);
+        return;
+    }
+
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: for step number : %d \n", __func__, __LINE__,
+        step->step_number);
+
     step_status_json = cJSON_CreateObject();
     cJSON_AddNumberToObject(step_status_json, "StepNumber", step->step_number);
 
     agent_interface = ext_emu->get_agent_interface();
-    state = agent_interface->step_state_as_string(step->step_state);
+    state = step_state_as_string(step->step_state);
 
     cJSON_AddStringToObject(step_status_json, "StepStatus", state.c_str());
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: state %s for step number : %d \n", __func__,
+        __LINE__, state.c_str(), step->step_number);
+
+    if (step_private != NULL) {
+        cJSON_AddItemToObject(step_status_json, "StepPrivateData", step_private);
+    }
 
     if (step->step_state == wlan_emu_tests_state_cmd_results) {
         cJSON_AddItemToObject(step_status_json, "ResultFiles", step->artifact_json_list);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Added results  for step number : %d \n",
+            __func__, __LINE__, step->step_number);
     }
     cJSON_AddItemToArray(agent_status, step_status_json);
 }
@@ -103,13 +123,13 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
     handle = pcap_open_dead(DLT_IEEE802_11_RADIO, 4000);
     if (handle == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error creating pcap file\n", __func__,
-                __LINE__);
+            __LINE__);
         return RETURN_ERR;
     }
 
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
-                __LINE__);
+            __LINE__);
         return RETURN_ERR;
     }
 
@@ -122,8 +142,8 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
             return RETURN_ERR;
         }
         snprintf(fname, sizeof(fname), "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
-                step->test_case_id, step->step_number, timestamp, mac_str, c_mac_str,
-                step->test_case_name, msg->get_msg_name(), radio_index);
+            step->test_case_id, step->step_number, timestamp, mac_str, c_mac_str,
+            step->test_case_name, msg->get_msg_name(), radio_index);
         memcpy(buff, f_data->u.frm80211.u.frame.frame, f_data->u.frm80211.u.frame.frame_len);
     } else if (msg_type == wlan_emu_msg_type_cfg80211) {
         mac_str_without_colon(f_data->u.cfg80211.u.start_ap.macaddr, mac_str);
@@ -132,12 +152,12 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
         }
 
         snprintf(fname, sizeof(fname), "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
-                step->test_case_id, step->step_number, timestamp, mac_str, "NA", step->test_case_name,
-                msg->get_msg_name(), radio_index);
+            step->test_case_id, step->step_number, timestamp, mac_str, "NA", step->test_case_name,
+            msg->get_msg_name(), radio_index);
 
         head = (struct ieee80211_mgmt *)f_data->u.cfg80211.u.start_ap.beacon_head;
 
-        // Filling timestamp.
+         // Filling timestamp.
         memcpy(head->u.beacon.timestamp, &tv.tv_sec, sizeof(head->u.beacon.timestamp));
 
         // Filling Head
@@ -168,7 +188,7 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
     dump_handle = pcap_dump_open(handle, fname);
     if (dump_handle == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error creating pcap file\n", __func__,
-                __LINE__);
+            __LINE__);
         return -1;
     }
 
@@ -179,7 +199,7 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
         capture = new wlan_emu_pcap_captures;
         if (capture == NULL) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to allocate memory for capture\n",
-                    __func__, __LINE__);
+                __func__, __LINE__);
             return RETURN_ERR;
         }
 
@@ -195,13 +215,13 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
 
         if ((ret < 0) || (ret >= sizeof(capture->pcap_file))) {
             wlan_emu_print(wlan_emu_log_level_err,
-                    "%s:%d: snprintf failed return : %d input len : %d\n", __func__, __LINE__, ret,
-                    sizeof(capture->pcap_file));
+                "%s:%d: snprintf failed return : %d input len : %d\n", __func__, __LINE__, ret,
+                sizeof(capture->pcap_file));
             return RETURN_ERR;
         }
         wlan_emu_print(wlan_emu_log_level_info,
-                "%s:%d: updated the file : %s type : %d at step_number : %d\n", __func__, __LINE__,
-                capture->pcap_file, capture->type, step->step_number);
+            "%s:%d: updated the file : %s type : %d at step_number : %d\n", __func__, __LINE__,
+            capture->pcap_file, capture->type, step->step_number);
         cJSON_AddItemToArray(step->artifact_json_list, cJSON_CreateString(capture->pcap_file));
         delete capture;
     }

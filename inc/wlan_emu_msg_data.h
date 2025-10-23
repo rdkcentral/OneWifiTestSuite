@@ -270,8 +270,32 @@ typedef struct {
 } wlan_emu_msg_type_webconfig_t;
 
 typedef enum {
+    wlan_msg_ext_agent_ops_sub_type_wifi_notification = 1
+} wlan_msg_ext_agent_ops_sub_type_t;
+
+typedef enum {
+    wlan_emu_ext_wifi_sta_state_connected = 1,
+    wlan_emu_ext_wifi_sta_state_disconnected
+} wlan_emu_ext_wifi_sta_state_t;
+
+typedef struct {
+    wlan_emu_ext_wifi_sta_state_t sta_state;
+    u8 sta_mac_addr[ETH_ALEN];
+    u8 bssid_mac_addr[ETH_ALEN];
+} wlan_emu_msg_type_ext_wifi_sta_notif_t;
+
+typedef struct {
+    wlan_msg_ext_agent_ops_sub_type_t sub_ops_type;
+
+    union {
+        wlan_emu_msg_type_ext_wifi_sta_notif_t wifi_sta_notif;
+    } u;
+} wlan_emu_msg_type_agent_notification_t;
+
+typedef enum {
     wlan_emu_msg_agent_ops_type_cmd,
-    wlan_emu_msg_agent_ops_type_data
+    wlan_emu_msg_agent_ops_type_data,
+    wlan_emu_msg_agent_ops_type_notification
 } wlan_emu_msg_agent_ops_t;
 
 typedef enum {
@@ -285,6 +309,7 @@ typedef struct {
     union {
         wlan_emu_msg_agent_cmd_t cmd;
         void *buf;
+        wlan_emu_msg_type_agent_notification_t agent_notif;
     } u;
 } wlan_emu_msg_type_agent_msg_t;
 

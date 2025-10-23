@@ -323,7 +323,6 @@ void wlan_ext_test_step_param_sta_management::wlan_ext_step_status_update(cJSON 
 {
     char *json_str;
     wlan_ext_test_step_params_t *step = this;
-
     cJSON *step_private;
 
     step_private = cJSON_CreateObject();

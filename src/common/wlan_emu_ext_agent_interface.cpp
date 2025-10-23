@@ -12,6 +12,7 @@
 #include <netdb.h>
 #include <ifaddrs.h>
 #include <sstream>
+#include <netinet/in.h> // Add this for INET_ADDRSTRLEN
 
 #define NUM_HOST_ENTERIES "Device.Hosts.HostNumberOfEntries"
 #define Layer1interface "Device.Hosts.Host.%u.Layer1Interface"
@@ -43,7 +44,15 @@ int wlan_emu_ext_agent_interface_t::agent_init()
             "%s:%d: queue_initialization failed for client_info \n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    agent_hostname = "Raspberry";
+
+    eth_client_interfaces = queue_create();
+    if (eth_client_interfaces == NULL) {
+        wlan_emu_print(wlan_emu_log_level_info,
+            "%s:%d: queue_initialization failed for eth_client_interfaces\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    agent_hostname = "ots_ext_agent";
     memcpy(agent_mac, tmp_agent_mac, sizeof(agent_mac));
 
     return RETURN_OK;
@@ -53,6 +62,7 @@ int wlan_emu_ext_agent_interface_t::agent_init()
 void wlan_emu_ext_agent_interface_t::agent_exit()
 {
     queue_destroy(client_info);
+    queue_destroy(eth_client_interfaces);
 }
 
 int wlan_emu_ext_agent_interface_t::encode_external_agent_capability(std::string &cap_json_string)
@@ -60,6 +70,7 @@ int wlan_emu_ext_agent_interface_t::encode_external_agent_capability(std::string
     cJSON *json = NULL, *cap_arr = NULL;
     char *str = NULL, mac_str[32] = { 0 };
     sta_info_t *sta_info = NULL;
+    eth_dev_info_t *eth_dev_info = NULL;
 
     json = cJSON_CreateObject();
     if (json == NULL) {
@@ -84,17 +95,48 @@ int wlan_emu_ext_agent_interface_t::encode_external_agent_capability(std::string
     cJSON_AddItemToObject(json, "ExternalClientCapability", cap_arr);
 
     for (int count = 0; count < total_supported_clients; count++) {
-        cJSON *client_obj = cJSON_CreateObject();
-        if (client_obj == NULL) {
-            cJSON_Delete(json);
-            return RETURN_ERR;
-        }
         sta_info = (sta_info_t *)queue_peek(client_info, count);
         if (sta_info != NULL) {
+            cJSON *client_obj = cJSON_CreateObject();
+            if (client_obj == NULL) {
+                cJSON_Delete(json);
+                return RETURN_ERR;
+            }
             uint8_mac_to_string_mac(sta_info->mac, mac_str);
             cJSON_AddStringToObject(client_obj, "ExternalClientMAC", mac_str);
+            cJSON_AddStringToObject(client_obj, "ExternalClientIntfName", sta_info->interface_name);
+            cJSON_AddNumberToObject(client_obj, "ExternalClientIntType", interface_type_wifi);
+            cJSON_AddItemToArray(cap_arr, client_obj);
         }
-        cJSON_AddItemToArray(cap_arr, client_obj);
+    }
+
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d:total_supported_eth_clients : %d \n", __func__,
+        __LINE__, total_supported_eth_clients);
+    for (int count = 0; count < total_supported_eth_clients; count++) {
+
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: count: %d \n", __func__, __LINE__, count);
+        eth_dev_info = (eth_dev_info_t *)queue_peek(eth_client_interfaces, count);
+        if (eth_dev_info != NULL) {
+            cJSON *client_obj = cJSON_CreateObject();
+            if (client_obj == NULL) {
+                cJSON_Delete(json);
+                return RETURN_ERR;
+            }
+            uint8_mac_to_string_mac(eth_dev_info->interface_mac, mac_str);
+
+            cJSON_AddStringToObject(client_obj, "ExternalClientMAC", mac_str);
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: mac_str : %s \n", __func__, __LINE__,
+                mac_str);
+            cJSON_AddStringToObject(client_obj, "ExternalClientIntfName",
+                (char *)eth_dev_info->interface_name.c_str());
+            cJSON_AddNumberToObject(client_obj, "ExternalClientIntType", interface_type_ethernet);
+            cJSON_AddStringToObject(client_obj, "ExternalClientIpAddress",
+                eth_dev_info->ip_address.c_str());
+
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: ip : %s \n", __func__, __LINE__,
+                eth_dev_info->ip_address.c_str());
+            cJSON_AddItemToArray(cap_arr, client_obj);
+        }
     }
 
     str = cJSON_Print(json);
@@ -155,6 +197,7 @@ int wlan_emu_ext_agent_interface_t::decode_external_agent_capability(const std::
     cJSON *entry = NULL;
     cJSON *sub_entry = NULL;
     sta_info_t *external_client_info = NULL;
+    eth_dev_info_t *eth_dev = NULL;
 
     if (response.empty()) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d Capability file is empty\n", __func__,
@@ -187,24 +230,95 @@ int wlan_emu_ext_agent_interface_t::decode_external_agent_capability(const std::
     }
 
     agent_details->client_info = queue_create();
+    agent_details->eth_client_interfaces = queue_create();
     cJSON_ArrayForEach(sub_entry, entry) {
-        external_client_info = new (std::nothrow)
-            sta_info_t; // will free later based on where the data is used
-        external_client_info->status = sta_state_free;
-        if (external_client_info == nullptr) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d failed to allocate memory\n", __func__,
+        decode_param_integer(sub_entry, "ExternalClientIntType", param);
+        if (param->valuedouble == interface_type_ethernet) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ethernet interface type\n", __func__,
                 __LINE__);
-            cJSON_Delete(root_json);
-            return RETURN_ERR;
+
+            eth_dev = new (std::nothrow) eth_dev_info_t;
+            if (eth_dev == nullptr) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation failed\n", __func__,
+                    __LINE__);
+                cJSON_Delete(root_json);
+                return RETURN_ERR;
+            }
+
+            if (decode_param_string_fn(sub_entry, "ExternalClientMAC", param) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to decode ExternalClientMAC\n",
+                    __func__, __LINE__);
+                cJSON_Delete(root_json);
+                delete eth_dev;
+                return RETURN_ERR;
+            }
+            string_mac_to_uint8_mac(eth_dev->interface_mac, param->valuestring);
+
+            if (decode_param_string_fn(sub_entry, "ExternalClientIntfName", param) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d Failed to decode ExternalClientIntfName\n", __func__, __LINE__);
+                cJSON_Delete(root_json);
+                delete eth_dev;
+                return RETURN_ERR;
+            }
+
+            eth_dev->interface_name = std::string(param->valuestring);
+
+            if (decode_param_string_fn(sub_entry, "ExternalClientIpAddress", param) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d Failed to decode ExternalClientIpAddress\n", __func__, __LINE__);
+                cJSON_Delete(root_json);
+                delete eth_dev;
+                return RETURN_ERR;
+            }
+
+            eth_dev->is_ip_assigned = true;
+
+            eth_dev->ip_address = std::string(param->valuestring);
+
+            // Debug print for decoded Ethernet interface data
+            char eth_mac_str[32] = { 0 };
+            uint8_mac_to_string_mac(eth_dev->interface_mac, eth_mac_str);
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: Decoded ETH: MAC=%s, Name=%s, IP=%s\n", __func__, __LINE__, eth_mac_str,
+                eth_dev->interface_name.c_str(), eth_dev->ip_address.c_str());
+
+            queue_push(agent_details->eth_client_interfaces, eth_dev);
+
+        } else if (param->valuedouble == interface_type_wifi) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: WiFi interface type\n", __func__,
+                __LINE__);
+
+            external_client_info = new (std::nothrow)
+                sta_info_t; // will free later based on where the data is used
+            external_client_info->status = sta_state_free;
+            if (external_client_info == nullptr) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d failed to allocate memory\n",
+                    __func__, __LINE__);
+                cJSON_Delete(root_json);
+                return RETURN_ERR;
+            }
+            if (decode_param_string_fn(sub_entry, "ExternalClientMAC", param) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to decode ExternalClientMAC\n",
+                    __func__, __LINE__);
+                delete (external_client_info);
+                cJSON_Delete(root_json);
+                return RETURN_ERR;
+            }
+            string_mac_to_uint8_mac(external_client_info->mac, param->valuestring);
+
+            if (decode_param_string_fn(sub_entry, "ExternalClientIntfName", param) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d Failed to decode ExternalClientIntfName\n", __func__, __LINE__);
+                delete (external_client_info);
+                cJSON_Delete(root_json);
+                return RETURN_ERR;
+            }
+
+            snprintf(external_client_info->interface_name,
+                sizeof(external_client_info->interface_name), "%s", param->valuestring);
+            queue_push(agent_details->client_info, external_client_info);
         }
-        if (decode_param_string_fn(sub_entry, "ExternalClientMAC", param) == RETURN_ERR) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to decode ExternalClientMAC\n",
-                __func__, __LINE__);
-            delete (external_client_info);
-            return RETURN_ERR;
-        }
-        string_mac_to_uint8_mac(external_client_info->mac, param->valuestring);
-        queue_push(agent_details->client_info, external_client_info);
     }
 
     cJSON_Delete(root_json);
@@ -219,7 +333,7 @@ static int get_external_agent_details(uint instance_number, bus_handle_t *handle
     raw_data_t bus_data;
     char *layer1interace;
     bool active_status = false;
-    char agent_host_name[] = "raspberrypi_ext";
+    char agent_host_name[] = "ots_ext_agent";
 
     memset(param_name, 0, sizeof(param_name));
     memset(&bus_data, 0, sizeof(bus_data));
@@ -256,12 +370,14 @@ static int get_external_agent_details(uint instance_number, bus_handle_t *handle
         bus_data.raw_data.b);
     active_status = bus_data.raw_data.b;
 
-    if (strstr(layer1interace, "Ethernet") == NULL || active_status == false) {
+    /*
+    if (strstr(layer1interace, "Ethernet") == NULL) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d Not an active Ethernet interface\n", __func__,
             __LINE__);
         delete[] layer1interace;
         return RETURN_OK;
     }
+    */
 
     memset(&bus_data, 0, sizeof(bus_data));
     memset(param_name, 0, sizeof(param_name));
@@ -283,7 +399,7 @@ static int get_external_agent_details(uint instance_number, bus_handle_t *handle
     }
 
     if (strncmp((char *)bus_data.raw_data.bytes, agent_host_name, strlen(agent_host_name)) != 0) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d ignoring host_name : %s\n", __func__,
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d ignoring host_name : %s\n", __func__,
             __LINE__, (char *)bus_data.raw_data.bytes);
         delete[] layer1interace;
         return RETURN_ERR;
@@ -348,7 +464,7 @@ static int get_external_agent_details(uint instance_number, bus_handle_t *handle
 static bool check_hostname(const std::string &ip)
 {
     struct sockaddr_in sa {};
-    char agent_host_name[] = "raspberrypi_ext";
+    char agent_host_name[] = "ots_ext_agent";
     sa.sin_family = AF_INET;
     inet_pton(AF_INET, ip.c_str(), &sa.sin_addr);
 
@@ -392,7 +508,7 @@ int wlan_emu_ext_agent_interface_t::get_external_agent_info(hash_map_t *ext_agen
             if (strlen(agent_details->agent_ip_address) != 0) {
                 char mac_str[32] = { 0 };
                 uint8_mac_to_string_mac(agent_details->agent_mac, mac_str);
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d Added agent mac : %s\n", __func__,
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d Added agent mac : %s\n", __func__,
                     __LINE__, mac_str);
                 hash_map_put(ext_agent_map, strdup(mac_str), agent_details);
             } else {
@@ -607,6 +723,7 @@ int wlan_emu_ext_agent_interface_t::decode_external_agent_test_status(const std:
     ext_agent_status_resp_t &status)
 {
     cJSON *json_root, *param, *step_arr, *step_param, *step_elem, *file_arr, *file_elem;
+    cJSON *step_private_data;
 
     json_root = cJSON_Parse(json_str.c_str());
     if (json_root == NULL) {
@@ -638,6 +755,15 @@ int wlan_emu_ext_agent_interface_t::decode_external_agent_test_status(const std:
                 validate_param_string(file_elem);
                 step_status.result_files.emplace_back(file_elem->valuestring);
             }
+        }
+
+        step_private_data = cJSON_GetObjectItem(step_elem, "StepPrivateData");
+        if (step_private_data == NULL) {
+            step_status.step_private_json_data.clear();
+        } else {
+            char *priv_data_c_buff = cJSON_Print(step_private_data);
+            step_status.step_private_json_data = std::string(priv_data_c_buff);
+            free(priv_data_c_buff);
         }
     }
 
@@ -675,6 +801,7 @@ int wlan_emu_ext_agent_interface_t::download_external_agent_result_files(
 wlan_emu_ext_agent_interface_t::wlan_emu_ext_agent_interface_t()
 {
     this->client_info = NULL;
+    this->eth_client_interfaces = NULL;
 }
 
 wlan_emu_ext_agent_interface_t::~wlan_emu_ext_agent_interface_t()

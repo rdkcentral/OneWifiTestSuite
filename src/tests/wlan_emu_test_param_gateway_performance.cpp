@@ -2,7 +2,9 @@
 #include "wlan_emu_log.h"
 #include "wlan_emu_err_code.h"
 #include "cci_wifi_utils.hpp"
+#ifndef BANANA_PI_PORT
 #include <secure_wrapper.h>
+#endif
 
 int test_step_param_gateway_performance::write_to_file(FILE *out_file, FILE *in_file)
 {
@@ -32,6 +34,7 @@ int test_step_param_gateway_performance::write_to_file(FILE *out_file, FILE *in_
 
 int test_step_param_gateway_performance::get_process_status(char *process_name, FILE *out)
 {
+#ifndef BANANA_PI_PORT
     char pid[8] = { 0 };
     char proc_status_path[64] = { 0 };
     FILE *fp_pid = NULL, *fp_status = NULL;
@@ -74,7 +77,7 @@ int test_step_param_gateway_performance::get_process_status(char *process_name, 
         return RETURN_ERR;
     }
     v_secure_pclose(fp_status);
-
+#endif
     return RETURN_OK;
 }
 
@@ -113,7 +116,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return NULL;
         }
-
+#ifndef BANANA_PI_PORT
         if (step->u.gw_performance->cmd_option == cmd_option_cpu) {
             fp_process = v_secure_popen("r", "%s \"%s\" \"%s\"", "top", "-b", "-n1");
         } else if (step->u.gw_performance->cmd_option == cmd_option_mem) {
@@ -143,7 +146,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
             return NULL;
         }
         v_secure_pclose(fp_process);
-
+#endif
         if (test_step_param_gateway_performance::get_process_status(const_cast<char *>("OneWifi"),
                 out) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to get the process status\n",

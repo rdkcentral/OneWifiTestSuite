@@ -68,6 +68,19 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
 int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len, int &error_code);
 int decode_param_string_fn(cJSON *json, const char *key, cJSON *&value);
 int WaitForDuration(int timeInMs);
+int execute_process_once(std::string dhcp_cmd, pid_t *pid, bool wait_pid);
+int get_ip_from_interface_name(const std::string &if_name, std::string &ip_address);
+int is_process_running(pid_t pid);
+int get_mac_ip_from_ifname(const char *ifname, unsigned char *mac, char *ip);
+int get_mac_ip_from_ifname_ns(const char *ifname, const char *netns_path, unsigned char *mac,
+    char *ip);
+int open_current_namespace();
+int switch_to_namespace(const char *netns_path);
+int restore_original_namespace(int orig_ns_fd);
+std::string get_current_namespace();
+int list_interfaces_in_namespace();
+int is_valid_ip(const char *addr);
+int is_resolvable_hostname(const char *hostname);
 
 const uint8_t MAC_BCAST_ADDR[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
