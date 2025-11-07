@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "wlan_emu_real_sta_mgr.h"
 #include "wlan_emu_ext_sta_mgr.h"
 #include "wlan_emu_log.h"
 #include "wlan_emu_sta_mgr.h"
@@ -25,6 +26,7 @@
 #include <assert.h>
 #include <memory>
 #define STATION_STEP_EXEC_TIMEOUT 3
+#define REAL_STA_WAIT_TIME 60
 
 // Adding extra time time for external simulated client
 static int external_sta_grace_timeout = 3;
@@ -202,7 +204,10 @@ int test_step_param_sta_management::decode_step_sta_management_config()
             step_config->u.sta_test->connection_type = client_connection_type_internal;
         } else if (strcmp(param->valuestring, "External") == 0) {
             step_config->u.sta_test->connection_type = client_connection_type_external;
-        } else {
+        } else if (strcmp(param->valuestring, "Real") == 0) {
+            wlan_emu_print(wlan_emu_log_level_dbg, "PAVI connection type is real\n");
+            step_config->u.sta_test->connection_type = client_connection_type_real;
+	} else {
             step_config->u.sta_test->connection_type = client_connection_type_no_user_input;
         }
     } else {
@@ -219,6 +224,12 @@ int test_step_param_sta_management::decode_step_sta_management_config()
         step_config->u.sta_test->sta_type = sta_model_type_iphone;
     } else if (strcmp(param->valuestring, "Pixel") == 0) {
         step_config->u.sta_test->sta_type = sta_model_type_pixel;
+    } else if (strcmp(param->valuestring, "Android") == 0) {
+        step_config->u.sta_test->sta_type = sta_model_type_android;
+    } else if (strcmp(param->valuestring, "iOS") == 0) {
+        step_config->u.sta_test->sta_type = sta_model_type_ios;
+    } else if (strcmp(param->valuestring, "Windows") == 0) {
+        step_config->u.sta_test->sta_type = sta_model_type_windows;
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid valuestring for clienttype : %s\n",
             __func__, __LINE__, param->valuestring);
@@ -234,6 +245,23 @@ int test_step_param_sta_management::decode_step_sta_management_config()
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Station AP Vapname : %s\n", __func__, __LINE__,
         step_config->u.sta_test->u.sta_management.ap_vap_name);
+
+    param = cJSON_GetObjectItem(sta_root_json, "Device_Id");
+
+    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+        snprintf(step_config->u.sta_test->u.sta_management.device_id,
+	    sizeof(step_config->u.sta_test->u.sta_management.device_id), "%s", param->valuestring);
+    }	
+
+    param = cJSON_GetObjectItem(sta_root_json, "Prefer");
+    if (param != NULL && (cJSON_IsArray(param) == true)) {
+        cJSON *prefer_item = NULL;
+        cJSON_ArrayForEach(prefer_item, param) {
+            if (cJSON_IsString(prefer_item) && (prefer_item->valuestring != NULL)) {
+                    snprintf(step_config->u.sta_test->u.sta_management.service_prefer, sizeof(step_config->u.sta_test->u.sta_management.service_prefer), "%s", prefer_item->valuestring);
+            }
+        }
+    }
     ap_json_config = cJSON_GetObjectItem(sta_root_json, "WifiVapConfig");
     ap_vap_info = step_config->m_ui_mgr->get_cci_vap_info(
         step_config->u.sta_test->u.sta_management.ap_vap_name);
@@ -461,7 +489,15 @@ int test_step_param_sta_management::step_execute()
                 return RETURN_ERR;
             }
             step->test_state = wlan_emu_tests_state_cmd_continue;
-        }
+        }	else if (step->u.sta_test->connection_type == client_connection_type_real) {
+	wlan_emu_print(wlan_emu_log_level_dbg, "PAVI Entering real cli\n");	
+	//TODO encode this data and send to endpoint
+	if (step->m_real_sta_mgr->add_sta(step) == RETURN_ERR) {
+		wlan_emu_print(wlan_emu_log_level_err, "%s:%d add_sta failed for real client for step : %d\n", __func__, __LINE__, step->step_number);
+		return RETURN_ERR;
+	}
+	step->test_state = wlan_emu_tests_state_cmd_continue;
+    }
     }
 
     // Creation of json for station
@@ -575,6 +611,29 @@ int test_step_param_sta_management::parse_step_private_data(std::string private_
     }
 
     return RETURN_OK;
+}
+
+int test_step_param_sta_management::step_timeout_real_sta(test_step_params_t *step)
+{
+	//Wait for 60 seconds and check if station got associated
+	if ((step->connect_wait_timer < REAL_STA_WAIT_TIME) && (step->u.sta_test->is_station_associated == false))  {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d timer count is %d\n", __func__, __LINE__, step->connect_wait_timer);
+            step->connect_wait_timer++;
+	    return RETURN_OK;
+	}
+
+	step->timeout_count++;
+
+	if (step->timeout_count == step->execution_time) {
+	    step->test_state = wlan_emu_tests_state_cmd_results;
+	    step->m_real_sta_mgr->remove_sta(step);
+	    step->u.sta_test->is_decoded = false;
+	    return RETURN_OK;
+	} else if (step->execution_time > step->timeout_count) {
+		step->test_state = wlan_emu_tests_state_cmd_continue;
+		return RETURN_OK;
+	}
+	return RETURN_ERR;
 }
 
 int test_step_param_sta_management::step_timeout_ext_sta()
@@ -790,6 +849,12 @@ int test_step_param_sta_management::step_timeout()
         return step_timeout_ext_sta();
     }
 
+    if (step->u.sta_test->connection_type == client_connection_type_real) {
+	    //TODO have func for real client and handle there
+	    //step->m_real_sta_mgr->remove_sta();
+	    return step_timeout_real_sta(step);
+    }
+
     if (step->test_state != wlan_emu_tests_state_cmd_results) {
         step->timeout_count++;
 
@@ -924,9 +989,11 @@ void test_step_param_sta_management::step_remove()
             if (step->u.sta_test->is_decoded == true) {
                 if (step->u.sta_test->connection_type == client_connection_type_external) {
                     step->m_ext_sta_mgr->remove_sta(step->u.sta_test);
-                } else {
+                } else if (step->u.sta_test->connection_type == client_connection_type_internal) {
                     step->m_sim_sta_mgr->remove_sta(step->u.sta_test);
-                }
+                } else if (step->u.sta_test->connection_type == client_connection_type_real) {
+                    step->m_real_sta_mgr->remove_sta(step);
+		}
                 step->u.sta_test->is_station_associated = false;
                 step->u.sta_test->is_decoded = false;
             }
@@ -964,6 +1031,8 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
         return RETURN_UNHANDLED;
     }
 
+    //TODO based on the client type(for REAL) have to filter based on ssid
+    //f_data->u.frm80211.u.frame.ssid
     // expect only wlan_emu_msg_type_cfg80211 or  wlan_emu_msg_type_webconfig
     switch (msg->get_msg_type()) {
     case wlan_emu_msg_type_frm80211: // mgmt
@@ -975,10 +1044,22 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.client_macaddr, client_macaddr);
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.macaddr, macaddr);
 
+	wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: conn_type is %d and ops_type is %d\n", __func__, __LINE__, step->u.sta_test->connection_type, msg->get_frm80211_ops_type());
+	if ((step->u.sta_test->connection_type == client_connection_type_real) && (msg->get_frm80211_ops_type() == wlan_emu_frm80211_ops_type_prb_resp)) {
+		wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Real client connection and is probe response\n", __func__, __LINE__);
+		//if step->ssid matches the f_data->ssid then copy the cli mac address to step for futher use
+		wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid is %s %s\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid, step->u.sta_test->sta_vap_config->u.sta_info.ssid);	
+		if (memcmp(f_data->u.frm80211.u.frame.ssid, step->u.sta_test->sta_vap_config->u.sta_info.ssid, f_data->u.frm80211.u.frame.ssid_len) == 0) {
+			memcpy(step->u.sta_test->sta_vap_config->u.sta_info.mac, f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t));
+			wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d copied MAC\n", __func__, __LINE__);
+		}
+	}
+
         if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
                  f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
             (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                 f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0)) {
+                 f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) ||
+	    (memcmp(f_data->u.frm80211.u.frame.ssid, step->u.sta_test->sta_vap_config->u.sta_info.ssid, f_data->u.frm80211.u.frame.ssid_len) == 0)) {
             if (msg->get_msgname_from_msgtype() != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: invalid msgname received from macaddr : %s client_macaddr : %s\n",
@@ -1057,6 +1138,17 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
         }
         break;
     case wlan_emu_msg_type_cfg80211: // beacon
+	if (step->u.sta_test->connection_type == client_connection_type_real) {
+	 f_data = msg->get_msg();
+          if (strcmp(f_data->u.cfg80211.u.start_ap.ssid, step->u.sta_test->sta_vap_config->u.sta_info.ssid) == 0) {
+              wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Handled frame of type : %d\n", __func__,
+                  __LINE__, msg->get_frm80211_ops_type());
+
+              msg->unload_cfg80211_start_ap(step);
+              return RETURN_HANDLED;
+          }
+	}
+          break;
     case wlan_emu_msg_type_webconfig: // onewifi_webconfig
     default:
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Not supported msg_type : %d\n", __func__,
@@ -1134,6 +1226,7 @@ test_step_param_sta_management::test_step_param_sta_management()
 
     step->execution_time = 3;
     step->timeout_count = 0;
+    step->connect_wait_timer = 0;
     step->capture_frames = false;
     memset(step->u.sta_test->sta_vap_config, 0, sizeof(wifi_vap_info_t));
     step->u.sta_test->u.sta_management.is_sta_management_timer = false;

@@ -4560,6 +4560,10 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
             }
             source_file.close();
         }
+    } else if (endpoint_type == tc_endpoint_type_conn_request) {
+        snprintf(result_url, sizeof(result_url), "%s/real_client_conn_request", server_address);
+    } else if (endpoint_type == tc_endpoint_type_disconn_request) {
+        snprintf(result_url, sizeof(result_url), "%s/real_client_disconn_request", server_address);
     } else {
         cci_error_code = ECURLPOST;
         return RETURN_ERR;
@@ -4585,6 +4589,12 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to fill http_data\n", __func__,
             __LINE__);
         return RETURN_ERR;
+    }
+
+    if ((endpoint_type == tc_endpoint_type_conn_request) || (endpoint_type == tc_endpoint_type_disconn_request)) {
+	    //TODO just for testing
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Disabling local host for posting\n", __func__, __LINE__);
+        http_info->is_local_host_enabled = false;
     }
 
     if (https_post_file(http_info, result_url, post_res_file, cci_error_code) != RETURN_OK) {

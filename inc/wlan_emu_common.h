@@ -193,7 +193,8 @@ typedef enum {
 typedef enum {
     client_connection_type_no_user_input = 0,
     client_connection_type_internal,
-    client_connection_type_external
+    client_connection_type_external,
+    client_connection_type_real,
 } wlan_emu_connection_type_t;
 
 typedef char configurator_t[32];
@@ -202,6 +203,9 @@ typedef char reference_t[8][32];
 typedef enum {
     sta_model_type_iphone,
     sta_model_type_pixel,
+    sta_model_type_android,
+    sta_model_type_ios,
+    sta_model_type_windows,
 } sta_model_type_t;
 
 typedef enum {
@@ -276,7 +280,9 @@ typedef enum {
     tc_endpoint_type_factory_reset,
     tc_endpoint_type_reboot,
     tc_endpoint_type_pause,
-    tc_endpoint_type_resume
+    tc_endpoint_type_resume,
+    tc_endpoint_type_conn_request,
+    tc_endpoint_type_disconn_request
 } tc_endpoint_type_t;
 
 typedef struct {
@@ -371,6 +377,8 @@ typedef struct {
     unsigned int current_profile_count;
     bool is_sta_management_timer;
     int op_modes;
+    char device_id[64];
+    char service_prefer[16];
 } sta_management_t;
 
 typedef struct {
