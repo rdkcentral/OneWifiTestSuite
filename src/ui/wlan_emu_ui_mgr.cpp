@@ -1080,6 +1080,11 @@ int wlan_emu_ui_mgr_t::decode_step_configure_upgrade_or_reboot(cJSON *step,
         step_config->u.upgrade_or_reboot->build_name = build_name->valuestring;
     }
 
+    cJSON *fr_enabled = cJSON_GetObjectItem(config, "is_fr_enabled");
+    if (fr_enabled != NULL && cJSON_IsBool(fr_enabled)) {
+        step_config->u.upgrade_or_reboot->is_fr_enabled = cJSON_IsTrue(fr_enabled);
+    }
+
     cJSON *param = cJSON_GetObjectItem(config, "is_logging_enabled");
     if (cJSON_IsBool(param)) {
         step_config->u.upgrade_or_reboot->is_logging_enabled = cJSON_IsTrue(param);
@@ -4034,6 +4039,114 @@ int wlan_emu_ui_mgr_t::cci_report_resume_to_tda()
     return RETURN_OK;
 }
 
+int wlan_emu_ui_mgr_t::cci_report_factory_reset_to_tda()
+{
+    unsigned int count = 0, i = 0;
+    wlan_emu_test_case_config *test = NULL;
+    unsigned int steps_count = 0;
+    cJSON *json = NULL;
+    char value[64] = { 0 };
+    char timestamp[24] = { 0 };
+    char *str = NULL;
+
+    json = cJSON_CreateObject();
+    if (json == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cJSON_CreateObject failed\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (get_cm_mac_address(value) != RETURN_OK) {
+        snprintf(value, sizeof(value), "NA");
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_cm_mac_address failed\n", __func__,
+            __LINE__);
+    } else {
+        value[strcspn(value, "\n")] = '\0';
+        cJSON_AddStringToObject(json, "cm_mac", value);
+    }
+
+    if (access(CCI_TEST_REBOOT_STEP_CONFIG_JSON, R_OK) == 0) {
+        cJSON_AddStringToObject(json, "result_file", cci_out_file_list);
+    } else {
+        cJSON_AddStringToObject(json, "result_file", "NA");
+    }
+    cJSON_AddStringToObject(json, "status", "factory_reset");
+    cJSON_AddStringToObject(json, "error_code", "0");
+
+    if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
+            __LINE__);
+        cJSON_Delete(json);
+        return RETURN_ERR;
+    }
+
+    cJSON_AddStringToObject(json, "timestamp", timestamp);
+    str = cJSON_Print(json);
+    if (str == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cJSON_Print failed\n", __func__, __LINE__);
+        cJSON_Delete(json);
+        return RETURN_ERR;
+    }
+
+    if (cci_post_result_to_tda(tc_endpoint_type_factory_reset, str) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n", __func__,
+            __LINE__);
+        cJSON_free(str);
+        cJSON_Delete(json);
+        return RETURN_ERR;
+    }
+    cJSON_free(str);
+    cJSON_Delete(json);
+
+    if (test_cov_cases_q == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test_cov_cases_q is NULL\n", __func__,
+            __LINE__);
+        return RETURN_OK;
+    }
+
+    // Free the queue elements here
+    count = queue_count(test_cov_cases_q);
+    if (count == 0) {
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: queue count is 0\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+
+    for (i = 0; i < count; i++) {
+        test = (wlan_emu_test_case_config *)queue_pop(test_cov_cases_q);
+        if (test == NULL) {
+            wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Test is NULL at %d of %d\n", __func__,
+                __LINE__, i, count);
+            continue;
+        }
+
+        while (test != NULL) {
+            if (test->test_steps_q == NULL) {
+                break;
+            }
+            steps_count = queue_count(test->test_steps_q);
+            if (steps_count == 0) {
+                wlan_emu_print(wlan_emu_log_level_info,
+                    "%s:%d: No test steps are present for %s \n", __func__, __LINE__,
+                    test->test_json);
+                break;
+            } else {
+                test_step_params_t *step = (test_step_params_t *)queue_pop(test->test_steps_q);
+                while (step != NULL) {
+                    step->step_remove();
+                    step = (test_step_params_t *)queue_pop(test->test_steps_q);
+                }
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: No test steps are present\n",
+                    __func__, __LINE__);
+                free(test->test_steps_q);
+                test->test_steps_q = NULL;
+            }
+        }
+
+        delete test;
+    }
+    return RETURN_OK;
+}
+
 int wlan_emu_ui_mgr_t::cci_report_pause_to_tda()
 {
     unsigned int count = 0, i = 0;
@@ -4428,6 +4541,8 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
         snprintf(result_url, sizeof(result_url), "%s/complete", server_address);
     } else if (endpoint_type == tc_endpoint_type_fail) {
         snprintf(result_url, sizeof(result_url), "%s/fail", server_address);
+    } else if (endpoint_type == tc_endpoint_type_factory_reset) {
+        snprintf(result_url, sizeof(result_url), "%s/factory_reset", server_address);
     } else if (endpoint_type == tc_endpoint_type_pause) {
         snprintf(result_url, sizeof(result_url), "%s/pause", server_address);
     } else if (endpoint_type == tc_endpoint_type_resume) {

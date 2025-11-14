@@ -273,6 +273,7 @@ typedef enum {
     tc_endpoint_type_heartbeat = 0,
     tc_endpoint_type_complete,
     tc_endpoint_type_fail,
+    tc_endpoint_type_factory_reset,
     tc_endpoint_type_reboot,
     tc_endpoint_type_pause,
     tc_endpoint_type_resume
@@ -594,6 +595,7 @@ typedef struct {
     std::string build_name;
     bool is_logging_enabled;
     queue_t *logging_step_numbers; // step_number_entry_t
+    bool is_fr_enabled;
 } device_upgrade_t;
 
 #ifdef __cplusplus

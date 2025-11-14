@@ -335,6 +335,7 @@ public:
     int cci_report_reboot_to_tda(void);
     int cci_report_heartbeat_to_tda(void);
     void update_log_file_offset(void);
+    int cci_report_factory_reset_to_tda(void);
     int cci_report_pause_to_tda(void);
     int cci_report_resume_to_tda(void);
 
@@ -482,6 +483,11 @@ public:
     {
         cci_error_code = error_code;
         return;
+    }
+
+    inline pthread_t get_heartbeat_thread_id()
+    {
+        return m_heartbeat_tid;
     }
 
     http_info_t *fill_http_info();
