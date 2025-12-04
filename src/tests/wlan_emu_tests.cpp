@@ -510,11 +510,9 @@ void wlan_emu_tests_t::run(wlan_emu_msg_t *msg)
 
 void wlan_emu_tests_t::push_msg(wlan_emu_msg_t *msg)
 {
-    pthread_mutex_lock(&m_lock);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d \n", __func__, __LINE__);
     queue_push(m_results, msg);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d \n", __func__, __LINE__);
-    pthread_cond_signal(&m_cond);
-    pthread_mutex_unlock(&m_lock);
 }
 
 wlan_emu_msg_t *wlan_emu_tests_t::pop_msg()

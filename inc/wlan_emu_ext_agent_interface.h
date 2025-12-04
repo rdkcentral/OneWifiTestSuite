@@ -102,7 +102,7 @@ public:
 
     // Get the capability file to decode
     int get_external_agent_capabilities(hash_map_t *ext_agent_map);
-    int get_external_agent_test_status(ext_agent_status_resp_t &status);
+    int get_external_agent_test_status(ext_agent_status_resp_t &status, int &cci_error_code);
     // used by the gateway
     int get_external_agent_info(hash_map_t *ext_agent_map, bus_handle_t *handle,
         wlan_emu_bus_t *bus_mgr);
@@ -121,7 +121,7 @@ public:
         std::string &json_str);
     int decode_external_agent_test_status(const std::string &json, ext_agent_status_resp_t &status);
 
-    int download_external_agent_result_files(const std::vector<std::string> &files);
+    int download_external_agent_result_files(const std::vector<std::string> &files, int &cci_error_code);
 
     int send_external_agent_start_command();
     int send_external_agent_stop_command();

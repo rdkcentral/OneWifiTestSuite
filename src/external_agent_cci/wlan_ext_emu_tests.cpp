@@ -333,6 +333,7 @@ void *wlan_ext_emu_tests_t::test_function(void *arg)
             if (step_total > 0) {
                 if (step_total == step_completed) {
                     ext_emu->ext_emu_send_signal_complete();
+                    test->m_exit = true;
                 } else {
                     ext_emu->ext_emu_send_signal_running();
                 }

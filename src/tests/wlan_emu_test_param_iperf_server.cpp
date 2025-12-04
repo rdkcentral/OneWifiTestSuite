@@ -137,7 +137,7 @@ int test_step_param_iperf_server::step_timeout()
         }
     }
 
-    if (ext_agent->get_external_agent_test_status(status) == RETURN_ERR) {
+    if (ext_agent->get_external_agent_test_status(status, step->m_ui_mgr->cci_error_code) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to get external agent status\n",
             __func__, __LINE__);
         step->test_state = wlan_emu_tests_state_cmd_abort;
@@ -208,7 +208,7 @@ int test_step_param_iperf_server::step_timeout()
             return RETURN_OK;
         }
 
-        if (ext_agent->download_external_agent_result_files(step_iter->result_files) != RETURN_OK) {
+        if (ext_agent->download_external_agent_result_files(step_iter->result_files, step->m_ui_mgr->cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
                 __func__, __LINE__);
             step->test_state = wlan_emu_tests_state_cmd_abort;
@@ -274,7 +274,7 @@ int test_step_param_iperf_server::encode_external_iperf_server_start_subdoc(
     char *str = NULL;
     char iperf_config_json[256] = { 0 };
     test_step_params_t *step = this;
-    test_step_params_t *server_interface_step = this;
+    test_step_params_t *server_interface_step = NULL;
     std::string server_cmd;
     sta_test_t *test_params;
     wlan_emu_ext_agent_interface_t *agent_info = NULL;
