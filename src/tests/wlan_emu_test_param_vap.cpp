@@ -78,6 +78,12 @@ int test_step_param_vap::step_execute()
                     step->execution_time);
         }
 
+	if (step->frame_request.subdoc_type == webconfig_subdoc_type_cac) {
+            step->execution_time = 40;
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: new execution time : %d for cac\n", __func__, __LINE__,
+                    step->execution_time);
+        }
+
         ret = step->m_ui_mgr->bus_send(json_data, step->m_bus_mgr);
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: bus_send failed\n", __func__, __LINE__);
@@ -258,7 +264,7 @@ test_step_param_vap::test_step_param_vap()
 {
     test_step_params_t *step = this;
     step->is_step_initialized = true;
-    step->execution_time = 25;
+    step->execution_time = 40;
     step->timeout_count = 0;
     step->capture_frames = false;
 }
