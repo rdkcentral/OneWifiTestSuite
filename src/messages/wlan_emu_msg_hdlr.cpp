@@ -45,8 +45,8 @@ static void handle_cfg80211_start_ap(char *f_tmp, wlan_emu_msg_data_t *f_data)
     memcpy(&(f_data->u.cfg80211.u.start_ap.phy_index), f_tmp, sizeof(int));
     f_tmp += sizeof(int);
 
-    memcpy(&(f_data->u.cfg80211.u.start_ap.ssid_len), f_tmp, sizeof(size_t));
-    f_tmp += sizeof(size_t);
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ssid_len), f_tmp, 1);
+    f_tmp += 1;
 
    // f_data->u.cfg80211.u.start_ap.ssid = static_cast<char >(
     //    malloc(f_data->u.cfg80211.u.start_ap.ssid_len));
@@ -144,9 +144,9 @@ void handle_frm80211_msg(char *f_tmp, wlan_emu_msg_data_t *f_data)
 
     if (f_data->u.frm80211.ops == wlan_emu_frm80211_ops_type_prb_resp) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Entering probe response\n", __func__, __LINE__);
-        memcpy(&f_data->u.frm80211.u.frame.ssid_len, f_tmp, sizeof(size_t));
+        memcpy(&f_data->u.frm80211.u.frame.ssid_len, f_tmp, 1);
 	wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid_len is %zu\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid_len);
-        f_tmp += sizeof(size_t);
+        f_tmp += 1;
 	if (f_data->u.frm80211.u.frame.ssid_len > 0) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Coming to copy ssid\n", __func__, __LINE__);
             memcpy((void *)f_data->u.frm80211.u.frame.ssid, f_tmp, f_data->u.frm80211.u.frame.ssid_len);
