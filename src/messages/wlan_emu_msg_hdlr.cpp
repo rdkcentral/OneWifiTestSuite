@@ -148,7 +148,7 @@ void handle_frm80211_msg(char *f_tmp, wlan_emu_msg_data_t *f_data)
 	wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid_len is %zu\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid_len);
         f_tmp += sizeof(size_t);
 	if (f_data->u.frm80211.u.frame.ssid_len > 0) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid is %s\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid);
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Coming to copy ssid\n", __func__, __LINE__);
             memcpy((void *)f_data->u.frm80211.u.frame.ssid, f_tmp, f_data->u.frm80211.u.frame.ssid_len);
 	    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: coming after memcpy\n", __func__, __LINE__);
 	    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid is %s\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid);
