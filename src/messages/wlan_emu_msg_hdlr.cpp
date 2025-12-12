@@ -145,11 +145,13 @@ void handle_frm80211_msg(char *f_tmp, wlan_emu_msg_data_t *f_data)
     if (f_data->u.frm80211.ops == wlan_emu_frm80211_ops_type_prb_resp) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Entering probe response\n", __func__, __LINE__);
         memcpy(&f_data->u.frm80211.u.frame.ssid_len, f_tmp, sizeof(size_t));
-	wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid_len is %u\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid_len);
+	wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid_len is %zu\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid_len);
         f_tmp += sizeof(size_t);
 	if (f_data->u.frm80211.u.frame.ssid_len > 0) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid is %s\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid);
-            memcpy(f_data->u.frm80211.u.frame.ssid, f_tmp, f_data->u.frm80211.u.frame.ssid_len);
+            memcpy((void *)f_data->u.frm80211.u.frame.ssid, f_tmp, f_data->u.frm80211.u.frame.ssid_len);
+	    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: coming after memcpy\n", __func__, __LINE__);
+	    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid is %s\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid);
 	    f_tmp += f_data->u.frm80211.u.frame.ssid_len;
 	}
     }
