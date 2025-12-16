@@ -60,7 +60,6 @@ public:
     pthread_mutex_t s_lock; // if running in parallel
     int execution_time;
     int timeout_count;
-    int connect_wait_timer;
 
     /* Common End*/
     union {

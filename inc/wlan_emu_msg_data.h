@@ -83,8 +83,6 @@ typedef struct {
     int ifindex;
     int phy_index;
     mac_address_t macaddr;
-    char ssid[32];
-    size_t ssid_len;
     char *beacon_head;
     size_t head_len;
     char *beacon_tail;
@@ -134,8 +132,6 @@ typedef struct {
     unsigned char client_macaddr[ETH_ALEN];
     unsigned char *frame;
     unsigned int frame_len;
-    char ssid[32];
-    size_t ssid_len;
 } wlan_emu_frm80211_frm_t;
 
 typedef struct {
