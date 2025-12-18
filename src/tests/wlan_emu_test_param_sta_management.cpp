@@ -1023,6 +1023,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
     wlan_emu_msg_data_t *f_data = NULL;
     char client_macaddr[32] = { 0 };
     char macaddr[32] = { 0 };
+    char step_macaddr[32] = { 0 };
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
         step->step_number);
 
@@ -1042,7 +1043,9 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.client_macaddr, client_macaddr);
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.macaddr, macaddr);
+        uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, step_mac_addr);
 
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Step mac Address is %s\n", __func__, __LINE__, step_mac_addr);
 	wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: MSG received from macaddr : %s client_macaddr : %s\n",
                     __func__, __LINE__, macaddr, client_macaddr);
