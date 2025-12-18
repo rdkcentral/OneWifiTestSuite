@@ -137,6 +137,7 @@ wifi_vap_info_t *wlan_emu_ui_mgr_t::get_cci_vap_info(char *vap_name)
     int vap_array_index = 0;
     webconfig_cci_t *cci_webconfig = NULL;
     cci_webconfig = get_webconfig_data();
+    char bssid_str[32] = {0};
     radio_index = convert_vap_name_to_radio_array_index(&cci_webconfig->hal_cap.wifi_prop,
         vap_name);
     vap_array_index = convert_vap_name_to_array_index(&cci_webconfig->hal_cap.wifi_prop, vap_name);
@@ -146,6 +147,9 @@ wifi_vap_info_t *wlan_emu_ui_mgr_t::get_cci_vap_info(char *vap_name)
         return NULL;
     }
     vap_info = &cci_webconfig->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
+
+    uint8_mac_to_string_mac(vap_info->u.bss_info.bssid, bssid_str);
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: bssid_str is %s\n", __func__, __LINE__, bssid_str);
     return vap_info;
 }
 
