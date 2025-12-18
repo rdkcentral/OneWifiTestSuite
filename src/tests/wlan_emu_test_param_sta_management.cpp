@@ -1026,6 +1026,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
     char client_macaddr[32] = { 0 };
     char macaddr[32] = { 0 };
     char step_macaddr[32] = { 0 };
+    bool mac_matched = false;
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
         step->step_number);
 
@@ -1033,8 +1034,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
         return RETURN_UNHANDLED;
     }
 
-    //TODO based on the client type(for REAL) have to filter based on ssid
-    //f_data->u.frm80211.u.frame.ssid
     // expect only wlan_emu_msg_type_cfg80211 or  wlan_emu_msg_type_webconfig
     switch (msg->get_msg_type()) {
     case wlan_emu_msg_type_frm80211: // mgmt
@@ -1052,26 +1051,23 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     "%s:%d: MSG received from macaddr : %s client_macaddr : %s\n",
                     __func__, __LINE__, macaddr, client_macaddr);
 	wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: conn_type is %d and ops_type is %d\n", __func__, __LINE__, step->u.sta_test->connection_type, msg->get_frm80211_ops_type());
+
         if (step->u.sta_test->connection_type == client_connection_type_real) {
-            memcpy(step->u.sta_test->sta_vap_config->u.sta_info.mac, step->u.sta_test->sta_vap_config->u.sta_info.bssid, sizeof(mac_addr_t));
-        }
-/*	if ((step->u.sta_test->connection_type == client_connection_type_real) && (msg->get_frm80211_ops_type() == wlan_emu_frm80211_ops_type_prb_resp)) {
-		wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Real client connection and is probe response\n", __func__, __LINE__);
-		//if step->ssid matches the f_data->ssid then copy the cli mac address to step for futher use
-		wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid is %s %s\n", __func__, __LINE__, f_data->u.frm80211.u.frame.ssid, step->u.sta_test->sta_vap_config->u.sta_info.ssid);	
-		if (memcmp(f_data->u.frm80211.u.frame.ssid, step->u.sta_test->sta_vap_config->u.sta_info.ssid, f_data->u.frm80211.u.frame.ssid_len) == 0) {
-			memcpy(step->u.sta_test->sta_vap_config->u.sta_info.mac, f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t));
-			wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d copied MAC\n", __func__, __LINE__);
-		}
-	}*/
+            if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.bssid,
+                 f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
+            (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.bssid,
+                 f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0)) {
+                 wlan_emu_print(wlan_emu_log_level_err, "MAC Matched set to true\n");
+                 mac_matched = true;
+            }
+	}
 
         if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
                  f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
             (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                 f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0)) {
-	       /*	||
-	    (memcmp(f_data->u.frm80211.u.frame.ssid, step->u.sta_test->sta_vap_config->u.sta_info.ssid, f_data->u.frm80211.u.frame.ssid_len) == 0)) {*/
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d MAC matched\n", __func__, __LINE__);
+                 f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) ||
+            (mac_matched == true)) {
+            wlan_emu_print(wlan_emu_log_level_err, "MAC Matched\n");
             if (msg->get_msgname_from_msgtype() != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: invalid msgname received from macaddr : %s client_macaddr : %s\n",
