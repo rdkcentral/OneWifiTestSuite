@@ -1045,13 +1045,16 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.client_macaddr, client_macaddr);
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.macaddr, macaddr);
-        uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, step_macaddr);
+        uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.bssid, step_macaddr);
 
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Step mac Address is %s\n", __func__, __LINE__, step_macaddr);
 	wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: MSG received from macaddr : %s client_macaddr : %s\n",
                     __func__, __LINE__, macaddr, client_macaddr);
 	wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: conn_type is %d and ops_type is %d\n", __func__, __LINE__, step->u.sta_test->connection_type, msg->get_frm80211_ops_type());
+        if (step->u.sta_test->connection_type == client_connection_type_real) {
+            memcpy(step->u.sta_test->sta_vap_config->u.sta_info.mac, step->u.sta_test->sta_vap_config->u.sta_info.bssid, sizeof(mac_addr_t));
+        }
 /*	if ((step->u.sta_test->connection_type == client_connection_type_real) && (msg->get_frm80211_ops_type() == wlan_emu_frm80211_ops_type_prb_resp)) {
 		wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Real client connection and is probe response\n", __func__, __LINE__);
 		//if step->ssid matches the f_data->ssid then copy the cli mac address to step for futher use
