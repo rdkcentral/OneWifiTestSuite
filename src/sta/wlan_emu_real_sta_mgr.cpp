@@ -4,90 +4,74 @@
 
 int wlan_emu_real_sta_mgr_t::add_sta(test_step_params_t *step)
 {
-	//Construct the json as below and send it to endpoint 
-	/*{
-    "device_id": "2A091FDH300J8U",
-    "platform": "Android",
-    "ssid": "WifiMaster--5",
-    "security": "WPA2-PSK", // OPEN, WPA2-PSK, WPA3-PSK
-    "password": "Qwertyuiop@123",
-    "prefer": [
-        "ui"
-    ]
-    } */
-
     cJSON *json = NULL;
     char value[64] = { 0 };
     long status_code = 0;
 
     if (step == NULL) {
-	    wlan_emu_print(wlan_emu_log_level_err, "%s:%d step is NULL\n", __func__, __LINE__);
-	    return RETURN_ERR;
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d step is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
     }
 
     json = cJSON_CreateObject();
     if (json == NULL) {
-	    wlan_emu_print(wlan_emu_log_level_err, "%s:%d json create failed\n", __func__, __LINE__);
-	    return RETURN_ERR;
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d json create failed\n", __func__, __LINE__);
+        return RETURN_ERR;
     }
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d Entering\n", __func__, __LINE__);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d PAVI device id is %s\n", __func__, __LINE__, step->u.sta_test->u.sta_management.device_id);
 
     get_cm_mac_address(value);
     value[strcspn(value, "\n")] = '\0';
 
     cJSON_AddStringToObject(json, "cm_mac", value);
     cJSON_AddStringToObject(json, "device_id", step->u.sta_test->u.sta_management.device_id);
-    cJSON_AddStringToObject(json, "platform", wlan_common_utils::get_sta_type_string(step->u.sta_test->sta_type));
+    cJSON_AddStringToObject(json, "platform",
+        wlan_common_utils::get_sta_type_string(step->u.sta_test->sta_type));
     cJSON_AddStringToObject(json, "ssid", step->u.sta_test->sta_vap_config->u.sta_info.ssid);
-    cJSON_AddStringToObject(json, "security", wlan_common_utils::get_secu_mode_string(step->u.sta_test->sta_vap_config->u.sta_info.security.mode));
-    cJSON_AddStringToObject(json, "password", step->u.sta_test->sta_vap_config->u.sta_info.security.u.key.key);
-    
+    cJSON_AddStringToObject(json, "security",
+        wlan_common_utils::get_secu_mode_string(
+            step->u.sta_test->sta_vap_config->u.sta_info.security.mode));
+    cJSON_AddStringToObject(json, "password",
+        step->u.sta_test->sta_vap_config->u.sta_info.security.u.key.key);
+
     cJSON *prefer_array = cJSON_AddArrayToObject(json, "prefer");
-    cJSON_AddItemToArray(prefer_array, cJSON_CreateString(step->u.sta_test->u.sta_management.service_prefer));
+    cJSON_AddItemToArray(prefer_array,
+        cJSON_CreateString(step->u.sta_test->u.sta_management.service_prefer));
 
     char *json_str = cJSON_Print(json);
     if (json_str == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d cjson print failed\n", __func__, __LINE__);
-        // Handle error
         cJSON_Delete(json);
         return RETURN_ERR;
     }
 
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d PAVI add_sta blob is %s\n", __func__, __LINE__, json_str);
+    create_key(step->u.sta_test->key, step->u.sta_test->sta_vap_config->u.sta_info.ssid,
+        step->u.sta_test->test_id);
 
-    create_key(step->u.sta_test->key, step->u.sta_test->sta_vap_config->u.sta_info.ssid, step->u.sta_test->test_id);
-
-    if (step->m_ui_mgr->cci_post_result_to_tda(tc_endpoint_type_conn_request, json_str) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n", __func__, __LINE__);
-	cJSON_free(json_str);
-	cJSON_Delete(json);
-	return RETURN_ERR;
+    if (step->m_ui_mgr->cci_post_result_to_tda(tc_endpoint_type_conn_request, json_str) !=
+        RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n", __func__,
+            __LINE__);
+        cJSON_free(json_str);
+        cJSON_Delete(json);
+        return RETURN_ERR;
     }
 
     cJSON_free(json_str);
     cJSON_Delete(json);
 
     return RETURN_OK;
-
 }
 
 void wlan_emu_real_sta_mgr_t::remove_sta(test_step_params_t *step)
 {
-	//construct the below json and send it to endpoint
-	/*{
-    "device_id": "2A091FDH300J8U",
-    "platform": "Android",
-    "ssid": "WifiMaster--5"
-    }*/
     cJSON *json = NULL;
     char value[64] = { 0 };
     long status_code = 0;
 
     json = cJSON_CreateObject();
     if (json == NULL) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d json create failed\n", __func__, __LINE__);
-            return;
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d json create failed\n", __func__, __LINE__);
+        return;
     }
 
     get_cm_mac_address(value);
@@ -95,7 +79,8 @@ void wlan_emu_real_sta_mgr_t::remove_sta(test_step_params_t *step)
 
     cJSON_AddStringToObject(json, "cm_mac", value);
     cJSON_AddStringToObject(json, "device_id", step->u.sta_test->u.sta_management.device_id);
-    cJSON_AddStringToObject(json, "platform", wlan_common_utils::get_sta_type_string(step->u.sta_test->sta_type));
+    cJSON_AddStringToObject(json, "platform",
+        wlan_common_utils::get_sta_type_string(step->u.sta_test->sta_type));
     cJSON_AddStringToObject(json, "ssid", step->u.sta_test->sta_vap_config->u.sta_info.ssid);
 
     char *json_str = cJSON_Print(json);
@@ -105,14 +90,16 @@ void wlan_emu_real_sta_mgr_t::remove_sta(test_step_params_t *step)
         return;
     }
 
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d remove_sta blob is %s\n", __func__, __LINE__, json_str);
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d remove_sta blob is %s\n", __func__, __LINE__,
+        json_str);
 
-
-    if (step->m_ui_mgr->cci_post_result_to_tda(tc_endpoint_type_disconn_request, json_str) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",__func__, __LINE__);
+    if (step->m_ui_mgr->cci_post_result_to_tda(tc_endpoint_type_disconn_request, json_str) !=
+        RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n", __func__,
+            __LINE__);
         cJSON_free(json_str);
-	cJSON_Delete(json);
-	return;
+        cJSON_Delete(json);
+        return;
     }
     cJSON_free(json_str);
     cJSON_Delete(json);
