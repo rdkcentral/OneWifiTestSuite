@@ -144,7 +144,11 @@ static unsigned int get_radio_index_from_vapname(char *vap_name, test_step_param
     wifi_vap_info_t *ap_vap_info = NULL;
 
     ap_vap_info = step->m_ui_mgr->get_cci_vap_info(vap_name);
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: radio index is %u for vap %s\n", ap_vap_info->radio_index, vap_name);
+    if (ap_vap_info == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to get vap info\n", __func__, __LINE__);
+	return 0;
+    }
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: radio index is %u for vap %s\n", __func__, __LINE__, ap_vap_info->radio_index, vap_name);
     return ap_vap_info->radio_index;
 }
 
