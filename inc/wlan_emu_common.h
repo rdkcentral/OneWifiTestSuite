@@ -419,7 +419,8 @@ typedef struct {
     std::string sta_interface_name;
     bool is_ip_assigned;
     std::string ip_address;
-
+    bool is_reconnect_enabled;
+    unsigned int reconnect_interval;
     union {
         sta_management_t sta_management;
         // sta_mobility_t

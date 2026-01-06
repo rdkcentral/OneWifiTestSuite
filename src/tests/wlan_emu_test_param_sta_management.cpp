@@ -398,6 +398,20 @@ int test_step_param_sta_management::decode_step_sta_management_config()
         }
     }
 
+    param = cJSON_GetObjectItem(sta_root_json, "auto_reconnect");
+    if (param != NULL && (cJSON_IsBool(param) == true)) {
+        step_config->u.sta_test->is_reconnect_enabled = cJSON_IsTrue(param) ? true : false;
+    }
+    if (step_config->u.sta_test->is_reconnect_enabled == true) {
+        param = cJSON_GetObjectItem(sta_root_json, "reconnect_interval");
+        if (param != NULL && (cJSON_IsNumber(param) == true)) {
+            step_config->u.sta_test->reconnect_interval = param->valueint;
+        }
+    }
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Auto Reconnect : %s Reconnect Interval : %d\n",
+        __func__, __LINE__, step_config->u.sta_test->is_reconnect_enabled ? "Enabled" : "Disabled",
+        step_config->u.sta_test->reconnect_interval);
+
     wlan_emu_print(wlan_emu_log_level_dbg,
         "%s:%d: Rssi : %d Noise : %d Bitrate : %d op_modes : 0x%x\n", __func__, __LINE__,
         pre_connect_profile->pre_assoc_rssi, pre_connect_profile->pre_assoc_noise,
@@ -803,6 +817,20 @@ int test_step_param_sta_management::step_timeout()
             return RETURN_OK;
         }
 
+        if (step->u.sta_test->is_reconnect_enabled && step->timeout_count != 0 &&
+            step->u.sta_test->reconnect_interval > 0 &&
+            (step->timeout_count % step->u.sta_test->reconnect_interval) == 0) {
+            if (step->u.sta_test->is_station_associated == true &&
+                step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: disconnect_sta failed for step %d\n",
+                    __func__, __LINE__, step->step_number);
+            } else if (step->u.sta_test->is_station_associated == false) {
+                step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
+                step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
+                step->u.sta_test->is_decoded = false;
+            }
+        }
+
         if (step->u.sta_test->is_station_associated == true) {
             // add the logic  connectivity profile
             if (step->u.sta_test->u.sta_management.is_sta_management_timer == true) {
@@ -990,7 +1018,17 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
                 // Added this check to make sure the Station MAC is present as part of frame
                 // received.
-                if (step->u.sta_test->is_station_associated == true) {
+                if (step->u.sta_test->is_reconnect_enabled == true &&
+                    (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
+                    wlan_emu_print(wlan_emu_log_level_err,
+                        "%s:%d: STA trying to reconnect within expected time for step %d\n",
+                        __func__, __LINE__, step->step_number);
+                    step->u.sta_test->is_station_associated = false;
+                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
+                    step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
+                    step->u.sta_test->is_decoded = false;
+                } else if (step->u.sta_test->is_reconnect_enabled == false &&
+                    step->u.sta_test->is_station_associated == true) {
                     step->u.sta_test->is_station_associated = false;
                     step->m_sim_sta_mgr->remove_sta(step->u.sta_test);
                     step->u.sta_test->is_decoded = false;
@@ -1144,6 +1182,8 @@ test_step_param_sta_management::test_step_param_sta_management()
     memset(step->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
     step->u.sta_test->u.sta_management.op_modes = 0;
     step->u.sta_test->is_ip_assigned = false;
+    step->u.sta_test->reconnect_interval = 20;
+    step->u.sta_test->is_reconnect_enabled = false;
 }
 
 int test_step_param_sta_management::encode_external_sta_management_subdoc(std::string &cli_subdoc)
