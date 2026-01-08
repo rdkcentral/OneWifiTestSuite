@@ -1,0 +1,58 @@
+{
+    "Version": "1.0",
+    "SubDocName": "client-devices",
+    "ClientDevices": [
+        {
+            "Type": "iPhone15",
+            "Connection": "private",
+            "Band": "2G",
+            "Connectivity": {
+                [
+                    2, 5, 10, 15
+                ],
+                "$comment": "The above parameter is an array of unit of time when connection state toggles"
+            },
+            "Mobility": {
+                [
+                    {
+                        "Time": 2, 
+                        "Interference": -20, 
+                        "Position": [5, 6, 5]
+                    },
+                    {
+                        "Time": 10, 
+                        "Interference": -45, 
+                        "Position": [8, 10, 10]
+                    }	
+                ],
+                "$comment": "The above array describes mobiluity of the client device with respect to units of time and 3 dimensional space"	
+            }
+        },
+        {
+            "Type": "Pixel8",
+            "Connection": "private",
+            "Band": "2G",
+            "Connectivity": {
+                [
+                    2, 5, 10, 15
+                ],
+                "$comment": "The above parameter is an array of unit of time when connection state toggles"
+            },
+            "Mobility": {
+                [
+                    {
+                        "Time": 2, 
+                        "Interference": -20, 
+                        "Position": [5, 6, 5]
+                    },
+                    {
+                        "Time": 10, 
+                        "Interference": -45, 
+                        "Position": [8, 10, 10]
+                    }	
+                ],
+                "$comment": "The above array describes mobiluity of the client device with respect to units of time and 3 dimensional space"	
+            }
+        }
+    ]
+}
