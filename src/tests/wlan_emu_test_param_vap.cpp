@@ -160,6 +160,8 @@ char *get_subdoc_string_from_type(unsigned int type)
         return VAP_PREFIX_IOT;
     case webconfig_subdoc_type_xfinity:
         return VAP_PREFIX_HOTSPOT;
+    case webconfig_subdoc_type_cac:
+	return VAP_PREFIX_HOTSPOT;
     case webconfig_subdoc_type_mesh_backhaul:
         return VAP_PREFIX_MESH_BACKHAUL;
     case webconfig_subdoc_type_lnf:
