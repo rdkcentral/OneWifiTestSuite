@@ -512,6 +512,7 @@ void wlan_emu_tests_t::push_msg(wlan_emu_msg_t *msg)
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d \n", __func__, __LINE__);
     queue_push(m_results, msg);
+    pthread_cond_signal(&m_cond);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d \n", __func__, __LINE__);
 }
 
