@@ -472,11 +472,6 @@ public:
         simulated_clients = count;
     }
 
-    inline void set_simulated_client_count(int sim_count)
-    {
-        simulated_clients = sim_count;
-    }
-
     void send_webconfig_ctrl_msg(webconfig_subdoc_type_t subdoc_type);
 
     inline int get_cci_error_code()
