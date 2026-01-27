@@ -356,10 +356,15 @@ typedef struct {
 } station_prototype_t;
 
 typedef struct {
+    mac_addr_t sta_mac;
+    sta_key_t key;
+    bool is_station_associated;
+} connected_client_info_t;
+
+typedef struct {
     unsigned int test_id;
     unsigned int phy_index;
     bool is_decoded;
-    sta_key_t key;
     sta_model_type_t sta_type;
     char sta_name[32];
     char test_station_config[128];
@@ -367,18 +372,24 @@ typedef struct {
     wifi_vap_info_t *sta_vap_config;
     wifi_radio_operationParam_t *radio_oper_param;
     sta_profile_t profile;
-    bool is_station_associated;
     bool is_station_prototype_enabled;
     station_prototype_t *station_prototype;
     bool capture_sta_requests;
     bool wait_connection;
     mac_address_t custom_mac;
+    unsigned int client_count;
+    queue_t *connected_client_info_q; // connected_client_info_t
     wlan_emu_connection_type_t connection_type;
 
     bool is_reconnect_enabled;
     unsigned int reconnect_interval;
     bool is_disconnection_sent;
     unsigned int reconnect_timer;
+    bool is_ip_assigned;
+    std::string ip_address;
+    sta_key_t key;
+    bool is_station_associated;
+    pid_t dhcp_pid;
     union {
         sta_management_t sta_management;
         // sta_mobility_t
