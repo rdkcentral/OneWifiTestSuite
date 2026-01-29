@@ -266,7 +266,7 @@ test_step_param_vap::test_step_param_vap()
 {
     test_step_params_t *step = this;
     step->is_step_initialized = true;
-    step->execution_time = 40;
+    step->execution_time = 25;
     step->timeout_count = 0;
     step->capture_frames = false;
 }
