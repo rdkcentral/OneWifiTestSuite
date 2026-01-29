@@ -37,7 +37,8 @@
 
 extern "C" {
 INT wifi_hal_init();
-INT wifi_hal_getHalCapability(wifi_hal_capability_t *hal);
+INT wifi_hal_getInterfaceMap(wifi_interface_name_idex_map_t *if_map, unsigned int max_entries,
+    unsigned int *if_map_size);
 INT wifi_hal_disconnect(INT ap_index);
 }
 
@@ -389,6 +390,7 @@ bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data, bus_
     (void)user_data;
     char parameter[STR_LEN] = { 0 };
     int len = 0;
+    char buf[8] = { 0 };
 
     if (get_dml_state() == wlan_emu_dml_tests_state_running) {
         wlan_emu_print(wlan_emu_log_level_info,
@@ -434,10 +436,25 @@ bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data, bus_
             return bus_error_invalid_input;
         }
         int count = data->raw_data.u32;
-        if (count <= 0) {
+        if ((count <= 0) || (count > 300)) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d unable to set the simulated clients to  %d\n", __FUNCTION__, __LINE__,
+                count);
             return bus_error_invalid_input;
         }
         m_ui_mgr.set_simulated_client_count(count);
+        snprintf(buf, sizeof(buf), "%d", count);
+
+        if (syscfg_set_commit(NULL, CCI_SIM_CLI_COUNT_SYS_ENTRY, buf) == 0) {
+            wlan_emu_print(wlan_emu_log_level_info,
+                "%s:%d updated the new supported clients to %d\n", __FUNCTION__, __LINE__, count);
+            wlan_emu_print(wlan_emu_log_level_info,
+                "%s:%d Restart the rdkfmac.service for new clients into effect\n");
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d unable to set the simulated clients to  %d\n", __FUNCTION__, __LINE__,
+                count);
+        }
 
     } else if (strstr(parameter, "Start")) {
         if (data->data_type != bus_data_type_boolean) {
@@ -548,25 +565,43 @@ void wlan_emu_t::bus_register_handlers()
     return;
 }
 
+#define MAX_NUM_SIMULATED_CLIENT 300
+
 int wlan_emu_t::init()
 {
-    wifi_hal_capability_t *sta_cap = NULL;
-    sta_cap = (wifi_hal_capability_t *)malloc(sizeof(wifi_hal_capability_t));
-    if (sta_cap == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: malloc failed for sta_cap\n", __func__,
+    wifi_interface_name_idex_map_t *if_map = NULL;
+    char buf[8] = { 0 };
+    int sim_client_count = 0;
+
+    syscfg_init();
+    if (0 == syscfg_get(NULL, CCI_SIM_CLI_COUNT_SYS_ENTRY, buf, sizeof(buf)) && (buf[0] != '\0')) {
+        sim_client_count = (int)atoi(buf);
+    }
+
+    if ((sim_client_count <= 0) || (sim_client_count > 300)) {
+        sim_client_count = 3;
+    }
+
+    m_ui_mgr.set_simulated_client_count(sim_client_count);
+
+    if_map = (wifi_interface_name_idex_map_t *)malloc(
+        sizeof(wifi_interface_name_idex_map_t) * sim_client_count);
+    unsigned int if_map_size = 0;
+    if (if_map == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: malloc failed for if_map\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
 
-    memset(sta_cap, 0, sizeof(wifi_hal_capability_t));
+    memset(if_map, 0, sizeof(wifi_interface_name_idex_map_t) * sim_client_count);
     if (wifi_hal_init() != 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: hal init problem\n", __func__, __LINE__);
-        free(sta_cap);
+        free(if_map);
         return RETURN_ERR;
-    } else if (wifi_hal_getHalCapability(sta_cap) != 0) {
+    } else if (wifi_hal_getInterfaceMap(if_map, sim_client_count, &if_map_size) != 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: platform capability get failed\n", __func__,
             __LINE__);
-        free(sta_cap);
+        free(if_map);
         return RETURN_ERR;
     }
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -579,9 +614,9 @@ int wlan_emu_t::init()
 
     m_ext_sta_mgr.ext_agent_iface.m_ui_mgr = &m_ui_mgr;
 
-    if (m_sim_sta_mgr.init(sta_cap) == RETURN_ERR) {
+    if (m_sim_sta_mgr.init(if_map, if_map_size) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_mgr init failed\n", __func__, __LINE__);
-        free(sta_cap);
+        free(if_map);
         return RETURN_ERR;
     }
     // Init the external station manager
@@ -597,21 +632,21 @@ int wlan_emu_t::init()
         if (m_ui_mgr.decode_reboot_case_json() != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: decode_reboot_case_json failed\n",
                 __func__, __LINE__);
-            free(sta_cap);
+            free(if_map);
             return RETURN_ERR;
         }
 
         if (m_ui_mgr.cci_report_resume_to_tda() != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_report_resume_to_tda failed\n",
                 __func__, __LINE__);
-            free(sta_cap);
+            free(if_map);
             return RETURN_ERR;
         }
 
         if (remove(CCI_TEST_REBOOT_STEP_CONFIG_JSON) != 0) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: remove upgrade_step_config.json failed\n", __func__, __LINE__);
-            free(sta_cap);
+            free(if_map);
             return RETURN_ERR;
         }
 
@@ -621,9 +656,8 @@ int wlan_emu_t::init()
     // wlan_emu_print(wlan_emu_log_level_info, "%s:%d: wlan emu msg collection started on platform
     // type: %d\n", __func__, __LINE__,
     //        get_platform_type());
-    free(sta_cap);
-    sta_cap = NULL;
 
+    free(if_map);
     return 0;
 }
 

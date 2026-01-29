@@ -661,10 +661,9 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     return 0;
 }
 
-int wlan_emu_sim_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
+int wlan_emu_sim_sta_mgr_t::init(wifi_interface_name_idex_map_t *if_map, int if_map_size)
 {
     wlan_emu_print(wlan_emu_log_level_info, "%s:%d: initiated\n", __func__, __LINE__);
-    int array_size;
     unsigned int i = 0;
     sta_info_t *sta_info;
     wifi_interface_name_idex_map_t *interface_map;
@@ -688,9 +687,9 @@ int wlan_emu_sim_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
             __LINE__);
         return RETURN_ERR;
     }
-    array_size = ARRAY_SIZE(sta_hal_cap->wifi_prop.interface_map);
-    for (i = 0; i < array_size; i++) {
-        interface_map = &sta_hal_cap->wifi_prop.interface_map[i];
+
+    for (i = 0; i < if_map_size; i++) {
+        interface_map = &if_map[i];
         if (interface_map->vap_name[0] != '\0') {
             sta_info = (sta_info_t *)malloc(sizeof(sta_info_t));
             if (sta_info == NULL) {
