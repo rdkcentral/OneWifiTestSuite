@@ -374,7 +374,14 @@ typedef struct {
     bool wait_connection;
     mac_address_t custom_mac;
     wlan_emu_connection_type_t connection_type;
-
+    pid_t dhcp_pid;
+    std::string sta_interface_name;
+    bool is_ip_assigned;
+    std::string ip_address;
+    bool is_reconnect_enabled;
+    unsigned int reconnect_interval;
+    bool is_disconnection_sent;
+    unsigned int reconnect_timer;
     union {
         sta_management_t sta_management;
         // sta_mobility_t
