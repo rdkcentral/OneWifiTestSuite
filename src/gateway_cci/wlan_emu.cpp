@@ -159,6 +159,7 @@ int wlan_emu_t::run()
                 m_state = wlan_emu_tests_state_cmd_wait;
                 dml_state = wlan_emu_dml_tests_state_complete_failure;
             }
+            system("rm -rf /tmp/cci_res/*");
             break;
         case wlan_emu_tests_state_cmd_abort:
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d:\n", __func__, __LINE__);
@@ -172,6 +173,7 @@ int wlan_emu_t::run()
             m_state = wlan_emu_tests_state_cmd_wait;
             dml_state = wlan_emu_dml_tests_state_complete_failure;
             m_ui_mgr.update_log_file_offset();
+            system("rm -rf /tmp/cci_res/*");
             // exit = true; //cci needs to run all the time even upon failure
             break;
         default:
