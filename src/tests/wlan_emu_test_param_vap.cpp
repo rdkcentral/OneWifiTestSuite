@@ -78,6 +78,12 @@ int test_step_param_vap::step_execute()
                     step->execution_time);
         }
 
+        if (step->frame_request.subdoc_type == webconfig_subdoc_type_cac) {
+            step->execution_time = 40;
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: new execution time : %d for cac\n",
+                __func__, __LINE__, step->execution_time);
+        }
+
         ret = step->m_ui_mgr->bus_send(json_data, step->m_bus_mgr);
         if (ret != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: bus_send failed\n", __func__, __LINE__);
@@ -153,6 +159,8 @@ char *get_subdoc_string_from_type(unsigned int type)
     case webconfig_subdoc_type_home:
         return VAP_PREFIX_IOT;
     case webconfig_subdoc_type_xfinity:
+        return VAP_PREFIX_HOTSPOT;
+    case webconfig_subdoc_type_cac:
         return VAP_PREFIX_HOTSPOT;
     case webconfig_subdoc_type_mesh_backhaul:
         return VAP_PREFIX_MESH_BACKHAUL;
