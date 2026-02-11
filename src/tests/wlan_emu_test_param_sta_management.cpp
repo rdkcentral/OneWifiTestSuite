@@ -1289,6 +1289,11 @@ int test_step_param_sta_management::encode_external_sta_management_subdoc(std::s
     cJSON_AddItemToObject(json, "RadioOperatingParams", radio_obj);
     cJSON_AddNumberToObject(radio_obj, "Channel", test_params->radio_oper_param->channel);
 
+    //TODO convert from enum to string and send
+    cJSON_AddNumberToObject(radio_obj, "CountryCode", test_params->radio_oper_param->countryCode);
+
+    cJSON_AddNumberToObject(radio_obj, "ChannelWidth", test_params->radio_oper_param->channelWidth);
+
     str = cJSON_Print(json);
 
     if (str == nullptr) {

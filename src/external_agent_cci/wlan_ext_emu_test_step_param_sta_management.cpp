@@ -407,6 +407,14 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_decode_subdocument(cJ
     decode_param_object(root_json, "RadioOperatingParams", radio_operation_params);
     decode_param_integer(radio_operation_params, "Channel", param);
     test_params->radio_oper_param->channel = param->valuedouble;
+
+    //TODO convert from string to enum
+    decode_param_integer(radio_operation_params, "CountryCode", param);
+    test_params->radio_oper_param->countryCode = (wifi_countrycode_type_t) param->valuedouble;
+
+    decode_param_integer(radio_operation_params, "ChannelWidth", param);
+    test_params->radio_oper_param->channelWidth = (wifi_channelBandwidth_t) param->valuedouble;
+
     test_params->radio_oper_param->enable = true;
 
     // station proto to be handled later on
