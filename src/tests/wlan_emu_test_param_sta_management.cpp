@@ -253,6 +253,9 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
         ((WiFi_IsValidMacAddr(param->valuestring) == TRUE))) {
         string_mac_to_uint8_mac(step_config->u.sta_test->custom_mac, param->valuestring);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Copying the custom mac to sta_mac\n", __func__, __LINE__);
+	string_mac_to_uint8_mac(step_config->u.sta_test->sta_vap_config->u.sta_info.mac, param->valuestring);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Copied the custom mac to sta_mac\n", __func__, __LINE__);
     }
 
     param = cJSON_GetObjectItem(sta_root_json, "TestDuration");
@@ -984,6 +987,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
     wlan_emu_msg_data_t *f_data = NULL;
     char client_macaddr[32] = { 0 };
     char macaddr[32] = { 0 };
+    char step_mac[32] = { 0 };
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
         step->step_number);
 
@@ -1001,6 +1005,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.client_macaddr, client_macaddr);
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.macaddr, macaddr);
+	uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, step_mac);
 
         if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
                  f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
@@ -1089,8 +1094,8 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
             }
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
-                __func__, __LINE__, macaddr, client_macaddr);
+                "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s step_mac : %s\n",
+                __func__, __LINE__, macaddr, client_macaddr, step_mac);
         }
         break;
     case wlan_emu_msg_type_cfg80211: // beacon
