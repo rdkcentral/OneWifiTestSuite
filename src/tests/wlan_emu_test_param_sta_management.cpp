@@ -213,16 +213,20 @@ int test_step_param_sta_management::decode_step_sta_management_config()
         }
     }
 
-    decode_param_string(sta_root_json, "StationType", param);
-
-    if (strcmp(param->valuestring, "Iphone") == 0) {
-        step_config->u.sta_test->sta_type = sta_model_type_iphone;
-    } else if (strcmp(param->valuestring, "Pixel") == 0) {
-        step_config->u.sta_test->sta_type = sta_model_type_pixel;
-    } else {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid valuestring for clienttype : %s\n",
-            __func__, __LINE__, param->valuestring);
-        return RETURN_ERR;
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Before decoding the station type\n", __func__, __LINE__);
+    param = cJSON_GetObjectItem(sta_root_json, "StationType");
+    if (param) 
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: station type is %s\n", __func__, __LINE__, param->valuestring);
+    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+        if (strcmp(param->valuestring, "Iphone") == 0) {
+            step_config->u.sta_test->sta_type = sta_model_type_iphone;
+        } else if (strcmp(param->valuestring, "Pixel") == 0) {
+            step_config->u.sta_test->sta_type = sta_model_type_pixel;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid valuestring for clienttype : %s\n",
+                __func__, __LINE__, param->valuestring);
+            return RETURN_ERR;
+        }
     }
     decode_param_string(sta_root_json, "StationName", param);
     snprintf(step_config->u.sta_test->sta_name, sizeof(step_config->u.sta_test->sta_name), "%s",
