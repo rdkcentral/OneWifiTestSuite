@@ -196,6 +196,7 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     }
     free(json_data);
 
+    step_config->m_ui_mgr->dump_json(sta_root_json, __func__, __LINE__);
     param = cJSON_GetObjectItem(sta_root_json, "ConnectionType");
     if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
         if (strcmp(param->valuestring, "Internal") == 0) {
