@@ -253,6 +253,13 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
         ((WiFi_IsValidMacAddr(param->valuestring) == TRUE))) {
         string_mac_to_uint8_mac(step_config->u.sta_test->custom_mac, param->valuestring);
+        step_config->u.sta_test->client_count = 1;
+    } else {
+        memset(step_config->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
+        param = cJSON_GetObjectItem(sta_root_json, "ClientCount");
+        if (param != NULL && (cJSON_IsNumber(param) == true)) {
+            step_config->u.sta_test->client_count = param->valueint;
+        }
     }
 
     param = cJSON_GetObjectItem(sta_root_json, "TestDuration");
@@ -1180,6 +1187,7 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->capture_sta_requests = false;
     step->u.sta_test->wait_connection = false;
     memset(step->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
+    step->u.sta_test->client_count = 1;
     step->u.sta_test->u.sta_management.op_modes = 0;
     step->u.sta_test->is_ip_assigned = false;
     step->u.sta_test->reconnect_interval = 20;

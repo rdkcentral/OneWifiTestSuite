@@ -414,6 +414,7 @@ typedef struct {
     bool capture_sta_requests;
     bool wait_connection;
     mac_address_t custom_mac;
+    unsigned int client_count;
     wlan_emu_connection_type_t connection_type;
     pid_t dhcp_pid;
     std::string sta_interface_name;

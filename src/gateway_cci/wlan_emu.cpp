@@ -579,7 +579,7 @@ int wlan_emu_t::init()
     }
 
     if ((sim_client_count <= 0) || (sim_client_count > 300)) {
-        sim_client_count = 3;
+        sim_client_count = 4;
     }
 
     m_ui_mgr.set_simulated_client_count(sim_client_count);
