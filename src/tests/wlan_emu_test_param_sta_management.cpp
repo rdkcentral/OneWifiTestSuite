@@ -79,6 +79,7 @@ int test_step_param_sta_management::decode_user_ap_config(cJSON *sta_root_json,
 int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_config)
 {
     test_step_params_t *step_config = this;
+    char mac_str[32] = {0};
     wifi_vap_info_t *sta_vap_config = step_config->u.sta_test->sta_vap_config;
 
     sta_vap_config->vap_mode = wifi_vap_mode_sta;
@@ -117,8 +118,9 @@ int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_co
     // "%s", ap_vap_config->u.bss_info.bssid);
     memcpy(sta_vap_config->u.sta_info.bssid, ap_vap_config->u.bss_info.bssid,
         sizeof(sta_vap_config->u.sta_info.bssid));
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid : %s\n", __func__, __LINE__,
-        sta_vap_config->u.sta_info.ssid);
+    uint8_mac_to_string_mac(sta_vap_config->u.sta_info.bssid, mac_str);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid : %s BSSID %s\n", __func__, __LINE__,
+        sta_vap_config->u.sta_info.ssid, mac_str);
 
     wlan_emu_print(wlan_emu_log_level_dbg,
         "%s:%d: radio_index : %d bridge_name : %s mode : %d enc : %d\n", __func__, __LINE__,
