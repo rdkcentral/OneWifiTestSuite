@@ -260,9 +260,6 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
         ((WiFi_IsValidMacAddr(param->valuestring) == TRUE))) {
         string_mac_to_uint8_mac(step_config->u.sta_test->custom_mac, param->valuestring);
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Copying the custom mac to sta_mac\n", __func__, __LINE__);
-	string_mac_to_uint8_mac(step_config->u.sta_test->sta_vap_config->u.sta_info.mac, param->valuestring);
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Copied the custom mac to sta_mac\n", __func__, __LINE__);
     }
 
     param = cJSON_GetObjectItem(sta_root_json, "TestDuration");
