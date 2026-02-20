@@ -469,6 +469,9 @@ int test_step_param_sta_management::step_execute()
                 step->test_state = wlan_emu_tests_state_cmd_results;
             }
         } else if (step->u.sta_test->connection_type == client_connection_type_external) {
+            if (is_zero_mac(step->u.sta_test->custom_mac) == false) { 
+                memcpy(step->u.sta_test->sta_vap_config->u.sta_info.mac, step->u.sta_test->custom_mac, sizeof(mac_address_t));
+            }
             if (encode_external_sta_management_subdoc(cli_subdoc) == RETURN_ERR) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: encode failed for external client for step : %d\n", __func__, __LINE__,
@@ -496,6 +499,8 @@ int test_step_param_sta_management::step_execute()
     cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
     uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, mac_str);
     cJSON_AddStringToObject(json, "StationMacAddress", mac_str);
+
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: STA_MAC_ADDR is %s\n", __func__, __LINE__, mac_str);
 
     snprintf(sta_connect_info, sizeof(sta_connect_info), "%s/%s_%d_%s_STATION_%d.json",
         step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number,
