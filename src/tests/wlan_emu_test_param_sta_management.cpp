@@ -1002,7 +1002,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
     // expect only wlan_emu_msg_type_cfg80211 or  wlan_emu_msg_type_webconfig
     switch (msg->get_msg_type()) {
     case wlan_emu_msg_type_frm80211: // mgmt
-
+    {
         // irrespective of capture_frames check for eapol-3 to confirm whether the client is
         // associated or not
         f_data = msg->get_msg();
@@ -1115,6 +1115,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 __func__, __LINE__, macaddr, client_macaddr);
         }
         break;
+    }
     case wlan_emu_msg_type_cfg80211: // beacon
     case wlan_emu_msg_type_webconfig: // onewifi_webconfig
     default:
