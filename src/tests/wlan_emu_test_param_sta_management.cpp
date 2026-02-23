@@ -1013,10 +1013,16 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: Received frame for macaddr : %s client_macaddr : %s msg_name : %s\n", __func__,
             __LINE__, macaddr, client_macaddr, msg->get_msg_name());
+
+        const char *step_config_mac = "NA";
+        char step_config_mac_str[32] = { 0 };
+        if ((step->u.sta_test != NULL) && (step->u.sta_test->sta_vap_config != NULL)) {
+            uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                step_config_mac_str);
+            step_config_mac = step_config_mac_str;
+        }
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step_config mac : %s\n", __func__, __LINE__,
-            step->u.sta_test->sta_vap_config != NULL ?
-                uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, macaddr) :
-                "NA");
+            step_config_mac);
 
         if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
                  f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
