@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#define IPERF_STOP_STEP_NUMBER 7
 static int external_sta_grace_timeout = 3;
 
 int test_step_param_iperf_server::step_execute()
@@ -179,6 +180,13 @@ int test_step_param_iperf_server::step_timeout()
             "%s:%d: step_iter->step_number : %d step_state : %s agent_state : %s\n", __func__,
             __LINE__, step_iter->step_number, step_state_as_string(step_iter->state).c_str(),
             ext_agent->agent_state_as_string(status.state).c_str());
+        if (step_iter->step_number == IPERF_STOP_STEP_NUMBER &&
+            step_iter->state == wlan_emu_tests_state_cmd_results) {
+            if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
+            }
+        }
         if (step_iter->step_number == step_number) {
             step->test_state = step_iter->state;
             break;
@@ -220,10 +228,6 @@ int test_step_param_iperf_server::step_timeout()
                 __LINE__);
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
-        }
-        if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
-            wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
         }
         return RETURN_OK;
     } else if (step->test_state == wlan_emu_tests_state_cmd_abort) {
