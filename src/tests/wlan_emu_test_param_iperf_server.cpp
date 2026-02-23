@@ -221,6 +221,10 @@ int test_step_param_iperf_server::step_timeout()
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
+        if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
+        }
         return RETURN_OK;
     } else if (step->test_state == wlan_emu_tests_state_cmd_abort) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: abort step number: %d\n", __func__, __LINE__,

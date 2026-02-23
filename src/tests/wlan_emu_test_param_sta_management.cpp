@@ -79,7 +79,6 @@ int test_step_param_sta_management::decode_user_ap_config(cJSON *sta_root_json,
 int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_config)
 {
     test_step_params_t *step_config = this;
-    char mac_str[32] = {0};
     wifi_vap_info_t *sta_vap_config = step_config->u.sta_test->sta_vap_config;
 
     sta_vap_config->vap_mode = wifi_vap_mode_sta;
@@ -119,8 +118,8 @@ int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_co
     memcpy(sta_vap_config->u.sta_info.bssid, ap_vap_config->u.bss_info.bssid,
         sizeof(sta_vap_config->u.sta_info.bssid));
     uint8_mac_to_string_mac(sta_vap_config->u.sta_info.bssid, mac_str);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid : %s BSSID %s\n", __func__, __LINE__,
-        sta_vap_config->u.sta_info.ssid, mac_str);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid : %s\n", __func__, __LINE__,
+        sta_vap_config->u.sta_info.ssid);
 
     wlan_emu_print(wlan_emu_log_level_dbg,
         "%s:%d: radio_index : %d bridge_name : %s mode : %d enc : %d\n", __func__, __LINE__,
@@ -198,7 +197,6 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     }
     free(json_data);
 
-    step_config->m_ui_mgr->dump_json(sta_root_json, __func__, __LINE__);
     param = cJSON_GetObjectItem(sta_root_json, "ConnectionType");
     if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
         if (strcmp(param->valuestring, "Internal") == 0) {
@@ -216,20 +214,15 @@ int test_step_param_sta_management::decode_step_sta_management_config()
         }
     }
 
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Before decoding the station type\n", __func__, __LINE__);
-    param = cJSON_GetObjectItem(sta_root_json, "StationType");
-    if (param) 
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: station type is %s\n", __func__, __LINE__, param->valuestring);
-    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
-        if (strcmp(param->valuestring, "Iphone") == 0) {
-            step_config->u.sta_test->sta_type = sta_model_type_iphone;
-        } else if (strcmp(param->valuestring, "Pixel") == 0) {
-            step_config->u.sta_test->sta_type = sta_model_type_pixel;
-        } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid valuestring for clienttype : %s\n",
-                __func__, __LINE__, param->valuestring);
-            return RETURN_ERR;
-        }
+    decode_param_string(sta_root_json, "StationType", param);
+    if (strcmp(param->valuestring, "Iphone") == 0) {
+        step_config->u.sta_test->sta_type = sta_model_type_iphone;
+    } else if (strcmp(param->valuestring, "Pixel") == 0) {
+        step_config->u.sta_test->sta_type = sta_model_type_pixel;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid valuestring for clienttype : %s\n",
+            __func__, __LINE__, param->valuestring);
+        return RETURN_ERR;
     }
     decode_param_string(sta_root_json, "StationName", param);
     snprintf(step_config->u.sta_test->sta_name, sizeof(step_config->u.sta_test->sta_name), "%s",
@@ -499,8 +492,6 @@ int test_step_param_sta_management::step_execute()
     cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
     uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, mac_str);
     cJSON_AddStringToObject(json, "StationMacAddress", mac_str);
-
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: STA_MAC_ADDR is %s\n", __func__, __LINE__, mac_str);
 
     snprintf(sta_connect_info, sizeof(sta_connect_info), "%s/%s_%d_%s_STATION_%d.json",
         step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number,
@@ -996,7 +987,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
     wlan_emu_msg_data_t *f_data = NULL;
     char client_macaddr[32] = { 0 };
     char macaddr[32] = { 0 };
-    char step_mac[32] = { 0 };
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
         step->step_number);
 
@@ -1014,7 +1004,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.client_macaddr, client_macaddr);
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.macaddr, macaddr);
-	uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, step_mac);
 
         if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
                  f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
@@ -1103,8 +1092,8 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
             }
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s step_mac : %s\n",
-                __func__, __LINE__, macaddr, client_macaddr, step_mac);
+                "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
+                __func__, __LINE__, macaddr, client_macaddr);
         }
         break;
     case wlan_emu_msg_type_cfg80211: // beacon
