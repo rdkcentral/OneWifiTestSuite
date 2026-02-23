@@ -117,7 +117,6 @@ int test_step_param_sta_management::update_sta_config(wifi_vap_info_t *ap_vap_co
     // "%s", ap_vap_config->u.bss_info.bssid);
     memcpy(sta_vap_config->u.sta_info.bssid, ap_vap_config->u.bss_info.bssid,
         sizeof(sta_vap_config->u.sta_info.bssid));
-    uint8_mac_to_string_mac(sta_vap_config->u.sta_info.bssid, mac_str);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: ssid : %s\n", __func__, __LINE__,
         sta_vap_config->u.sta_info.ssid);
 
