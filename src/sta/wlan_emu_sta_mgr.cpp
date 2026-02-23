@@ -642,6 +642,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     bool is_custom_mac_enabled = false;
     heart_beat_data_t *heart_beat_data;
 
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Value of client count is : %d\n", __func__, __LINE__, sta_test_config->client_count);
     for (int i = 0; i < sta_test_config->client_count; i++) {
 
         if ((dev_id = find_first_free_dev()) == -1) {
