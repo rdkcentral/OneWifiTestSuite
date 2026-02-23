@@ -212,6 +212,10 @@ void *wlan_emu_tests_t::test_function(void *arg)
                 __LINE__, step->step_number, step_state_as_string(step->test_state).c_str(),
                 test_config->current_test_step);
             step->test_state = wlan_emu_tests_state_cmd_start;
+            if ((strncmp(step->test_case_id, "PR0270", strlen("PR0270")) == 0) && 
+                    (step->step_number == 1)) {
+                WaitForDuration(1000);
+           }
         }
         clock_gettime(CLOCK_MONOTONIC, &tv_now);
         interval.tv_sec = POLL_PERIOD; // wait for 1 seconds
