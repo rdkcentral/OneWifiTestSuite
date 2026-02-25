@@ -510,7 +510,7 @@ void wlan_ext_emu_t::agent_endpoint_command(const httplib::Request &req, httplib
         cJSON *steps_status_arr = cJSON_CreateArray();
         cJSON_AddItemToObject(agent_status, "ExternalAgentStepStatus", steps_status_arr);
         cJSON_AddStringToObject(agent_status, "ExternalAgentStatus",
-            agent_interface->agent_state_as_string(ext_agent_test_state_idle).c_str());
+            agent_interface->agent_state_as_string(ext_agent_test_state_ready).c_str());
         steps_status_json_str_src = cJSON_Print(agent_status);
         ext_emu->set_agent_step_status_json_str(steps_status_json_str_src);
         cJSON_free(steps_status_json_str_src);

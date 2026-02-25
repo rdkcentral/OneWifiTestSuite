@@ -657,7 +657,6 @@ int wlan_emu_ext_agent_interface_t::send_external_agent_command(const std::strin
     }
 
     if (status_code != http_status_code_ok) {
-        m_ui_mgr->cci_error_code = EEXTAGENT;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: http status code: %d\n", __func__, __LINE__,
             status_code);
         return RETURN_ERR;
