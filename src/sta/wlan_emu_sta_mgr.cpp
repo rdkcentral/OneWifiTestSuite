@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <time.h>
 
 extern "C" {
 INT wifi_hal_createVAP(wifi_radio_index_t index, wifi_vap_info_map_t *map);
@@ -642,8 +641,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     bool is_custom_mac_enabled = false;
     heart_beat_data_t *heart_beat_data;
 
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Value of client count is : %d\n", __func__, __LINE__, sta_test_config->client_count);
-    for (int i = 0; i < sta_test_config->client_count; i++) {
+    //for (int i = 0; i < sta_test_config->client_count; i++) {
     if ((dev_id = find_first_free_dev()) == -1) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: could not find free device\n", __func__,
             __LINE__);
@@ -798,11 +796,11 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     hash_map_put(m_sta_map, strdup(sta_test_config->key), sta);
     set_dev_busy(dev_id);
 
-    }
+    //}
     return 0;
 }
 
-void generate_client_mac(unsigned char mac[6]) {
+/*void generate_client_mac(unsigned char mac[6]) {
     for (int i = 0; i < 6; i++) {
         mac[i] = rand() & 0xFF;
     }
@@ -811,7 +809,7 @@ void generate_client_mac(unsigned char mac[6]) {
     // bit 0 = 0 (Unicast)
     // bit 1 = 1 (Locally administered)
     mac[0] = (mac[0] & 0xFE) | 0x02;
-}
+}*/
 
 int wlan_emu_sim_sta_mgr_t::init(wifi_interface_name_idex_map_t *if_map, int if_map_size)
 {
@@ -872,9 +870,9 @@ int wlan_emu_sim_sta_mgr_t::init(wifi_interface_name_idex_map_t *if_map, int if_
 
             for (unsigned int itr = 0; itr < vap_info_map->num_vaps; itr++) {
                 if (vap_info_map->vap_array[itr].vap_index == sta_info->index) {
-                    generate_client_mac(sta_info->mac);
-                    /*memcpy(sta_info->mac, vap_info_map->vap_array[itr].u.sta_info.mac,
-                        sizeof(mac_address_t));*/
+                    //generate_client_mac(sta_info->mac);
+                    memcpy(sta_info->mac, vap_info_map->vap_array[itr].u.sta_info.mac,
+                        sizeof(mac_address_t));
                     wlan_emu_print(wlan_emu_log_level_dbg,
                         "%s:%d: itr : %d vap_index : %d mac : %s\n", __func__, __LINE__, itr,
                         vap_info_map->vap_array[itr].vap_index, to_mac_str(sta_info->mac, mac_str));
