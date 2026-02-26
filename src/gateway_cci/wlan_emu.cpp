@@ -106,7 +106,6 @@ int wlan_emu_t::run()
             // download the test and respective configs will be downloaded
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: in case wlan_emu_tests_state_cmd_request\n", __func__, __LINE__);
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d tda_url is %s\n", __func__, __LINE__, m_ui_mgr.get_tda_url());
             if (strstr(m_ui_mgr.get_tda_url(), "PR0270") != NULL) {
                 if (m_ext_sta_mgr.init() != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err,
