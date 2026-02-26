@@ -249,10 +249,17 @@ int test_step_param_sta_management::decode_step_sta_management_config()
         step_config->m_ui_mgr->cci_get_radio_operation_param(ap_vap_info->radio_index),
         sizeof(wifi_radio_operationParam_t));
 
-    param = cJSON_GetObjectItem(sta_root_json, "CustomStationMac");
-    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
-        ((WiFi_IsValidMacAddr(param->valuestring) == TRUE))) {
-        string_mac_to_uint8_mac(step_config->u.sta_test->custom_mac, param->valuestring);
+    param = cJSON_GetObjectItem(sta_root_json, "ClientCount");
+    if (param != NULL && (cJSON_IsNumber(param) == true)) {
+        step_config->u.sta_test->client_count = param->valueint;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Client count not provided, defaulting to 1\n", __func__, __LINE__);
+        step_config->u.sta_test->client_count = 1;
+        param = cJSON_GetObjectItem(sta_root_json, "CustomStationMac");
+        if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
+            ((WiFi_IsValidMacAddr(param->valuestring) == TRUE))) {
+            string_mac_to_uint8_mac(step_config->u.sta_test->custom_mac, param->valuestring);
+        }
     }
 
     param = cJSON_GetObjectItem(sta_root_json, "TestDuration");
