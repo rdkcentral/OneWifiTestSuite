@@ -641,7 +641,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     bool is_custom_mac_enabled = false;
     heart_beat_data_t *heart_beat_data;
 
-    //for (int i = 0; i < sta_test_config->client_count; i++) {
+    for (int i = 0; i < 1; i++) {
     if ((dev_id = find_first_free_dev()) == -1) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: could not find free device\n", __func__,
             __LINE__);
@@ -796,7 +796,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     hash_map_put(m_sta_map, strdup(sta_test_config->key), sta);
     set_dev_busy(dev_id);
 
-    //}
+    }
     return 0;
 }
 
