@@ -640,6 +640,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     mac_update_t mac_update;
     bool is_custom_mac_enabled = false;
     heart_beat_data_t *heart_beat_data;
+    pre_station_connectivity_profile_t *pre_connect_profile = NULL;
 
     wlan_emu_print(wlan_emu_log_level_info, "%s:%d: value of client count is %d\n", __func__,
         __LINE__, sta_test_config->client_count);
@@ -700,8 +701,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     map->num_vaps = 1;
     memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
 
-    pre_station_connectivity_profile_t *pre_connect_profile =
-        sta_test_config->u.sta_management.pre_assoc_stats;
+    pre_connect_profile = sta_test_config->u.sta_management.pre_assoc_stats;
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Rssi : %d Noise : %d Bitrate : %d\n", __func__,
         __LINE__, pre_connect_profile->pre_assoc_rssi, pre_connect_profile->pre_assoc_noise,
         pre_connect_profile->pre_assoc_bitrate);
@@ -798,7 +798,9 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     set_dev_busy(dev_id);
 
     }
-    delete (pre_connect_profile);
+    if (pre_connect_profile != NULL) {
+        delete (pre_connect_profile);
+    }
     return 0;
 }
 
