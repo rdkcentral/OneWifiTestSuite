@@ -875,8 +875,8 @@ int wlan_emu_sim_sta_mgr_t::init(wifi_interface_name_idex_map_t *if_map, int if_
             for (unsigned int itr = 0; itr < vap_info_map->num_vaps; itr++) {
                 if (vap_info_map->vap_array[itr].vap_index == sta_info->index) {
                     generate_client_mac(sta_info->mac);
-                    //memcpy(sta_info->mac, vap_info_map->vap_array[itr].u.sta_info.mac,
-                        //sizeof(mac_address_t));
+                    memcpy(sta_info->mac, vap_info_map->vap_array[itr].u.sta_info.mac,
+                        sizeof(mac_address_t));
                     wlan_emu_print(wlan_emu_log_level_dbg,
                         "%s:%d: itr : %d vap_index : %d mac : %s\n", __func__, __LINE__, itr,
                         vap_info_map->vap_array[itr].vap_index, to_mac_str(sta_info->mac, mac_str));
