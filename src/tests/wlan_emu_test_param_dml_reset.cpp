@@ -6,7 +6,8 @@
 webconfig_subdoc_data_t dml_data;
 webconfig_subdoc_type_t subdoc_array[] = { webconfig_subdoc_type_private,
     webconfig_subdoc_type_home, webconfig_subdoc_type_xfinity, webconfig_subdoc_type_mesh,
-    webconfig_subdoc_type_mesh_backhaul, webconfig_subdoc_type_lnf, webconfig_subdoc_type_radio };
+    webconfig_subdoc_type_mesh_backhaul, webconfig_subdoc_type_lnf, webconfig_subdoc_type_radio,
+    webconfig_subdoc_type_cac };
 
 int test_step_param_dml_reset::step_execute()
 {

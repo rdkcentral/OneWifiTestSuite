@@ -4141,6 +4141,11 @@ void wlan_emu_ui_mgr_t::update_cci_subdoc_vap_data(webconfig_subdoc_data_t *data
                     memcpy(cci_vap, vap, sizeof(wifi_vap_info_t));
                 }
                 break;
+            case webconfig_subdoc_type_cac:
+                if (is_vap_hotspot(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                    memcpy(cci_vap, vap, sizeof(wifi_vap_info_t));
+                }
+                break;
             case webconfig_subdoc_type_lnf:
                 if (is_vap_lnf(&params->hal_cap.wifi_prop, vap->vap_index)) {
                     memcpy(cci_vap, vap, sizeof(wifi_vap_info_t));
