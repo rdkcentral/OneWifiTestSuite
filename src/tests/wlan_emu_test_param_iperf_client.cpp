@@ -64,7 +64,7 @@ int test_step_param_iperf_client::step_execute()
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: encode external iperf client failed for step : %d\n", __func__, __LINE__,
                 step->step_number);
-	    if (ext_agent != NULL) {
+            if (ext_agent != NULL) {
                 if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
