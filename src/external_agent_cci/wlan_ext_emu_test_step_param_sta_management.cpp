@@ -272,6 +272,10 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_frame_filter(wlan_emu
                             usleep(500000);
                         }
                     }
+                    if (step->u.sta_test->is_ip_assigned == false) {
+                        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d Failed to get IP so aborting\n", __func__, __LINE__);
+                        step->step_state = wlan_emu_tests_state_cmd_abort;
+                    }
 
                     return RETURN_HANDLED;
                 } else if (f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_state ==
