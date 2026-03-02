@@ -50,7 +50,6 @@ extern "C" {
 INT wifi_hal_disconnect(INT ap_index);
 char *str_tolower(char *str);
 int get_number_of_radios(wifi_platform_property_t *wifi_prop);
-INT wifi_hal_getHalCapability(wifi_hal_capability_t *hal);
 webconfig_subdoc_type_t find_subdoc_type(webconfig_t *config, cJSON *json);
 }
 
@@ -4737,6 +4736,11 @@ void wlan_emu_ui_mgr_t::update_cci_subdoc_vap_data(webconfig_subdoc_data_t *data
                 }
                 break;
             case webconfig_subdoc_type_xfinity:
+                if (is_vap_hotspot(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                    memcpy(cci_vap, vap, sizeof(wifi_vap_info_t));
+                }
+                break;
+	    case webconfig_subdoc_type_cac:
                 if (is_vap_hotspot(&params->hal_cap.wifi_prop, vap->vap_index)) {
                     memcpy(cci_vap, vap, sizeof(wifi_vap_info_t));
                 }

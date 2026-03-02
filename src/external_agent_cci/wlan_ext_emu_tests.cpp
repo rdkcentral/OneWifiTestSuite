@@ -286,6 +286,7 @@ void *wlan_ext_emu_tests_t::test_function(void *arg)
                 temp_step = test->get_ext_step_from_index(step_count);
                 if (temp_step == NULL) {
                     ext_emu->ext_emu_send_signal_fail();
+                    test->test_stop();
                     pthread_mutex_unlock(&test->m_lock);
                     pthread_exit(NULL);
                     return NULL;
@@ -315,6 +316,7 @@ void *wlan_ext_emu_tests_t::test_function(void *arg)
                         __LINE__, steps_status_json_str_src);
                     cJSON_free(steps_status_json_str_src);
                     ext_emu->ext_emu_send_signal_fail();
+                    test->test_stop();
                     cJSON_free(agent_status);
                     pthread_mutex_unlock(&test->m_lock);
                     pthread_exit(NULL);
@@ -333,6 +335,7 @@ void *wlan_ext_emu_tests_t::test_function(void *arg)
             if (step_total > 0) {
                 if (step_total == step_completed) {
                     ext_emu->ext_emu_send_signal_complete();
+                    wlan_emu_print(wlan_emu_log_level_info, "%s:%d All tests completed\n", __func__, __LINE__);
                 } else {
                     ext_emu->ext_emu_send_signal_running();
                 }

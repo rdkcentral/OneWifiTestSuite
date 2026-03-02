@@ -187,10 +187,7 @@ int wlan_emu_ext_sta_mgr_t::add_eth_lan_device(test_step_params_t *step,
         return RETURN_ERR;
     }
 
-    if (ext_agent->get_external_agent_test_status(status) != RETURN_OK) {
-        if (ext_agent->m_ui_mgr->cci_error_code == ENONE) {
-            step->m_ui_mgr->cci_error_code = EEXTAGENT;
-        }
+    if (ext_agent->get_external_agent_test_status(status, step->m_ui_mgr->cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to get external agent status\n",
             __func__, __LINE__);
         return RETURN_ERR;
@@ -314,10 +311,7 @@ int wlan_emu_ext_sta_mgr_t::add_sta(test_step_params_t *step, const std::string 
         return RETURN_ERR;
     }
 
-    if (agent_info->get_external_agent_test_status(status) != RETURN_OK) {
-        if (step->m_ui_mgr->cci_error_code == ENONE) {
-            step->m_ui_mgr->cci_error_code = EEXTAGENT;
-        }
+    if (agent_info->get_external_agent_test_status(status, step->m_ui_mgr->cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to get external agent status\n",
             __func__, __LINE__);
         return RETURN_ERR;

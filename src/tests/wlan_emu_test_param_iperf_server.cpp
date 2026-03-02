@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 
+#define IPERF_STOP_STEP_NUMBER 7
 static int external_sta_grace_timeout = 3;
 
 int test_step_param_iperf_server::step_execute()
@@ -137,7 +138,7 @@ int test_step_param_iperf_server::step_timeout()
         }
     }
 
-    if (ext_agent->get_external_agent_test_status(status) == RETURN_ERR) {
+    if (ext_agent->get_external_agent_test_status(status, step->m_ui_mgr->cci_error_code) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to get external agent status\n",
             __func__, __LINE__);
         step->test_state = wlan_emu_tests_state_cmd_abort;
@@ -179,6 +180,13 @@ int test_step_param_iperf_server::step_timeout()
             "%s:%d: step_iter->step_number : %d step_state : %s agent_state : %s\n", __func__,
             __LINE__, step_iter->step_number, step_state_as_string(step_iter->state).c_str(),
             ext_agent->agent_state_as_string(status.state).c_str());
+        if (step_iter->step_number == IPERF_STOP_STEP_NUMBER &&
+            step_iter->state == wlan_emu_tests_state_cmd_results) {
+            if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
+            }
+        }
         if (step_iter->step_number == step_number) {
             step->test_state = step_iter->state;
             break;
@@ -208,7 +216,7 @@ int test_step_param_iperf_server::step_timeout()
             return RETURN_OK;
         }
 
-        if (ext_agent->download_external_agent_result_files(step_iter->result_files) != RETURN_OK) {
+        if (ext_agent->download_external_agent_result_files(step_iter->result_files, step->m_ui_mgr->cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
                 __func__, __LINE__);
             step->test_state = wlan_emu_tests_state_cmd_abort;
@@ -274,7 +282,7 @@ int test_step_param_iperf_server::encode_external_iperf_server_start_subdoc(
     char *str = NULL;
     char iperf_config_json[256] = { 0 };
     test_step_params_t *step = this;
-    test_step_params_t *server_interface_step = this;
+    test_step_params_t *server_interface_step = NULL;
     std::string server_cmd;
     sta_test_t *test_params;
     wlan_emu_ext_agent_interface_t *agent_info = NULL;

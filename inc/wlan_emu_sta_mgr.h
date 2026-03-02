@@ -58,10 +58,13 @@ class wlan_emu_sim_sta_mgr_t {
     }
 
 public:
-    int init(wifi_hal_capability_t *cap);
+    int init(wifi_interface_name_idex_map_t *if_map, int if_map_size);
     int start();
     void stop();
 
+    int reconnect_sta(sta_test_t *sta_test_config);
+    int clear_interface_data(sta_test_t *sta_test_config);
+    int disconnect_sta(sta_test_t *sta_test_config);
     int add_sta(sta_test_t *sta_test_config);
     void remove_all_sta(unsigned int vap_id);
     void send_heart_beat(char *key, heart_beat_data_t *heart_beat_data);
