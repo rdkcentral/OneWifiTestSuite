@@ -745,6 +745,8 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         return RETURN_ERR;
     }
 
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: value of sta_info_mac is %s and map_mac is %s\n", __func__, __LINE__,
+        mac_to_str(sta_info->mac).c_str(), mac_to_str(map->vap_array[0].u.sta_info.mac).c_str());
     memset(&mac_update, 0, sizeof(mac_update_t));
     memcpy(mac_update.old_mac, sta_info->mac, sizeof(mac_address_t));
     memcpy(sta_info->mac, map->vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
@@ -790,6 +792,27 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         delete (sta);
         return RETURN_ERR;
     }
+
+    if (sta_test_config->connected_client_info_q == NULL) {
+        sta_test_config->connected_client_info_q = queue_create();
+        if (sta_test_config->connected_client_info_q == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to create connected_client_info_q\n", __func__, __LINE__);
+            delete (sta);
+            return RETURN_ERR;
+        }
+    }
+    mac_addr_t *connected_client_mac = (mac_addr_t *)malloc(sizeof(mac_addr_t));
+    if (connected_client_mac == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to allocate memory for connected_client_mac\n", __func__, __LINE__);
+        delete (sta);
+        return RETURN_ERR;
+    }
+    memcpy(*connected_client_mac, sta_test_config->sta_vap_config->u.sta_info.mac,
+        sizeof(mac_addr_t));
+    queue_push(sta_test_config->connected_client_info_q, connected_client_mac);
+
+    wlan_emu_print(wlan_emu_log_level_info,
+        "%s:%d: Connected client with MAC : %s\n", __func__, __LINE__, mac_str.c_str());
 
     wlan_emu_print(wlan_emu_log_level_dbg,
         "%s:%d: hal connect succesful for dev_id : %d for vap_index : %d\n", __func__, __LINE__,

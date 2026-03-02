@@ -1024,9 +1024,29 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step_config mac : %s\n", __func__, __LINE__,
             step_config_mac);
 
-        if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+        if (step->u.sta_test == NULL || step->u.sta_test->connected_client_info_q == NULL) {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: step config is not available for step %d, macaddr : %s client_macaddr : %s\n",
+                __func__, __LINE__, step->step_number, macaddr, client_macaddr);
+            return RETURN_UNHANDLED;
+        }
+
+        uint client_id = 0;
+        while (queue_count(step->u.sta_test->connected_client_info_q) > 0) {
+            mac_addr_t *client_info = (mac_addr_t *)queue_peek(
+                step->u.sta_test->connected_client_info_q, client_id);
+            if (client_info == NULL) {
+                break;
+            }
+            char client_info_mac_str[32] = { 0 };
+            uint8_mac_to_string_mac(*client_info, client_info_mac_str);
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: connected_client_info_q mac : %s\n", __func__, __LINE__, client_info_mac_str);
+            client_id++;
+
+        if ((memcmp(*client_info,
                  f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
-            (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+            (memcmp(*client_info,
                  f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0)) {
             if (msg->get_msgname_from_msgtype() != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
@@ -1056,7 +1076,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 }
             }
 
-            if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+            if (memcmp(*client_info,
                     f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
 
                 if (step->u.sta_test->sta_vap_config->u.sta_info.security.mode ==
@@ -1095,7 +1115,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 wlan_emu_print(wlan_emu_log_level_dbg,
                     "%s:%d: capture_sta_requests in macaddr : %s client_macaddr : %s\n", __func__,
                     __LINE__, macaddr, client_macaddr);
-                if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                if (memcmp(*client_info,
                         f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) {
                     if ((step->capture_frames != true) ||
                         (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
@@ -1109,6 +1129,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     return RETURN_HANDLED;
                 }
             }
+        }
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
