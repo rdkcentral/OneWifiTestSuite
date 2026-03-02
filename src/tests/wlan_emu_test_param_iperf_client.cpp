@@ -31,6 +31,15 @@ int test_step_param_iperf_client::step_execute()
 {
     test_step_params_t *step = this;
     std::string agent_subdoc;
+    wlan_emu_ext_agent_interface_t *ext_agent = NULL;
+
+    if (step->u.iperf_client->interface_type == interface_type_wifi) {
+        ext_agent = step->m_ext_sta_mgr->get_ext_agent(
+            (char *)step->u.iperf_client->sta_key.c_str());
+    } else if (step->u.iperf_client->interface_type == interface_type_ethernet) {
+        ext_agent = step->m_ext_sta_mgr->get_ext_agent_from_eth_dev_mac(
+            (char *)step->u.iperf_client->sta_key.c_str());
+    }
 
     if (step->u.iperf_client->input_operation == iperf_operation_type_stop) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
