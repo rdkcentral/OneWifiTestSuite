@@ -1031,10 +1031,9 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
             return RETURN_UNHANDLED;
         }
 
-        uint client_id = 0;
-        while (queue_count(step->u.sta_test->connected_client_info_q) > 0) {
+        for (uint client_id = 0; client_id < queue_count(step->u.sta_test->connected_client_info_q); client_id++) {
             mac_addr_t *client_info = (mac_addr_t *)queue_peek(
-                step->u.sta_test->connected_client_info_q, client_id);
+            step->u.sta_test->connected_client_info_q, client_id);
             if (client_info == NULL) {
                 break;
             }
@@ -1129,12 +1128,12 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     return RETURN_HANDLED;
                 }
             }
-        }
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
                 __func__, __LINE__, macaddr, client_macaddr);
         }
+    }
         break;
     }
     case wlan_emu_msg_type_cfg80211: // beacon

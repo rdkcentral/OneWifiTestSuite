@@ -641,6 +641,9 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     bool is_custom_mac_enabled = false;
     heart_beat_data_t *heart_beat_data;
     pre_station_connectivity_profile_t *pre_connect_profile = NULL;
+    mac_addr_str_t sta_info_mac_str;
+    mac_addr_str_t map_mac_str;
+    mac_addr_str_t connected_client_mac_str;
 
     wlan_emu_print(wlan_emu_log_level_info, "%s:%d: value of client count is %d\n", __func__,
         __LINE__, sta_test_config->client_count);
@@ -745,8 +748,10 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         return RETURN_ERR;
     }
 
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: value of sta_info_mac is %s and map_mac is %s\n", __func__, __LINE__,
-        mac_to_str(sta_info->mac).c_str(), mac_to_str(map->vap_array[0].u.sta_info.mac).c_str());
+    wlan_emu_print(wlan_emu_log_level_info,
+        "%s:%d: value of sta_info_mac is %s and map_mac is %s\n", __func__, __LINE__,
+        to_mac_str(sta_info->mac, sta_info_mac_str),
+        to_mac_str(map->vap_array[0].u.sta_info.mac, map_mac_str));
     memset(&mac_update, 0, sizeof(mac_update_t));
     memcpy(mac_update.old_mac, sta_info->mac, sizeof(mac_address_t));
     memcpy(sta_info->mac, map->vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
@@ -811,8 +816,8 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         sizeof(mac_addr_t));
     queue_push(sta_test_config->connected_client_info_q, connected_client_mac);
 
-    wlan_emu_print(wlan_emu_log_level_info,
-        "%s:%d: Connected client with MAC : %s\n", __func__, __LINE__, mac_str.c_str());
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Connected client with MAC : %s\n", __func__,
+        __LINE__, to_mac_str(*connected_client_mac, connected_client_mac_str));
 
     wlan_emu_print(wlan_emu_log_level_dbg,
         "%s:%d: hal connect succesful for dev_id : %d for vap_index : %d\n", __func__, __LINE__,
