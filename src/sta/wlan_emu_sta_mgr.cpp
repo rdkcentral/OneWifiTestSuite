@@ -812,7 +812,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         delete (sta);
         return RETURN_ERR;
     }
-    memcpy(*connected_client_mac, sta_test_config->sta_vap_config->u.sta_info.mac,
+    memcpy(connected_client_mac, sta_test_config->sta_vap_config->u.sta_info.mac,
         sizeof(mac_addr_t));
     queue_push(sta_test_config->connected_client_info_q, connected_client_mac);
 

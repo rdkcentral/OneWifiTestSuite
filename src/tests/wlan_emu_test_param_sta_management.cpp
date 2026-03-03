@@ -1051,7 +1051,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: invalid msgname received from macaddr : %s client_macaddr : %s\n",
                     __func__, __LINE__, macaddr, client_macaddr);
-                return RETURN_UNHANDLED;
+                continue;
             }
 
             if ((wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type()) ||
@@ -1107,7 +1107,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     return RETURN_UNHANDLED;
                 }
                 msg->unload_frm80211_msg(step);
-                return RETURN_HANDLED;
+                continue;
             }
 
             if (step->u.sta_test->capture_sta_requests == true) {
@@ -1118,14 +1118,14 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) {
                     if ((step->capture_frames != true) ||
                         (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
-                        return RETURN_UNHANDLED;
+                        continue;
                     }
 
                     if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
-                        return RETURN_UNHANDLED;
+                        continue;
                     }
                     msg->unload_frm80211_msg(step);
-                    return RETURN_HANDLED;
+                    continue;
                 }
             }
         } else {
