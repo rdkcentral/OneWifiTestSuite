@@ -147,7 +147,6 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_frame_filter(wlan_emu
                 if (step->u.sta_test->is_station_associated == true) {
                     step->u.sta_test->is_station_associated = false;
                     m_sta_mgr->remove_sta(step->u.sta_test);
-                    step->u.sta_test->is_decoded = false;
                 }
             }
 
