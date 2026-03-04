@@ -913,7 +913,7 @@ int test_step_param_sta_management::step_timeout()
                             heart_beat_data->rssi = connect_profile->rssi;
                             heart_beat_data->noise = connect_profile->noise;
 
-                            step->m_sim_sta_mgr->send_heart_beat(step->u.sta_test->key,
+                            step->m_sim_sta_mgr->send_heart_beat(client_info->key,
                                 heart_beat_data);
                             delete (heart_beat_data);
                             if (connect_profile->counter == connect_profile->duration) {
@@ -945,7 +945,7 @@ int test_step_param_sta_management::step_timeout()
                     heart_beat_data->rssi = -25;
                     heart_beat_data->noise = -85;
 
-                    step->m_sim_sta_mgr->send_heart_beat(step->u.sta_test->key, heart_beat_data);
+                    step->m_sim_sta_mgr->send_heart_beat(client_info->key, heart_beat_data);
                     delete (heart_beat_data);
                 }
             }
@@ -998,34 +998,31 @@ void test_step_param_sta_management::step_remove()
             wlan_emu_print(wlan_emu_log_level_info,
                 "%s:%d: Disconnecting the client at vap index : %d\n", __func__, __LINE__,
                 step->u.sta_test->sta_vap_config->vap_index);
-                if (step->u.sta_test->connection_type == client_connection_type_external) {
-                    step->m_ext_sta_mgr->remove_sta(step->u.sta_test);
-                } else {
-                    for (uint client_id = 0;
-                        client_id < queue_count(step->u.sta_test->connected_client_info_q);
-                        client_id++) {
-                        connected_client_info_t *client_info = (connected_client_info_t *)
-                            queue_pop(step->u.sta_test->connected_client_info_q, client_id);
-                        if (client_info == NULL) {
-                            break;
-                        }
-                        char client_info_mac_str[32] = { 0 };
-                        uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
-                        wlan_emu_print(wlan_emu_log_level_dbg,
-                            "%s:%d: connected_client_info_q mac : %s\n", __func__, __LINE__,
-                            client_info_mac_str);
-                        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: client key : %d\n", __func__,
-                            __LINE__, client_info->key);
-                        if (client_info->is_station_associated == true) {
-                            step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
-                        }
-                        free(client_info);
-                    }
+            if (step->u.sta_test->connection_type == client_connection_type_external) {
+                step->m_ext_sta_mgr->remove_sta(step->u.sta_test);
                 step->u.sta_test->is_station_associated = false;
-
-            delete step->u.sta_test->sta_vap_config;
+            } else {
+                while (queue_count(step->u.sta_test->connected_client_info_q) > 0) {
+                    connected_client_info_t *client_info = (connected_client_info_t *)queue_pop(
+                        step->u.sta_test->connected_client_info_q);
+                    if (client_info == NULL) {
+                        break;
+                    }
+                    char client_info_mac_str[32] = { 0 };
+                    uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: connected_client_info_q mac : %s\n", __func__, __LINE__,
+                        client_info_mac_str);
+                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: client key : %d\n", __func__,
+                        __LINE__, client_info->key);
+                    if (client_info->is_station_associated == true) {
+                        step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
+                    }
+                    free(client_info);
+                }
+                delete step->u.sta_test->sta_vap_config;
+            }
         }
-
         delete step->u.sta_test->radio_oper_param;
 
         if (step->u.sta_test->connected_client_info_q != NULL) {

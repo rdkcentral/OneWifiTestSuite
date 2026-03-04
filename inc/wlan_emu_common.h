@@ -426,11 +426,9 @@ typedef struct {
     unsigned int reconnect_interval;
     bool is_ip_assigned;
     std::string ip_address;
-#ifdef BANANA_PI_PORT
     sta_key_t key;
     bool is_station_associated;
     pid_t dhcp_pid;
-#endif
     union {
         sta_management_t sta_management;
         // sta_mobility_t

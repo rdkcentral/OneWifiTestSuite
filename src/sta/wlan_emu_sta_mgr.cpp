@@ -237,7 +237,7 @@ void wlan_emu_sim_sta_mgr_t::remove_all_sta(unsigned int test_id)
     }
 }
 
-void wlan_emu_sim_sta_mgr_t::remove_sta(sta_test_t *sta_test, client_info_t *client_info)
+void wlan_emu_sim_sta_mgr_t::remove_sta(sta_test_t *sta_test, connected_client_info_t *client_info)
 {
     wlan_emu_sta_t *sta;
     sta_key_t key;
@@ -508,7 +508,7 @@ int wlan_emu_sim_sta_mgr_t::clear_interface_data(sta_test_t *sta_test_config)
     return RETURN_OK;
 }
 
-int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, client_info_t *client_info)
+int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connected_client_info_t *client_info)
 {
     wlan_emu_sta_t *sta;
     sta_info_t *sta_info = NULL;
