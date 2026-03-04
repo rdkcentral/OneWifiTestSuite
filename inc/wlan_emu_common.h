@@ -282,7 +282,8 @@ typedef enum {
     tc_endpoint_type_pause,
     tc_endpoint_type_resume,
     tc_endpoint_type_conn_request,
-    tc_endpoint_type_disconn_request
+    tc_endpoint_type_disconn_request,
+    tc_endpoint_type_iperf_request
 } tc_endpoint_type_t;
 
 typedef struct {
@@ -536,6 +537,7 @@ typedef struct {
     char cmd_options[128];
     char result_file[128];
     pid_t iperf_server_pid;
+    wlan_emu_connection_type_t connection_type;
 } iperf_server_start_conf_t;
 
 typedef struct {
@@ -560,7 +562,11 @@ typedef struct {
     char interface_name[128];
     char cmd_options[128];
     char result_file[128];
+    char device_id[64];
+    char service_prefer[16];
     pid_t iperf_client_pid;
+    sta_model_type_t sta_type;
+    wlan_emu_connection_type_t connection_type;
 } iperf_client_start_conf_t;
 
 typedef struct {

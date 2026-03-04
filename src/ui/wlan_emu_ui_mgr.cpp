@@ -991,6 +991,15 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_server(cJSON *step, test_step_params_t 
     step_config->param_type = step_param_type_config_iperf_server;
 
     iperf_server = step_config->u.iperf_server;
+
+    param = cJSON_GetObjectItem(config, "ConnectionType");
+    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+        if (strcmp(param->valuestring, "Real") == 0) {
+            iperf_server->u.start_conf.connection_type = client_connection_type_real;
+        } else {
+            iperf_server->u.start_conf.connection_type = client_connection_type_no_user_input;
+        }
+    }
     config = cJSON_GetObjectItem(step, "IperfServerOptions");
 
     iperf_server->input_operation = iperf_operation_type_invalid;
@@ -1155,8 +1164,8 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_client(cJSON *step, test_step_params_t 
         iperf_client->input_operation = iperf_operation_type_stop;
 
         iperf_client->u.stop_conf.stop_step_number = param->valuedouble;
-        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
-            iperf_client->u.stop_conf.stop_step_number);
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: stop_step_number : %d\n", __func__,
+            __LINE__, iperf_client->u.stop_conf.stop_step_number);
 
     } else if (update_json_param_integer(config, "ClientInterfaceStepNumber", &param) ==
         RETURN_OK) {
@@ -1193,6 +1202,45 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_client(cJSON *step, test_step_params_t 
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid iperf client options : %s\n",
                 __func__, __LINE__, iperf_client->u.start_conf.cmd_options);
             return RETURN_ERR;
+        }
+        param = cJSON_GetObjectItem(options, "ConnectionType");
+        if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+            if (strcmp(param->valuestring, "Real") == 0) {
+                iperf_client->u.start_conf.connection_type = client_connection_type_real;
+            } else {
+                iperf_client->u.start_conf.connection_type = client_connection_type_no_user_input;
+            }
+        }
+
+        param = cJSON_GetObjectItem(options, "Device_Id");
+        if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+            snprintf(iperf_client->u.start_conf.device_id,
+                sizeof(iperf_client->u.start_conf.device_id), "%s", param->valuestring);
+        }
+
+        param = cJSON_GetObjectItem(options, "Platform");
+        if (strcmp(param->valuestring, "Iphone") == 0) {
+            iperf_client->u.start_conf.sta_type = sta_model_type_iphone;
+        } else if (strcmp(param->valuestring, "Pixel") == 0) {
+            iperf_client->u.start_conf.sta_type = sta_model_type_pixel;
+        } else if (strcmp(param->valuestring, "Android") == 0) {
+            iperf_client->u.start_conf.sta_type = sta_model_type_android;
+        } else if (strcmp(param->valuestring, "iOS") == 0) {
+            iperf_client->u.start_conf.sta_type = sta_model_type_ios;
+        } else if (strcmp(param->valuestring, "Windows") == 0) {
+            iperf_client->u.start_conf.sta_type = sta_model_type_windows;
+        }
+
+        param = cJSON_GetObjectItem(options, "Prefer");
+        if (param != NULL && (cJSON_IsArray(param) == true)) {
+            cJSON *prefer_item = NULL;
+            cJSON_ArrayForEach(prefer_item, param) {
+                if (cJSON_IsString(prefer_item) && (prefer_item->valuestring != NULL)) {
+                    snprintf(iperf_client->u.start_conf.service_prefer,
+                        sizeof(iperf_client->u.start_conf.service_prefer), "%s",
+                        prefer_item->valuestring);
+                }
+            }
         }
     }
 
@@ -4564,6 +4612,8 @@ int wlan_emu_ui_mgr_t::cci_post_result_to_tda(unsigned int endpoint_type, char *
         snprintf(result_url, sizeof(result_url), "%s/real_client_conn_request", server_address);
     } else if (endpoint_type == tc_endpoint_type_disconn_request) {
         snprintf(result_url, sizeof(result_url), "%s/real_client_disconn_request", server_address);
+    } else if (endpoint_type == tc_endpoint_type_iperf_request) {
+        snprintf(result_url, sizeof(result_url), "%s/iperf_request", server_address);
     } else {
         cci_error_code = ECURLPOST;
         return RETURN_ERR;

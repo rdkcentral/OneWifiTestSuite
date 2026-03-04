@@ -33,32 +33,62 @@ int test_step_param_iperf_server::step_execute()
     test_step_params_t *step = this;
     //    test_step_params_t *server_interface_step = NULL;
     std::string agent_subdoc;
+    std::string iperf_server_cmd;
+    int result = RETURN_ERR;
 
     if (step->u.iperf_server->input_operation == iperf_operation_type_stop) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__,
-            __LINE__, step->u.iperf_server->u.stop_conf.stop_step_number);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
+            step->u.iperf_server->u.stop_conf.stop_step_number);
 
-        if (encode_external_iperf_server_stop_subdoc(agent_subdoc) == RETURN_ERR) {
-            wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: encode external iperf server failed for step : %d\n", __func__, __LINE__,
-                step->step_number);
-            step->test_state = wlan_emu_tests_state_cmd_abort;
-            return RETURN_ERR;
+        if (step->u.iperf_server->u.start_conf.connection_type == client_connection_type_real) {
+            // TODO kill the iperf server started via pid
+            iperf_server_cmd = std::string("killall ") + std::string("iperf3");
+            result = execute_process_once(iperf_server_cmd,
+                &step->u.iperf_server->u.start_conf.iperf_server_pid, false);
+            if (result != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to stop the server\n",
+                    __func__, __LINE__);
+                step->test_state = wlan_emu_tests_state_cmd_abort;
+                return RETURN_ERR;
+            }
+        } else {
+            if (encode_external_iperf_server_stop_subdoc(agent_subdoc) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: encode external iperf server failed for step : %d\n", __func__,
+                    __LINE__, step->step_number);
+                step->test_state = wlan_emu_tests_state_cmd_abort;
+                return RETURN_ERR;
+            }
         }
     } else if (step->u.iperf_server->input_operation == iperf_operation_type_start) {
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: interface_step_number : %d ServerLogResultName : %s cmd_options : %s\n",
-            __func__, __LINE__,
-            step->u.iperf_server->u.start_conf.interface_step_number,
+            __func__, __LINE__, step->u.iperf_server->u.start_conf.interface_step_number,
             step->u.iperf_server->u.start_conf.input_filename,
             step->u.iperf_server->u.start_conf.cmd_options);
 
-        if (encode_external_iperf_server_start_subdoc(agent_subdoc) == RETURN_ERR) {
-            wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: encode external iperf server failed for step : %d\n", __func__, __LINE__,
-                step->step_number);
-            step->test_state = wlan_emu_tests_state_cmd_abort;
-            return RETURN_ERR;
+        if (step->u.iperf_server->u.start_conf.connection_type == client_connection_type_real) {
+            // TODO spawn the iperf -s process
+            iperf_server_cmd = std::string("/usr/bin/iperf3") +
+                step->u.iperf_server->u.start_conf.cmd_options + std::string(" --logfile ") +
+                std::string(step->u.iperf_server->u.start_conf.result_file);
+            result = execute_process_once(iperf_server_cmd,
+                &step->u.iperf_server->u.start_conf.iperf_server_pid, false);
+            if (result != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: step number : %d iperf server cmd : %s failed\n", __func__, __LINE__,
+                    step->step_number, step->u.iperf_server->u.start_conf.cmd_options);
+                step->test_state = wlan_emu_tests_state_cmd_abort;
+                return RETURN_ERR;
+            }
+        } else {
+            if (encode_external_iperf_server_start_subdoc(agent_subdoc) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: encode external iperf server failed for step : %d\n", __func__,
+                    __LINE__, step->step_number);
+                step->test_state = wlan_emu_tests_state_cmd_abort;
+                return RETURN_ERR;
+            }
         }
     }
 

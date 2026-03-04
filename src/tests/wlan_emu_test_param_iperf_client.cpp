@@ -42,9 +42,16 @@ int test_step_param_iperf_client::step_execute()
     }
 
     if (step->u.iperf_client->input_operation == iperf_operation_type_stop) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__,
-            __LINE__, step->u.iperf_client->u.stop_conf.stop_step_number);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
+            step->u.iperf_client->u.stop_conf.stop_step_number);
 
+        if (step->u.iperf_client->u.start_conf.connection_type == client_connection_type_real) {
+            // We will not receive client stop step for real client
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d Received stop step from real client\n",
+                __func__, __LINE__);
+            step->test_state = wlan_emu_tests_state_cmd_abort;
+            return RETURN_ERR;
+        }
         if (encode_external_iperf_client_stop_subdoc(agent_subdoc) == RETURN_ERR) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: encode external iperf client failed for step : %d\n", __func__, __LINE__,
@@ -55,23 +62,70 @@ int test_step_param_iperf_client::step_execute()
     } else if (step->u.iperf_client->input_operation == iperf_operation_type_start) {
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: interface_step_number : %d ServerLogResultName : %s cmd_options : %s\n",
-            __func__, __LINE__,
-            step->u.iperf_client->u.start_conf.interface_step_number,
+            __func__, __LINE__, step->u.iperf_client->u.start_conf.interface_step_number,
             step->u.iperf_client->u.start_conf.input_filename,
             step->u.iperf_client->u.start_conf.cmd_options);
 
-        if (encode_external_iperf_client_start_subdoc(agent_subdoc) == RETURN_ERR) {
-            wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: encode external iperf client failed for step : %d\n", __func__, __LINE__,
-                step->step_number);
-            if (ext_agent != NULL) {
-                if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
-                    wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
-                }
+        if (step->u.iperf_client->u.start_conf.connection_type == client_connection_type_real) {
+            // encode the data like device ID and station type and send to endpoint
+            cJSON *json = NULL;
+            json = cJSON_CreateObject();
+            if (json == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d json create failed\n", __func__,
+                    __LINE__);
+                return RETURN_ERR;
             }
-            step->test_state = wlan_emu_tests_state_cmd_abort;
-            return RETURN_ERR;
+            char value[64] = { 0 };
+            get_cm_mac_address(value);
+            value[strcspn(value, "\n")] = '\0';
+
+            cJSON_AddStringToObject(json, "cm_mac", value);
+            cJSON_AddStringToObject(json, "device_id",
+                step->u.iperf_client->u.start_conf.device_id);
+            cJSON_AddStringToObject(json, "platform",
+                wlan_common_utils::get_sta_type_string(
+                    step->u.iperf_client->u.start_conf.sta_type));
+            cJSON_AddStringToObject(json, "iperf_params",
+                step->u.iperf_client->u.start_conf.cmd_options);
+
+            cJSON *prefer_array = cJSON_AddArrayToObject(json, "prefer");
+            cJSON_AddItemToArray(prefer_array,
+                cJSON_CreateString(step->u.iperf_client->u.start_conf.service_prefer));
+
+            char *json_str = cJSON_Print(json);
+            if (json_str == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d cjson print failed\n", __func__,
+                    __LINE__);
+                cJSON_Delete(json);
+                return RETURN_ERR;
+            }
+            if (step->m_ui_mgr->cci_post_result_to_tda(tc_endpoint_type_iperf_request, json_str) !=
+                RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_post_result_to_tda failed\n",
+                    __func__, __LINE__);
+                cJSON_free(json_str);
+                cJSON_Delete(json);
+                return RETURN_ERR;
+            }
+
+            cJSON_free(json_str);
+            cJSON_Delete(json);
+        } else {
+
+            if (encode_external_iperf_client_start_subdoc(agent_subdoc) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: encode external iperf client failed for step : %d\n", __func__,
+                    __LINE__, step->step_number);
+                if (ext_agent != NULL) {
+                    if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
+                        wlan_emu_print(wlan_emu_log_level_err,
+                            "%s:%d: failed to send external agent stop command\n", __func__,
+                            __LINE__);
+                    }
+                }
+                step->test_state = wlan_emu_tests_state_cmd_abort;
+                return RETURN_ERR;
+            }
         }
     }
 
