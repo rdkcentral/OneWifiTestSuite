@@ -267,7 +267,7 @@ void wlan_emu_sim_sta_mgr_t::remove_sta(sta_test_t *sta_test, connected_client_i
     if (client_info->is_station_associated == true) {
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: Disconnect sta vap %d Freeing the device : %d \n", __func__, __LINE__,
-            client_info->sta_vap_config->vap_index, sta->get_dev_id());
+            sta_test->sta_vap_config->vap_index, sta->get_dev_id());
         wifi_hal_disconnect(sta_test->sta_vap_config->vap_index);
     }
 
