@@ -827,13 +827,9 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     }
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 1 for crash\n", __func__, __LINE__);
     if (sta_test_config->connected_client_info_q == NULL) {
-        sta_test_config->connected_client_info_q = queue_create();
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 2 for crash\n", __func__, __LINE__);
-        if (sta_test_config->connected_client_info_q == NULL) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to create connected_client_info_q\n", __func__, __LINE__);
-            delete (sta);
-            return RETURN_ERR;
-        }
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: connected_client_info_q is NULL\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
     }
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 3 for crash\n", __func__, __LINE__);
     connected_client_info_t *connected_client_info = (connected_client_info_t *)malloc(sizeof(connected_client_info_t));

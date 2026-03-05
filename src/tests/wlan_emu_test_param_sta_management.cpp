@@ -1280,6 +1280,18 @@ test_step_param_sta_management::test_step_param_sta_management()
     }
     memset(step->u.sta_test->station_prototype, 0, sizeof(station_prototype_t));
 
+    step->u.sta_test->connected_client_info_q = queue_create();
+    if (step->u.sta_test->connected_client_info_q == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Queue create failed for connected_client_info_q\n", __func__, __LINE__);
+        delete step->u.sta_test->sta_vap_config;
+        delete step->u.sta_test->radio_oper_param;
+        delete step->u.sta_test->station_prototype;
+        delete step->u.sta_test;
+        step->is_step_initialized = false;
+        return;
+    }
+
     step->u.sta_test->station_prototype->fc_prototype_q = queue_create();
     if (step->u.sta_test->station_prototype->fc_prototype_q == nullptr) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Queue create failed for fc_prototype_q\n",
