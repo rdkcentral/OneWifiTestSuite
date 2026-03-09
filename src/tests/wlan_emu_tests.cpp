@@ -212,6 +212,10 @@ void *wlan_emu_tests_t::test_function(void *arg)
                 __LINE__, step->step_number, step_state_as_string(step->test_state).c_str(),
                 test_config->current_test_step);
             step->test_state = wlan_emu_tests_state_cmd_start;
+            if ((strncmp(step->test_case_id, IPERF_TEST_CASE, strlen(IPERF_TEST_CASE)) == 0) &&
+                (step->step_number == 1)) {
+                WaitForDuration(1000);
+            }
         }
         clock_gettime(CLOCK_MONOTONIC, &tv_now);
         interval.tv_sec = POLL_PERIOD; // wait for 1 seconds
@@ -510,11 +514,10 @@ void wlan_emu_tests_t::run(wlan_emu_msg_t *msg)
 
 void wlan_emu_tests_t::push_msg(wlan_emu_msg_t *msg)
 {
-    pthread_mutex_lock(&m_lock);
-    queue_push(m_results, msg);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d \n", __func__, __LINE__);
+    queue_push(m_results, msg);
     pthread_cond_signal(&m_cond);
-    pthread_mutex_unlock(&m_lock);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d \n", __func__, __LINE__);
 }
 
 wlan_emu_msg_t *wlan_emu_tests_t::pop_msg()

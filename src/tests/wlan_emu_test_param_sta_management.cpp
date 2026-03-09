@@ -214,7 +214,6 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     }
 
     decode_param_string(sta_root_json, "StationType", param);
-
     if (strcmp(param->valuestring, "Iphone") == 0) {
         step_config->u.sta_test->sta_type = sta_model_type_iphone;
     } else if (strcmp(param->valuestring, "Pixel") == 0) {
@@ -470,6 +469,9 @@ int test_step_param_sta_management::step_execute()
                 step->test_state = wlan_emu_tests_state_cmd_results;
             }
         } else if (step->u.sta_test->connection_type == client_connection_type_external) {
+            if (is_zero_mac(step->u.sta_test->custom_mac) == false) { 
+                memcpy(step->u.sta_test->sta_vap_config->u.sta_info.mac, step->u.sta_test->custom_mac, sizeof(mac_address_t));
+            }
             if (encode_external_sta_management_subdoc(cli_subdoc) == RETURN_ERR) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: encode failed for external client for step : %d\n", __func__, __LINE__,
@@ -640,10 +642,9 @@ int test_step_param_sta_management::step_timeout_ext_sta()
         return RETURN_ERR;
     }
 
-    if (ext_agent->get_external_agent_test_status(status) == RETURN_ERR) {
+    if (ext_agent->get_external_agent_test_status(status, step->m_ui_mgr->cci_error_code) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to get external agent status\n",
             __func__, __LINE__);
-        step->m_ui_mgr->cci_error_code = EEXTAGENT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -700,7 +701,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
                 parse_step_private_data(step_iter->step_private_json_data);
             }
 
-            if (ext_agent->download_external_agent_result_files(step_iter->result_files) !=
+            if (ext_agent->download_external_agent_result_files(step_iter->result_files, step->m_ui_mgr->cci_error_code) !=
                 RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
                     __func__, __LINE__);
@@ -782,7 +783,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     }
 
     if (step->test_state == wlan_emu_tests_state_cmd_results) {
-        if (ext_agent->download_external_agent_result_files(step_iter->result_files) != RETURN_OK) {
+        if (ext_agent->download_external_agent_result_files(step_iter->result_files, step->m_ui_mgr->cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
                 __func__, __LINE__);
             step->m_ui_mgr->cci_error_code = EDNLDTSTRESFILE;

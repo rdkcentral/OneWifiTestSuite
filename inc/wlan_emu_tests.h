@@ -28,6 +28,8 @@
 #include "wlan_emu_ui_mgr.h"
 #include <pthread.h>
 
+#define IPERF_TEST_CASE "PR0270"
+
 class wlan_emu_msg_mgr_t;
 
 class wlan_emu_tests_t {

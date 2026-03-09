@@ -13,7 +13,7 @@ Subject: [PATCH] RDKB-59829 Implementation of iperf for testsuite
 diff --git a/mt7996/rdkfmac.h b/mt7996/rdkfmac.h
 --- /dev/null
 +++ b/mt7996/rdkfmac.h
-@@ -0,0 +1,459 @@
+@@ -0,0 +1,488 @@
 +#ifndef RDKFMAC_H
 +#define RDKFMAC_H
 +
@@ -417,21 +417,46 @@ diff --git a/mt7996/rdkfmac.h b/mt7996/rdkfmac.h
 +} wlan_emu_msg_type_webconfig_t;
 +
 +typedef enum {
++        wlan_msg_ext_agent_ops_sub_type_wifi_notification=1
++} wlan_msg_ext_agent_ops_sub_type_t;
++
++typedef enum {
++        wlan_emu_ext_wifi_sta_state_connected=1,
++        wlan_emu_ext_wifi_sta_state_disconnected
++} wlan_emu_ext_wifi_sta_state_t;
++
++typedef struct {
++        wlan_emu_ext_wifi_sta_state_t sta_state;
++        u8 sta_mac_addr[ETH_ALEN];
++        u8 bssid_mac_addr[ETH_ALEN];
++} wlan_emu_msg_type_ext_wifi_sta_notif_t;
++
++typedef struct {
++        wlan_msg_ext_agent_ops_sub_type_t sub_ops_type;
++
++        union {
++                wlan_emu_msg_type_ext_wifi_sta_notif_t wifi_sta_notif;
++        } u;
++} wlan_emu_msg_type_agent_notification_t;
++
++typedef enum {
 +	wlan_emu_msg_agent_ops_type_cmd,
-+	wlan_emu_msg_agent_ops_type_data
-+}wlan_emu_msg_agent_ops_t; 
++	wlan_emu_msg_agent_ops_type_data,
++	wlan_emu_msg_agent_ops_type_notification
++}wlan_emu_msg_agent_ops_t;
 +
 +
 +typedef enum {
 +	wlan_emu_msg_agent_cmd_type_start,
 +	wlan_emu_msg_agent_cmd_type_stop
-+}wlan_emu_msg_agent_cmd_t; 
++}wlan_emu_msg_agent_cmd_t;
 +
 +typedef struct {
 +	wlan_emu_msg_agent_ops_t ops;
 +	union {
 +		wlan_emu_msg_agent_cmd_t cmd;
-+		void __user *buf;
++		void *buf;
++		wlan_emu_msg_type_agent_notification_t agent_notif;
 +	} u;
 +} wlan_emu_msg_type_agent_msg_t;
 +
@@ -480,11 +505,11 @@ diff --git a/mt7996/rdkfmac.h b/mt7996/rdkfmac.h
 diff --git a/mt7996/rdkfmac_cdev.c b/mt7996/rdkfmac_cdev.c
 --- /dev/null
 +++ b/mt7996/rdkfmac_cdev.c
-@@ -0,0 +1,1190 @@
+@@ -0,0 +1,1210 @@
 +#include "rdkfmac.h"
 +
 +struct rdkfmac_device_data g_char_device;
-+static DECLARE_WAIT_QUEUE_HEAD(rdkfmac_rq); 
++static DECLARE_WAIT_QUEUE_HEAD(rdkfmac_rq);
 +static wlan_emu_msg_data_t *pop_from_char_device(void);
 +static unsigned int get_list_entries_count_in_char_device(void);
 +static bool  rdkfmac_emu80211_close = true;
@@ -569,8 +594,8 @@ diff --git a/mt7996/rdkfmac_cdev.c b/mt7996/rdkfmac_cdev.c
 +	__poll_t mask = 0;
 +
 +	poll_wait(filp, &rdkfmac_rq, wait);
-+ 
-+	if (get_list_entries_count_in_char_device() != 0) { 
++
++	if (get_list_entries_count_in_char_device() != 0) {
 +			mask |= (POLLIN | POLLRDNORM);
 +	}
 +
@@ -779,7 +804,9 @@ diff --git a/mt7996/rdkfmac_cdev.c b/mt7996/rdkfmac_cdev.c
 +        case wlan_emu_msg_agent_ops_type_data:
 +            push_to_char_device(spec);
 +        break;
-+
++	case wlan_emu_msg_agent_ops_type_notification:
++            push_to_char_device(spec);
++            break;
 +        default:
 +        break;
 +    }
@@ -1342,6 +1369,24 @@ diff --git a/mt7996/rdkfmac_cdev.c b/mt7996/rdkfmac_cdev.c
 +        *len += sizeof(void *);
 +    }
 +
++    if (spec->u.agent_msg.ops == wlan_emu_msg_agent_ops_type_notification) {
++                memcpy(s_tmp, &spec->u.agent_msg.u.agent_notif.sub_ops_type, sizeof(int));
++                s_tmp += sizeof(int);
++                *len += sizeof(int);
++
++                if (spec->u.agent_msg.u.agent_notif.sub_ops_type == wlan_msg_ext_agent_ops_sub_type_wifi_notification) {
++                        memcpy(s_tmp, &spec->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_state, sizeof(int));
++                        s_tmp += sizeof(int);
++                        *len += sizeof(int);
++                        memcpy(s_tmp, spec->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_mac_addr, ETH_ALEN);
++                        s_tmp += ETH_ALEN;
++                        *len += ETH_ALEN;
++                        memcpy(s_tmp, spec->u.agent_msg.u.agent_notif.u.wifi_sta_notif.bssid_mac_addr, ETH_ALEN);
++                        s_tmp += ETH_ALEN;
++                        *len += ETH_ALEN;
++                }
++        }
++
 +    return;
 +}
 +
@@ -1624,7 +1669,7 @@ diff --git a/mt7996/rdkfmac_cdev.c b/mt7996/rdkfmac_cdev.c
 +        return;
 +}
 +
-+void frame_data_to_char_dev(void *data, size_t data_len) 
++void frame_data_to_char_dev(void *data, size_t data_len)
 +{
 +	if (data != NULL) {
 +		push_frame_to_char_dev(data, data_len);
@@ -1682,7 +1727,7 @@ diff --git a/mt7996/Makefile b/mt7996/Makefile
 diff --git a/mt7996/mac.c b/mt7996/mac.c
 --- a/mt7996/mac.c
 +++ b/mt7996/mac.c
-@@ -15,3 +15,5 @@ #include "mt7996_trace.h" 
+@@ -15,3 +15,5 @@ #include "mt7996_trace.h"
  #include "debug.h"
 +
 +#include "rdkfmac.h"
@@ -1699,7 +1744,7 @@ diff --git a/mt7996/mac.c b/mt7996/mac.c
 diff --git a/mt7996/init.c b/mt7996/init.c
 --- a/mt7996/init.c
 +++ b/mt7996/init.c
-@@ -15,3 +15,5 @@ #include "coredump.h" 
+@@ -15,3 +15,5 @@ #include "coredump.h"
  #include "eeprom.h"
 +
 +#include "rdkfmac.h"

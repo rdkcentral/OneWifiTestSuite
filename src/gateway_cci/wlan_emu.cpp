@@ -106,12 +106,14 @@ int wlan_emu_t::run()
             // download the test and respective configs will be downloaded
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: in case wlan_emu_tests_state_cmd_request\n", __func__, __LINE__);
-            if (m_ext_sta_mgr.init() != RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err,
-                    "%s:%d: update_external_agent_capabilities failed\n", __func__, __LINE__);
-                m_ui_mgr.signal_report_test_fail();
-                dml_state = wlan_emu_dml_tests_state_complete_failure;
-                break;
+            if (strstr(m_ui_mgr.get_tda_url(), IPERF_TEST_CASE) != NULL) {
+                if (m_ext_sta_mgr.init() != RETURN_OK) {
+                    wlan_emu_print(wlan_emu_log_level_err,
+                        "%s:%d: update_external_agent_capabilities failed\n", __func__, __LINE__);
+                    m_ui_mgr.signal_report_test_fail();
+                    dml_state = wlan_emu_dml_tests_state_complete_failure;
+                    break;
+                }
             }
 
             if (m_ui_mgr.analyze_request() == RETURN_OK) {

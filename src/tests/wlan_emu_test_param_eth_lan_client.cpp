@@ -154,7 +154,7 @@ int test_step_param_eth_lan_client::step_timeout()
         return RETURN_ERR;
     }
 
-    if (ext_agent->get_external_agent_test_status(status) == RETURN_ERR) {
+    if (ext_agent->get_external_agent_test_status(status, step->m_ui_mgr->cci_error_code) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to get external agent status\n",
             __func__, __LINE__);
         step->test_state = wlan_emu_tests_state_cmd_abort;
@@ -219,7 +219,7 @@ int test_step_param_eth_lan_client::step_timeout()
                 parse_step_private_data(step_iter->step_private_json_data);
             }
 
-            if (ext_agent->download_external_agent_result_files(step_iter->result_files) !=
+            if (ext_agent->download_external_agent_result_files(step_iter->result_files, step->m_ui_mgr->cci_error_code) !=
                 RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
                     __func__, __LINE__);
@@ -288,7 +288,7 @@ int test_step_param_eth_lan_client::step_timeout()
 
     if (step->test_state == wlan_emu_tests_state_cmd_results) {
 
-        if (ext_agent->download_external_agent_result_files(step_iter->result_files) != RETURN_OK) {
+        if (ext_agent->download_external_agent_result_files(step_iter->result_files, step->m_ui_mgr->cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
                 __func__, __LINE__);
             step->test_state = wlan_emu_tests_state_cmd_abort;
