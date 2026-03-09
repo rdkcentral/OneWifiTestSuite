@@ -818,36 +818,42 @@ void *wlan_ext_emu_t::http_server_handler(void *arg)
         /*get*/
         ext_emu->enter_namespace("/var/run/netns/default");
         ext_emu->agent_endpoint_capability(req, res);
+        ext_emu->leave_namespace();
     });
 
     svr.Get("/Status", [&](const Request &req, Response &res) {
         /*get*/
         ext_emu->enter_namespace("/var/run/netns/default");
         ext_emu->agent_endpoint_status(req, res);
+        ext_emu->leave_namespace();
     });
 
     svr.Get("/Results/(.+)", [&](const Request &req, Response &res) {
         /*get*/
         ext_emu->enter_namespace("/var/run/netns/default");
         ext_emu->agent_endpoint_results(req, res);
+        ext_emu->leave_namespace();
     });
 
     svr.Post("/Command", [&](const Request &req, Response &res) {
         /*post*/
         ext_emu->enter_namespace("/var/run/netns/default");
         ext_emu->agent_endpoint_command(req, res);
+        ext_emu->leave_namespace();
     });
 
     svr.Post("/Reffiles/(.+)", [&](const Request &req, Response &res) {
         /*post*/
         ext_emu->enter_namespace("/var/run/netns/default");
         ext_emu->agent_endpoint_reffiles(req, res);
+        ext_emu->leave_namespace();
     });
 
     svr.Post("/Testconfig/(.+)", [&](const Request &req, Response &res) {
         /*post*/
         ext_emu->enter_namespace("/var/run/netns/default");
         ext_emu->agent_endpoint_testconfig(req, res);
+        ext_emu->leave_namespace();
     });
 
     //	switch_to_namespace("/var/run/netns/ots", &original_ns_fd);
