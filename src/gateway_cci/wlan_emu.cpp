@@ -583,10 +583,20 @@ int wlan_emu_t::init()
     }
 
     if ((sim_client_count <= 0) || (sim_client_count > 300)) {
-        sim_client_count = 4;
+        sim_client_count = 3;
     }
 
     m_ui_mgr.set_simulated_client_count(sim_client_count);
+
+    memset(buf, 0, sizeof(buf));
+    snprintf(buf, sizeof(buf), "%d", sim_client_count);
+    if (syscfg_set_commit(NULL, CCI_SIM_CLI_COUNT_SYS_ENTRY, buf) == 0) {
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d updated the new supported clients to %d\n",
+            __FUNCTION__, __LINE__, sim_client_count);
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d unable to set the simulated clients to  %d\n",
+            __FUNCTION__, __LINE__, sim_client_count);
+    }
 
     if_map = (wifi_interface_name_idex_map_t *)malloc(
         sizeof(wifi_interface_name_idex_map_t) * sim_client_count);
