@@ -859,6 +859,7 @@ void *wlan_ext_emu_t::http_server_handler(void *arg)
     //	switch_to_namespace("/var/run/netns/ots", &original_ns_fd);
     ext_emu->enter_namespace("/var/run/netns/ots");
     svr.listen("0.0.0.0", 1234);
+    ext_emu->leave_namespace();
     return NULL;
 }
 
