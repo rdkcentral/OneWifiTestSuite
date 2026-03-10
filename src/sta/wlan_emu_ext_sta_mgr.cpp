@@ -191,7 +191,6 @@ int wlan_emu_ext_sta_mgr_t::add_eth_lan_device(test_step_params_t *step,
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to get external agent status\n",
             __func__, __LINE__);
         if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
-            step->m_ui_mgr->cci_error_code = EEXTAGENT;
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
         }
@@ -216,7 +215,6 @@ int wlan_emu_ext_sta_mgr_t::add_eth_lan_device(test_step_params_t *step,
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__, __LINE__,
             eth_connect_info);
         if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
-            step->m_ui_mgr->cci_error_code = EEXTAGENT;
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
         }
@@ -227,7 +225,6 @@ int wlan_emu_ext_sta_mgr_t::add_eth_lan_device(test_step_params_t *step,
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fwrite failed\n", __func__, __LINE__);
         fclose(fp);
         if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
-            step->m_ui_mgr->cci_error_code = EEXTAGENT;
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
         }
@@ -241,7 +238,6 @@ int wlan_emu_ext_sta_mgr_t::add_eth_lan_device(test_step_params_t *step,
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: http_post_file failed : %d\n", __func__,
             __LINE__, status_code);
         if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
-            step->m_ui_mgr->cci_error_code = EEXTAGENT;
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
         }
