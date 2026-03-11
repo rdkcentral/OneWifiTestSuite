@@ -1347,14 +1347,14 @@ int is_valid_ip(const char *addr)
     struct sockaddr_in sa;
     struct sockaddr_in6 sa6;
 
-    if (inet_pton(AF_INET, addr, &(sa.sin_addr)) == 1) {
+    if (inet_pton(AF_INET, addr, &(sa.sin_addr)) <= 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to resolve ipv4 addr: %s\n", __func__,
             __LINE__, addr);
         return RETURN_ERR;
     }
 
     // Try IPv6
-    if (inet_pton(AF_INET6, addr, &(sa6.sin6_addr)) == 1) {
+    if (inet_pton(AF_INET6, addr, &(sa6.sin6_addr)) <= 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to resolve ipv6 addr: %s\n", __func__,
             __LINE__, addr);
         return RETURN_ERR;
