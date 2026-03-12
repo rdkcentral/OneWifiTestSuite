@@ -190,6 +190,10 @@ int wlan_emu_ext_sta_mgr_t::add_eth_lan_device(test_step_params_t *step,
     if (ext_agent->get_external_agent_test_status(status, step->m_ui_mgr->cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to get external agent status\n",
             __func__, __LINE__);
+        if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
+        }
         return RETURN_ERR;
     }
 
@@ -210,12 +214,20 @@ int wlan_emu_ext_sta_mgr_t::add_eth_lan_device(test_step_params_t *step,
         step->m_ui_mgr->cci_error_code = EFOPEN;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fopen failed for %s\n", __func__, __LINE__,
             eth_connect_info);
+        if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
+        }
         return RETURN_ERR;
     }
     if (fwrite(cli_subdoc.c_str(), cli_subdoc.length(), 1, fp) != 1) {
         step->m_ui_mgr->cci_error_code = EFWRITE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: fwrite failed\n", __func__, __LINE__);
         fclose(fp);
+        if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
+        }
         return RETURN_ERR;
     }
     fclose(fp);
@@ -225,6 +237,10 @@ int wlan_emu_ext_sta_mgr_t::add_eth_lan_device(test_step_params_t *step,
     if (status_code != http_status_code_ok) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: http_post_file failed : %d\n", __func__,
             __LINE__, status_code);
+        if (ext_agent->send_external_agent_stop_command() != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: failed to send external agent stop command\n", __func__, __LINE__);
+        }
         return RETURN_ERR;
     }
 
