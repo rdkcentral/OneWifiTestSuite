@@ -36,6 +36,7 @@ int test_step_param_iperf_server::step_execute()
     std::string iperf_server_cmd;
     int result = RETURN_ERR;
 
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d Connection type is %d\n", __func__, __LINE__, step->u.iperf_server->u.start_conf.connection_type);
     if (step->u.iperf_server->input_operation == iperf_operation_type_stop) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
             step->u.iperf_server->u.stop_conf.stop_step_number);

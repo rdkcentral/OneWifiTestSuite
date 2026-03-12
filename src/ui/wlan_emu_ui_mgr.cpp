@@ -992,14 +992,6 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_server(cJSON *step, test_step_params_t 
 
     iperf_server = step_config->u.iperf_server;
 
-    param = cJSON_GetObjectItem(config, "ConnectionType");
-    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
-        if (strcmp(param->valuestring, "Real") == 0) {
-            iperf_server->u.start_conf.connection_type = client_connection_type_real;
-        } else {
-            iperf_server->u.start_conf.connection_type = client_connection_type_no_user_input;
-        }
-    }
     config = cJSON_GetObjectItem(step, "IperfServerOptions");
 
     iperf_server->input_operation = iperf_operation_type_invalid;
@@ -1041,7 +1033,9 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_server(cJSON *step, test_step_params_t 
             return RETURN_ERR;
         }
         param = cJSON_GetObjectItem(config, "ConnectionType");
+        wlan_emu_print(wlan_emu_log_level_err, "After parsing connection type\n");
         if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+            wlan_emu_print(wlan_emu_log_level_err, "connection type is there\n");
             if (strcmp(param->valuestring, "Real") == 0) {
                 iperf_server->u.start_conf.connection_type = client_connection_type_real;
             } else {
