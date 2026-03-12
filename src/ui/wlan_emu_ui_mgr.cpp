@@ -1009,7 +1009,14 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_server(cJSON *step, test_step_params_t 
         iperf_server->u.stop_conf.stop_step_number = param->valuedouble;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
             iperf_server->u.stop_conf.stop_step_number);
-
+        param = cJSON_GetObjectItem(config, "ConnectionType");
+        if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+            if (strcmp(param->valuestring, "Real") == 0) {
+                iperf_server->u.stop_conf.connection_type = client_connection_type_real;
+            } else {
+                iperf_server->u.stop_conf.connection_type = client_connection_type_no_user_input;
+            }
+        }
     } else if (update_json_param_integer(config, "ServerInterfaceStepNumber", &param) ==
         RETURN_OK) {
         iperf_server->input_operation = iperf_operation_type_start;
@@ -1032,6 +1039,14 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_server(cJSON *step, test_step_params_t 
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid iperf server options : %s\n",
                 __func__, __LINE__, iperf_server->u.start_conf.cmd_options);
             return RETURN_ERR;
+        }
+        param = cJSON_GetObjectItem(config, "ConnectionType");
+        if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+            if (strcmp(param->valuestring, "Real") == 0) {
+                iperf_server->u.start_conf.connection_type = client_connection_type_real;
+            } else {
+                iperf_server->u.start_conf.connection_type = client_connection_type_no_user_input;
+            }
         }
     }
 
@@ -1219,16 +1234,18 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_client(cJSON *step, test_step_params_t 
         }
 
         param = cJSON_GetObjectItem(options, "Platform");
-        if (strcmp(param->valuestring, "Iphone") == 0) {
-            iperf_client->u.start_conf.sta_type = sta_model_type_iphone;
-        } else if (strcmp(param->valuestring, "Pixel") == 0) {
-            iperf_client->u.start_conf.sta_type = sta_model_type_pixel;
-        } else if (strcmp(param->valuestring, "Android") == 0) {
-            iperf_client->u.start_conf.sta_type = sta_model_type_android;
-        } else if (strcmp(param->valuestring, "iOS") == 0) {
-            iperf_client->u.start_conf.sta_type = sta_model_type_ios;
-        } else if (strcmp(param->valuestring, "Windows") == 0) {
-            iperf_client->u.start_conf.sta_type = sta_model_type_windows;
+        if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+            if (strcmp(param->valuestring, "Iphone") == 0) {
+                iperf_client->u.start_conf.sta_type = sta_model_type_iphone;
+            } else if (strcmp(param->valuestring, "Pixel") == 0) {
+                iperf_client->u.start_conf.sta_type = sta_model_type_pixel;
+            } else if (strcmp(param->valuestring, "Android") == 0) {
+                iperf_client->u.start_conf.sta_type = sta_model_type_android;
+            } else if (strcmp(param->valuestring, "iOS") == 0) {
+                iperf_client->u.start_conf.sta_type = sta_model_type_ios;
+            } else if (strcmp(param->valuestring, "Windows") == 0) {
+                iperf_client->u.start_conf.sta_type = sta_model_type_windows;
+            }
         }
 
         param = cJSON_GetObjectItem(options, "Prefer");
