@@ -542,6 +542,7 @@ typedef struct {
 
 typedef struct {
     unsigned int stop_step_number;
+    wlan_emu_connection_type_t connection_type;
 } iperf_server_stop_conf_t;
 
 typedef struct {
