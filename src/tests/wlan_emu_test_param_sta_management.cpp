@@ -1319,6 +1319,7 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->is_ip_assigned = false;
     step->u.sta_test->reconnect_interval = 20;
     step->u.sta_test->is_reconnect_enabled = false;
+    step->u.sta_test->is_decoded = false;
 }
 
 int test_step_param_sta_management::encode_external_sta_management_subdoc(std::string &cli_subdoc)
