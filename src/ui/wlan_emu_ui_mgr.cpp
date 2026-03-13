@@ -992,6 +992,8 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_server(cJSON *step, test_step_params_t 
 
     iperf_server = step_config->u.iperf_server;
 
+    dump_json(step, __func__, __LINE__);
+
     config = cJSON_GetObjectItem(step, "IperfServerOptions");
 
     iperf_server->input_operation = iperf_operation_type_invalid;
