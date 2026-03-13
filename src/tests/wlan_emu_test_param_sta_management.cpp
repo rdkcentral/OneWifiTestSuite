@@ -252,7 +252,6 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     if (param != NULL && (cJSON_IsNumber(param) == true)) {
         step_config->u.sta_test->client_count = param->valueint;
     } else {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Client count not provided, defaulting to 1\n", __func__, __LINE__);
         step_config->u.sta_test->client_count = 1;
         param = cJSON_GetObjectItem(sta_root_json, "CustomStationMac");
         if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
@@ -513,10 +512,6 @@ int test_step_param_sta_management::step_execute()
             }
             char client_info_mac_str[32] = { 0 };
             uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: connected_client_info_q mac : %s\n",
-                __func__, __LINE__, client_info_mac_str);
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: client key : %s\n", __func__, __LINE__,
-                client_info->key);
             snprintf(client_info_str, sizeof(client_info_str), "StationMacAddress_%d", client_id + 1);
             cJSON_AddStringToObject(json, client_info_str, client_info_mac_str);
             memset(client_info_str, 0, sizeof(client_info_str));
@@ -851,12 +846,6 @@ int test_step_param_sta_management::step_timeout()
                 if (client_info == NULL) {
                     break;
                 }
-                char client_info_mac_str[32] = { 0 };
-                uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: connected_client_info_q mac : %s\n",
-                    __func__, __LINE__, client_info_mac_str);
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: client key : %s\n", __func__,
-                    __LINE__, client_info->key);
                 step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
             }
             return RETURN_OK;
@@ -872,12 +861,6 @@ int test_step_param_sta_management::step_timeout()
                 if (client_info == NULL) {
                     break;
                 }
-                char client_info_mac_str[32] = { 0 };
-                uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: connected_client_info_q mac : %s\n",
-                    __func__, __LINE__, client_info_mac_str);
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: client key : %s\n", __func__,
-                    __LINE__, client_info->key);
                 if (client_info->is_station_associated == true &&
                     step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info) == RETURN_ERR) {
                     wlan_emu_print(wlan_emu_log_level_err,
@@ -897,12 +880,6 @@ int test_step_param_sta_management::step_timeout()
             if (client_info == NULL) {
                 break;
             }
-            char client_info_mac_str[32] = { 0 };
-            uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: connected_client_info_q mac : %s\n",
-                __func__, __LINE__, client_info_mac_str);
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: client key : %s\n", __func__, __LINE__,
-                client_info->key);
             if (client_info->is_station_associated == true) {
                 // add the logic  connectivity profile
                 if (step->u.sta_test->u.sta_management.is_sta_management_timer == true) {
@@ -1033,13 +1010,6 @@ void test_step_param_sta_management::step_remove()
                     if (client_info == NULL) {
                         break;
                     }
-                    char client_info_mac_str[32] = { 0 };
-                    uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
-                    wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: connected_client_info_q mac : %s\n", __func__, __LINE__,
-                        client_info_mac_str);
-                    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: client key : %s\n", __func__,
-                        __LINE__, client_info->key);
                     if (client_info->is_station_associated == true) {
                         step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
                     }
@@ -1097,16 +1067,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
             "%s:%d: Received frame for macaddr : %s client_macaddr : %s msg_name : %s\n", __func__,
             __LINE__, macaddr, client_macaddr, msg->get_msg_name());
 
-        const char *step_config_mac = "NA";
-        char step_config_mac_str[32] = { 0 };
-        if ((step->u.sta_test != NULL) && (step->u.sta_test->sta_vap_config != NULL)) {
-            uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                step_config_mac_str);
-            step_config_mac = step_config_mac_str;
-        }
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step_config mac : %s\n", __func__, __LINE__,
-            step_config_mac);
-
         if (step->u.sta_test == NULL || step->u.sta_test->connected_client_info_q == NULL) {
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: step config is not available for step %d, macaddr : %s client_macaddr : %s\n",
@@ -1120,12 +1080,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
             if (client_info == NULL) {
                 break;
             }
-            char client_info_mac_str[32] = { 0 };
-            uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
-            wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: connected_client_info_q mac : %s\n", __func__, __LINE__, client_info_mac_str);
-            wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: client key : %s\n", __func__, __LINE__, client_info->key);
 
         if ((memcmp(client_info->sta_mac,
                  f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||

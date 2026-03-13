@@ -664,198 +664,192 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     mac_addr_str_t map_mac_str;
     mac_addr_str_t connected_client_mac_str;
 
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: value of client count is %d\n", __func__,
-        __LINE__, sta_test_config->client_count);
     for (int i = 0; i < sta_test_config->client_count; i++) {
-    if ((dev_id = find_first_free_dev()) == -1) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: could not find free device\n", __func__,
-            __LINE__);
-        return -1;
-    }
+        if ((dev_id = find_first_free_dev()) == -1) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: could not find free device\n", __func__,
+                __LINE__);
+            return -1;
+        }
 
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: found free device at pos: %d\n", __func__,
-        __LINE__, dev_id);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: found free device at pos: %d\n", __func__,
+            __LINE__, dev_id);
 
-    create_key(key, dev_id, sta_test_config->test_id);
+        create_key(key, dev_id, sta_test_config->test_id);
 
-    sta_info = get_devid_sta_info(dev_id);
-    if (sta_info == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
-        return -1;
-    }
-    sta_test_config->sta_vap_config->vap_index = sta_info->index;
-    sta_test_config->sta_vap_config->radio_index = sta_info->rdk_radio_index;
-    sta_test_config->phy_index = sta_info->phy_index;
+        sta_info = get_devid_sta_info(dev_id);
+        if (sta_info == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
+            return -1;
+        }
+        sta_test_config->sta_vap_config->vap_index = sta_info->index;
+        sta_test_config->sta_vap_config->radio_index = sta_info->rdk_radio_index;
+        sta_test_config->phy_index = sta_info->phy_index;
 
-    memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, sta_info->mac, sizeof(mac_address_t));
-
-    add_to_bridge(sta_info->interface_name, sta_test_config->sta_vap_config->bridge_name);
-    set_bridge_mac(sta_test_config->sta_vap_config->bridge_name);
-
-    if (is_zero_mac(sta_test_config->custom_mac) == false) {
-        memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, sta_test_config->custom_mac,
+        memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, sta_info->mac,
             sizeof(mac_address_t));
-        is_custom_mac_enabled = true;
-    }
 
-    if (is_custom_mac_enabled == false) {
-        generate_client_mac(sta_test_config->sta_vap_config->u.sta_info.mac);
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Generated random client MAC : %s\n", __func__,
-            __LINE__, to_mac_str(sta_test_config->sta_vap_config->u.sta_info.mac,
-                connected_client_mac_str));
-        is_custom_mac_enabled = true;
-    }
+        add_to_bridge(sta_info->interface_name, sta_test_config->sta_vap_config->bridge_name);
+        set_bridge_mac(sta_test_config->sta_vap_config->bridge_name);
 
-    switch (sta_test_config->sta_type) {
-    case sta_model_type_iphone:
-        sta = new wlan_emu_sta_iphone_t(dev_id, sta_test_config->test_id,
-            sta_test_config->sta_vap_config, &sta_test_config->profile, is_custom_mac_enabled);
-        break;
+        if (is_zero_mac(sta_test_config->custom_mac) == false) {
+            memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, sta_test_config->custom_mac,
+                sizeof(mac_address_t));
+            is_custom_mac_enabled = true;
+        }
 
-    case sta_model_type_pixel:
-        sta = new wlan_emu_sta_pixel_t(dev_id, sta_test_config->test_id,
-            sta_test_config->sta_vap_config, &sta_test_config->profile, is_custom_mac_enabled);
-        break;
+        if (is_custom_mac_enabled == false) {
+            generate_client_mac(sta_test_config->sta_vap_config->u.sta_info.mac);
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Generated random client MAC : %s\n",
+                __func__, __LINE__,
+                to_mac_str(sta_test_config->sta_vap_config->u.sta_info.mac,
+                    connected_client_mac_str));
+            is_custom_mac_enabled = true;
+        }
 
-    default:
-        assert(0);
-    }
+        switch (sta_test_config->sta_type) {
+        case sta_model_type_iphone:
+            sta = new wlan_emu_sta_iphone_t(dev_id, sta_test_config->test_id,
+                sta_test_config->sta_vap_config, &sta_test_config->profile, is_custom_mac_enabled);
+            break;
 
-    is_custom_mac_enabled = false;
-    map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
-    if (map == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to allocate memory\n", __func__,
-            __LINE__);
-        delete (sta);
-        return RETURN_ERR;
-    }
-    map->num_vaps = 1;
-    memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
+        case sta_model_type_pixel:
+            sta = new wlan_emu_sta_pixel_t(dev_id, sta_test_config->test_id,
+                sta_test_config->sta_vap_config, &sta_test_config->profile, is_custom_mac_enabled);
+            break;
 
-    pre_connect_profile = sta_test_config->u.sta_management.pre_assoc_stats;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Rssi : %d Noise : %d Bitrate : %d\n", __func__,
-        __LINE__, pre_connect_profile->pre_assoc_rssi, pre_connect_profile->pre_assoc_noise,
-        pre_connect_profile->pre_assoc_bitrate);
-    // create the heart beat data
-    heart_beat_data = new (std::nothrow) heart_beat_data_t;
-    if (heart_beat_data == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat\n", __func__,
-            __LINE__);
-        delete (sta);
-        free(map);
-        return RETURN_ERR;
-    }
-    memcpy(heart_beat_data->mac, sta_test_config->sta_vap_config->u.sta_info.mac,
-        sizeof(mac_address_t));
-    heart_beat_data->rssi = pre_connect_profile->pre_assoc_rssi;
-    heart_beat_data->noise = pre_connect_profile->pre_assoc_noise;
-    heart_beat_data->bitrate = pre_connect_profile->pre_assoc_bitrate;
+        default:
+            assert(0);
+        }
 
-    sta->handle_heart_beat(heart_beat_data);
-    delete (heart_beat_data);
-
-    // Copy Radio Params to HAL.
-    if (wifi_hal_setRadioOperatingParameters(sta_info->rdk_radio_index,
-            sta_test_config->radio_oper_param) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: wifi_hal_setRadioOperatingParameters failed for radio index : %d\n", __func__,
-            __LINE__, sta_info->rdk_radio_index);
-        delete (sta);
-        free(map);
-        return RETURN_ERR;
-    }
-
-    if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) == RETURN_OK) {
-        sta->set_vap(sta_test_config->sta_vap_config);
-    } else {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: wifi_hal_createVAP failed for radio index : %d\n", __func__, __LINE__,
-            sta_info->rdk_radio_index);
-        delete (sta);
-        free(map);
-        return RETURN_ERR;
-    }
-
-    wlan_emu_print(wlan_emu_log_level_info,
-        "%s:%d: value of sta_info_mac is %s and map_mac is %s\n", __func__, __LINE__,
-        to_mac_str(sta_info->mac, sta_info_mac_str),
-        to_mac_str(map->vap_array[0].u.sta_info.mac, map_mac_str));
-    memset(&mac_update, 0, sizeof(mac_update_t));
-    memcpy(mac_update.old_mac, sta_info->mac, sizeof(mac_address_t));
-    memcpy(sta_info->mac, map->vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
-    memcpy(mac_update.new_mac, sta_info->mac, sizeof(mac_address_t));
-    memcpy(mac_update.bridge_name, map->vap_array[0].bridge_name, sizeof(mac_update.bridge_name));
-    mac_update.op_modes = sta_test_config->u.sta_management.op_modes;
-
-    sta->send_mac_update(&mac_update);
-
-    free(map);
-    if (sta_test_config->is_station_prototype_enabled == true) {
-        if (configure_proto_types_on_sta(sta_test_config) == RETURN_ERR) {
-            wlan_emu_print(wlan_emu_log_level_err,
-                "%s:%d: Unable to configure proto types on sta for dev_id : %d\n", __func__,
-                __LINE__, dev_id);
+        is_custom_mac_enabled = false;
+        map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+        if (map == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to allocate memory\n", __func__,
+                __LINE__);
             delete (sta);
             return RETURN_ERR;
         }
-    }
-    memset(&bss, 0, sizeof(bss));
+        map->num_vaps = 1;
+        memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
 
-    bss.freq = convert_channel_to_freq(sta_test_config->radio_oper_param->band,
-        sta_test_config->radio_oper_param->channel);
-    wlan_emu_print(wlan_emu_log_level_dbg,
-        "%s:%d: vap_index : %d phy_index : %d channel : %d bss.freq : %d \n", __func__, __LINE__,
-        sta_test_config->sta_vap_config->vap_index, sta_test_config->phy_index,
-        sta_test_config->radio_oper_param->channel, bss.freq);
+        pre_connect_profile = sta_test_config->u.sta_management.pre_assoc_stats;
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Rssi : %d Noise : %d Bitrate : %d\n",
+            __func__, __LINE__, pre_connect_profile->pre_assoc_rssi,
+            pre_connect_profile->pre_assoc_noise, pre_connect_profile->pre_assoc_bitrate);
+        // create the heart beat data
+        heart_beat_data = new (std::nothrow) heart_beat_data_t;
+        if (heart_beat_data == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Unable to send the heart beat\n",
+                __func__, __LINE__);
+            delete (sta);
+            free(map);
+            return RETURN_ERR;
+        }
+        memcpy(heart_beat_data->mac, sta_test_config->sta_vap_config->u.sta_info.mac,
+            sizeof(mac_address_t));
+        heart_beat_data->rssi = pre_connect_profile->pre_assoc_rssi;
+        heart_beat_data->noise = pre_connect_profile->pre_assoc_noise;
+        heart_beat_data->bitrate = pre_connect_profile->pre_assoc_bitrate;
 
-    snprintf(bss.ssid, sizeof(bss.ssid), "%s", sta_test_config->sta_vap_config->u.sta_info.ssid);
-    memcpy(bss.bssid, sta_test_config->sta_vap_config->u.sta_info.bssid, sizeof(mac_address_t));
-    chan_list[0] = sta_test_config->radio_oper_param->channel;
-    bss.oper_freq_band = sta_test_config->radio_oper_param->band;
-    wifi_hal_startScan(sta_info->rdk_radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, 500, 1, chan_list);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Started scan on phy_index : %d for channel : %d\n",
-        __func__, __LINE__, sta_info->phy_index, sta_test_config->radio_oper_param->channel);
-    usleep(500000);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Completed scan on phy_index : %d for channel : %d\n",
-        __func__, __LINE__, sta_info->phy_index, sta_test_config->radio_oper_param->channel);
-    if (wifi_hal_connect(sta_test_config->sta_vap_config->vap_index, &bss) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: hal connect failed for dev_id : %d for vap_index : %d\n", __func__, __LINE__,
+        sta->handle_heart_beat(heart_beat_data);
+        delete (heart_beat_data);
+
+        // Copy Radio Params to HAL.
+        if (wifi_hal_setRadioOperatingParameters(sta_info->rdk_radio_index,
+                sta_test_config->radio_oper_param) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: wifi_hal_setRadioOperatingParameters failed for radio index : %d\n",
+                __func__, __LINE__, sta_info->rdk_radio_index);
+            delete (sta);
+            free(map);
+            return RETURN_ERR;
+        }
+
+        if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) == RETURN_OK) {
+            sta->set_vap(sta_test_config->sta_vap_config);
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: wifi_hal_createVAP failed for radio index : %d\n", __func__, __LINE__,
+                sta_info->rdk_radio_index);
+            delete (sta);
+            free(map);
+            return RETURN_ERR;
+        }
+
+        memset(&mac_update, 0, sizeof(mac_update_t));
+        memcpy(mac_update.old_mac, sta_info->mac, sizeof(mac_address_t));
+        memcpy(sta_info->mac, map->vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
+        memcpy(mac_update.new_mac, sta_info->mac, sizeof(mac_address_t));
+        memcpy(mac_update.bridge_name, map->vap_array[0].bridge_name,
+            sizeof(mac_update.bridge_name));
+        mac_update.op_modes = sta_test_config->u.sta_management.op_modes;
+
+        sta->send_mac_update(&mac_update);
+
+        free(map);
+        if (sta_test_config->is_station_prototype_enabled == true) {
+            if (configure_proto_types_on_sta(sta_test_config) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: Unable to configure proto types on sta for dev_id : %d\n", __func__,
+                    __LINE__, dev_id);
+                delete (sta);
+                return RETURN_ERR;
+            }
+        }
+        memset(&bss, 0, sizeof(bss));
+
+        bss.freq = convert_channel_to_freq(sta_test_config->radio_oper_param->band,
+            sta_test_config->radio_oper_param->channel);
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d: vap_index : %d phy_index : %d channel : %d bss.freq : %d \n", __func__,
+            __LINE__, sta_test_config->sta_vap_config->vap_index, sta_test_config->phy_index,
+            sta_test_config->radio_oper_param->channel, bss.freq);
+
+        snprintf(bss.ssid, sizeof(bss.ssid), "%s",
+            sta_test_config->sta_vap_config->u.sta_info.ssid);
+        memcpy(bss.bssid, sta_test_config->sta_vap_config->u.sta_info.bssid, sizeof(mac_address_t));
+        chan_list[0] = sta_test_config->radio_oper_param->channel;
+        bss.oper_freq_band = sta_test_config->radio_oper_param->band;
+        wifi_hal_startScan(sta_info->rdk_radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, 500, 1,
+            chan_list);
+        usleep(500000);
+        if (wifi_hal_connect(sta_test_config->sta_vap_config->vap_index, &bss) != RETURN_OK) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: hal connect failed for dev_id : %d for vap_index : %d\n", __func__,
+                __LINE__, dev_id, sta_test_config->sta_vap_config->vap_index);
+            delete (sta);
+            return RETURN_ERR;
+        }
+        if (sta_test_config->connected_client_info_q == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: connected_client_info_q is NULL\n",
+                __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        connected_client_info_t *connected_client_info = (connected_client_info_t *)malloc(
+            sizeof(connected_client_info_t));
+        if (connected_client_info == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Failed to allocate memory for connected_client_info\n", __func__, __LINE__);
+            delete (sta);
+            return RETURN_ERR;
+        }
+
+        memcpy(connected_client_info->sta_mac, sta_test_config->sta_vap_config->u.sta_info.mac,
+            sizeof(mac_addr_t));
+        memcpy(connected_client_info->key, key, sizeof(sta_key_t));
+        connected_client_info->is_station_associated = true;
+        queue_push(sta_test_config->connected_client_info_q, connected_client_info);
+        wlan_emu_print(wlan_emu_log_level_info,
+            "%s:%d: Connected client with MAC : %s with key : %s\n", __func__, __LINE__,
+            to_mac_str(connected_client_info->sta_mac, connected_client_mac_str),
+            connected_client_info->key);
+
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d: hal connect succesful for dev_id : %d for vap_index : %d\n", __func__, __LINE__,
             dev_id, sta_test_config->sta_vap_config->vap_index);
-        delete (sta);
-        return RETURN_ERR;
-    }
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 1 for crash\n", __func__, __LINE__);
-    if (sta_test_config->connected_client_info_q == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: connected_client_info_q is NULL\n", __func__,
-            __LINE__);
-        return RETURN_ERR;
-    }
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 3 for crash\n", __func__, __LINE__);
-    connected_client_info_t *connected_client_info = (connected_client_info_t *)malloc(sizeof(connected_client_info_t));
-    if (connected_client_info == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to allocate memory for connected_client_info\n", __func__, __LINE__);
-        delete (sta);
-        return RETURN_ERR;
-    }
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 4 for crash\n", __func__, __LINE__);
-    memcpy(connected_client_info->sta_mac, sta_test_config->sta_vap_config->u.sta_info.mac,
-        sizeof(mac_addr_t));
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 5 for crash\n", __func__, __LINE__);
-    memcpy(connected_client_info->key, key, sizeof(sta_key_t));
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 6 for crash\n", __func__, __LINE__);
-    connected_client_info->is_station_associated = true;
-    queue_push(sta_test_config->connected_client_info_q, connected_client_info);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Ravi debug 7 for crash\n", __func__, __LINE__);
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Connected client with MAC : %s with key : %s\n", __func__,
-        __LINE__, to_mac_str(connected_client_info->sta_mac, connected_client_mac_str), connected_client_info->key);
-
-    wlan_emu_print(wlan_emu_log_level_dbg,
-        "%s:%d: hal connect succesful for dev_id : %d for vap_index : %d\n", __func__, __LINE__,
-        dev_id, sta_test_config->sta_vap_config->vap_index);
-    hash_map_put(m_sta_map, strdup(key), sta);
-    set_dev_busy(dev_id);
-
+        hash_map_put(m_sta_map, strdup(key), sta);
+        set_dev_busy(dev_id);
     }
     if (pre_connect_profile != NULL) {
         delete (pre_connect_profile);

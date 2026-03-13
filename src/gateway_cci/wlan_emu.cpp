@@ -590,10 +590,7 @@ int wlan_emu_t::init()
 
     memset(buf, 0, sizeof(buf));
     snprintf(buf, sizeof(buf), "%d", sim_client_count);
-    if (syscfg_set_commit(NULL, CCI_SIM_CLI_COUNT_SYS_ENTRY, buf) == 0) {
-        wlan_emu_print(wlan_emu_log_level_info, "%s:%d updated the new supported clients to %d\n",
-            __FUNCTION__, __LINE__, sim_client_count);
-    } else {
+    if (syscfg_set_commit(NULL, CCI_SIM_CLI_COUNT_SYS_ENTRY, buf) != 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d unable to set the simulated clients to  %d\n",
             __FUNCTION__, __LINE__, sim_client_count);
     }
@@ -628,10 +625,6 @@ int wlan_emu_t::init()
 
     m_ext_sta_mgr.ext_agent_iface.m_ui_mgr = &m_ui_mgr;
 
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Simulated client count set to %d\n", __func__,
-        __LINE__, sim_client_count);
-    wlan_emu_print(wlan_emu_log_level_info,
-        "%s:%d: size of if_map returned by wifi_hal_getInterfaceMap: %d\n", __func__, __LINE__, if_map_size);
     if (m_sim_sta_mgr.init(if_map, if_map_size) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_mgr init failed\n", __func__, __LINE__);
         free(if_map);
