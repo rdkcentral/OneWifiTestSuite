@@ -1003,7 +1003,7 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_server(cJSON *step, test_step_params_t 
         iperf_server->u.stop_conf.stop_step_number = param->valuedouble;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
             iperf_server->u.stop_conf.stop_step_number);
-        param = cJSON_GetObjectItem(config, "ConnectionType");
+        param = cJSON_GetObjectItem(step, "ConnectionType");
         if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
             if (strcmp(param->valuestring, "Real") == 0) {
                 iperf_server->u.stop_conf.connection_type = client_connection_type_real;
@@ -1034,7 +1034,7 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_server(cJSON *step, test_step_params_t 
                 __func__, __LINE__, iperf_server->u.start_conf.cmd_options);
             return RETURN_ERR;
         }
-        param = cJSON_GetObjectItem(config, "ConnectionType");
+        param = cJSON_GetObjectItem(step, "ConnectionType");
         wlan_emu_print(wlan_emu_log_level_err, "After parsing connection type\n");
         if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
             wlan_emu_print(wlan_emu_log_level_err, "connection type is there\n");
@@ -1214,7 +1214,7 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_client(cJSON *step, test_step_params_t 
                 __func__, __LINE__, iperf_client->u.start_conf.cmd_options);
             return RETURN_ERR;
         }
-        param = cJSON_GetObjectItem(options, "ConnectionType");
+        param = cJSON_GetObjectItem(step, "ConnectionType");
         if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
             if (strcmp(param->valuestring, "Real") == 0) {
                 iperf_client->u.start_conf.connection_type = client_connection_type_real;
@@ -1223,13 +1223,13 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_client(cJSON *step, test_step_params_t 
             }
         }
 
-        param = cJSON_GetObjectItem(options, "Device_Id");
+        param = cJSON_GetObjectItem(step, "Device_Id");
         if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
             snprintf(iperf_client->u.start_conf.device_id,
                 sizeof(iperf_client->u.start_conf.device_id), "%s", param->valuestring);
         }
 
-        param = cJSON_GetObjectItem(options, "Platform");
+        param = cJSON_GetObjectItem(step, "Platform");
         if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
             if (strcmp(param->valuestring, "Iphone") == 0) {
                 iperf_client->u.start_conf.sta_type = sta_model_type_iphone;
@@ -1244,7 +1244,7 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_client(cJSON *step, test_step_params_t 
             }
         }
 
-        param = cJSON_GetObjectItem(options, "Prefer");
+        param = cJSON_GetObjectItem(step, "Prefer");
         if (param != NULL && (cJSON_IsArray(param) == true)) {
             cJSON *prefer_item = NULL;
             cJSON_ArrayForEach(prefer_item, param) {
