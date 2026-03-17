@@ -35,8 +35,10 @@ int test_step_param_iperf_server::step_execute()
     std::string agent_subdoc;
     std::string iperf_server_cmd;
     int result = RETURN_ERR;
+    char timestamp[24] = { 0 };
 
-    wlan_emu_print(wlan_emu_log_level_err, "%s:%d Connection type is %d\n", __func__, __LINE__, step->u.iperf_server->u.start_conf.connection_type);
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d Connection type is %d\n", __func__, __LINE__,
+        step->u.iperf_server->u.start_conf.connection_type);
     if (step->u.iperf_server->input_operation == iperf_operation_type_stop) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
             step->u.iperf_server->u.stop_conf.stop_step_number);
@@ -69,7 +71,17 @@ int test_step_param_iperf_server::step_execute()
             step->u.iperf_server->u.start_conf.cmd_options);
 
         if (step->u.iperf_server->u.start_conf.connection_type == client_connection_type_real) {
+            if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
+                    __func__, __LINE__);
+                step->test_state = wlan_emu_tests_state_cmd_abort;
+                return RETURN_ERR;
+            }
             // TODO spawn the iperf -s process
+            snprintf(step->u.iperf_server->u.start_conf.result_file,
+                sizeof(step->u.iperf_server->u.start_conf.result_file),
+                "/tmp/cci_res/%s_%d_%s_%s.txt", step->test_case_id, step->step_number, timestamp,
+                step->u.iperf_server->u.start_conf.input_filename);
             iperf_server_cmd = std::string("/usr/bin/iperf3") +
                 step->u.iperf_server->u.start_conf.cmd_options + std::string(" --logfile ") +
                 std::string(step->u.iperf_server->u.start_conf.result_file);
@@ -78,7 +90,7 @@ int test_step_param_iperf_server::step_execute()
             if (result != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: step number : %d iperf server cmd : %s failed\n", __func__, __LINE__,
-                    step->step_number, step->u.iperf_server->u.start_conf.cmd_options);
+                    step->step_number, iperf_server_cmd.c_str());
                 step->test_state = wlan_emu_tests_state_cmd_abort;
                 return RETURN_ERR;
             }
