@@ -82,7 +82,7 @@ int test_step_param_iperf_server::step_execute()
                 sizeof(step->u.iperf_server->u.start_conf.result_file),
                 "/tmp/cci_res/%s_%d_%s_%s.txt", step->test_case_id, step->step_number, timestamp,
                 step->u.iperf_server->u.start_conf.input_filename);
-            iperf_server_cmd = std::string("/usr/bin/iperf3") +
+            iperf_server_cmd = std::string("/usr/bin/iperf3 ") +
                 step->u.iperf_server->u.start_conf.cmd_options + std::string(" --logfile ") +
                 std::string(step->u.iperf_server->u.start_conf.result_file);
             result = execute_process_once(iperf_server_cmd,
