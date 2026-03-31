@@ -1020,7 +1020,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 // Added this check to make sure the Station MAC is present as part of frame
                 // received.
                 if (step->u.sta_test->is_reconnect_enabled == true &&
-                    (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
+                    (step->u.sta_test->is_station_associated == true)) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: STA trying to reconnect within expected time for step %d\n",
                         __func__, __LINE__, step->step_number);
