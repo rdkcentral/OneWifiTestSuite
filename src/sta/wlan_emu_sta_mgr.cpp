@@ -43,7 +43,6 @@ INT wifi_hal_setRadioOperatingParameters(wifi_radio_index_t index,
     wifi_radio_operationParam_t *operationParam);
 int convert_channel_to_freq(int band, unsigned char chan);
 int wifi_hal_sm_deinit(int vap_index);
-INT wifi_hal_emu_disconnect_sta(int ap_index, mac_address_t client_mac);
 }
 
 static void ovs_fdb_flush(char *bridge_name)
@@ -269,8 +268,7 @@ void wlan_emu_sim_sta_mgr_t::remove_sta(sta_test_t *sta_test, connected_client_i
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: Disconnect sta vap %d Freeing the device : %d \n", __func__, __LINE__,
             sta_test->sta_vap_config->vap_index, sta->get_dev_id());
-        //wifi_hal_disconnect(sta_test->sta_vap_config->vap_index);
-        wifi_hal_emu_disconnect_sta(sta_test->sta_vap_config->vap_index, client_info->sta_mac);
+        wifi_hal_disconnect(sta_test->sta_vap_config->vap_index);
     }
 
     sta_info = get_devid_sta_info(sta->get_dev_id());
@@ -534,14 +532,8 @@ int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connecte
         return RETURN_ERR;
     }
 
-    /*if (wifi_hal_disconnect(sta_test_config->sta_vap_config->vap_index) != RETURN_OK) {
+    if (wifi_hal_disconnect(sta_test_config->sta_vap_config->vap_index) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: hal disconnect failed for vap_index : %d\n",
-            __func__, __LINE__, sta_test_config->sta_vap_config->vap_index);
-        return RETURN_ERR;
-    }*/
-
-    if (wifi_hal_emu_disconnect_sta(sta_test_config->sta_vap_config->vap_index, client_info->sta_mac) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: hal disconnect sta failed for vap_index : %d\n",
             __func__, __LINE__, sta_test_config->sta_vap_config->vap_index);
         return RETURN_ERR;
     }
