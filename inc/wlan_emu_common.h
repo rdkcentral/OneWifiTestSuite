@@ -421,6 +421,7 @@ typedef struct {
     std::string ip_address;
     bool is_reconnect_enabled;
     unsigned int reconnect_interval;
+    bool is_disconnection_sent;
     union {
         sta_management_t sta_management;
         // sta_mobility_t

@@ -1019,12 +1019,27 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
                 // Added this check to make sure the Station MAC is present as part of frame
                 // received.
+
+                if ((wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type()) &&
+                    step->u.sta_test->is_disconnection_sent == false) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: Deauth frame received for mac %s, client_macaddr %s for step %d\n",
+                        __func__, __LINE__, macaddr, client_macaddr, step->step_number);
+
+                    if (step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test) == RETURN_ERR) {
+                        wlan_emu_print(wlan_emu_log_level_err,
+                            "%s:%d: reconnect_sta failed for step %d\n", __func__, __LINE__,
+                            step->step_number);
+                    }
+                }
+
                 if (step->u.sta_test->is_reconnect_enabled == true &&
-                    (step->u.sta_test->is_station_associated == true)) {
+                    (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: STA trying to reconnect within expected time for step %d\n",
                         __func__, __LINE__, step->step_number);
                     step->u.sta_test->is_station_associated = false;
+                    step->u.sta_test->is_disconnection_sent = false;
                     step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                     step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
                     step->u.sta_test->is_decoded = false;
@@ -1061,10 +1076,16 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 
                 if ((step->capture_frames != true) ||
                     (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
+                        __func__, __LINE__, macaddr, client_macaddr);
                     return RETURN_UNHANDLED;
                 }
 
                 if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
+                        __func__, __LINE__, macaddr, client_macaddr);
                     return RETURN_UNHANDLED;
                 }
                 msg->unload_frm80211_msg(step);
@@ -1079,10 +1100,16 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) {
                     if ((step->capture_frames != true) ||
                         (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
+                        wlan_emu_print(wlan_emu_log_level_dbg,
+                            "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
+                            __func__, __LINE__, macaddr, client_macaddr);
                         return RETURN_UNHANDLED;
                     }
 
                     if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
+                        wlan_emu_print(wlan_emu_log_level_dbg,
+                            "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
+                            __func__, __LINE__, macaddr, client_macaddr);
                         return RETURN_UNHANDLED;
                     }
                     msg->unload_frm80211_msg(step);
@@ -1184,6 +1211,7 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->u.sta_management.op_modes = 0;
     step->u.sta_test->is_ip_assigned = false;
     step->u.sta_test->reconnect_interval = 0;
+    step->u.sta_test->is_disconnection_sent = false;
     step->u.sta_test->is_reconnect_enabled = false;
 }
 

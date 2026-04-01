@@ -537,7 +537,7 @@ int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config)
             __func__, __LINE__, sta_test_config->sta_vap_config->vap_index);
         return RETURN_ERR;
     }
-
+    sta_test_config->is_disconnection_sent = true;
     sta_info = get_devid_sta_info(sta->get_dev_id());
     if (sta_info == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
