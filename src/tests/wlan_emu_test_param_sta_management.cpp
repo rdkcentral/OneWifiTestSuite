@@ -1045,7 +1045,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         return RETURN_ERR;
                     }
 
-                    if (get_dev_status(sta->get_dev_id()) != sta_state_free) {
+                    if (step->m_sim_sta_mgr->get_dev_status(sta->get_dev_id()) != sta_state_free) {
                         step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                         step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
                         step->u.sta_test->is_decoded = false;
