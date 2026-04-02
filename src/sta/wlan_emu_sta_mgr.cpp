@@ -77,10 +77,10 @@ int wlan_emu_sim_sta_mgr_t::find_first_free_dev()
     return -1;
 }
 
-unsigned int wlan_emu_sim_sta_mgr_t::get_dev_status(unsigned int dev_id)
+unsigned int wlan_emu_sim_sta_mgr_t::get_dev_status(sta_test_t *sta_test_config)
 {
     sta_info_t *sta_info;
-    sta_info = (sta_info_t *)queue_peek(m_sta_info_map, dev_id);
+    sta_info = (sta_info_t *)queue_peek(m_sta_info_map, sta_test_config->get_dev_id());
     return sta_info->status;
 }
 

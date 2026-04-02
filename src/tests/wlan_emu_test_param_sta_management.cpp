@@ -983,9 +983,7 @@ void test_step_param_sta_management::step_remove()
 int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
-    wlan_emu_sta_t *sta;
     wlan_emu_msg_data_t *f_data = NULL;
-    sta_info_t *sta_info = NULL;
     char client_macaddr[32] = { 0 };
     char macaddr[32] = { 0 };
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
@@ -1038,14 +1036,8 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         __func__, __LINE__, step->step_number);
                     step->u.sta_test->is_station_associated = false;
                     step->u.sta_test->is_disconnection_sent = false;
-                    sta = (wlan_emu_sta_t *)hash_map_get(m_sta_map, step->u.sta_test->key);
-                    if (sta == NULL) {
-                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta is NULL\n", __func__,
-                            __LINE__);
-                        return RETURN_ERR;
-                    }
 
-                    if (step->m_sim_sta_mgr->get_dev_status(sta->get_dev_id()) != sta_state_free) {
+                    if (step->m_sim_sta_mgr->get_dev_status(step->u.sta_test) != sta_state_free) {
                         step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                         step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
                         step->u.sta_test->is_decoded = false;
