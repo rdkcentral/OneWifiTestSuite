@@ -983,6 +983,7 @@ void test_step_param_sta_management::step_remove()
 int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
+    wlan_emu_sta_t *sta;
     wlan_emu_msg_data_t *f_data = NULL;
     sta_info_t *sta_info = NULL;
     char client_macaddr[32] = { 0 };
@@ -1037,21 +1038,20 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         __func__, __LINE__, step->step_number);
                     step->u.sta_test->is_station_associated = false;
                     step->u.sta_test->is_disconnection_sent = false;
-                    sta_info = get_devid_sta_info(step->u.sta_test->get_dev_id());
-
-                    if (sta_info == NULL) {
-                        wlan_emu_print(wlan_emu_log_level_err,
-                            "%s:%d: failed to get sta info for step %d\n", __func__, __LINE__,
-                            step->step_number);
+                    sta = (wlan_emu_sta_t *)hash_map_get(m_sta_map, step->u.sta_test->key);
+                    if (sta == NULL) {
+                        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta is NULL\n", __func__,
+                            __LINE__);
                         return RETURN_ERR;
                     }
-                    if (sta_info->status == sta_state_free) {
+
+                    if (get_dev_status(sta->get_dev_id()) != sta_state_free) {
                         step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                         step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
                         step->u.sta_test->is_decoded = false;
                     } else if (step->m_sim_sta_mgr->add_sta(step->u.sta_test) == RETURN_ERR) {
                         wlan_emu_print(wlan_emu_log_level_err,
-                            "%s:%d: remove_sta failed for step %d\n", __func__, __LINE__,
+                            "%s:%d: add_sta failed for step %d\n", __func__, __LINE__,
                             step->step_number);
                     }
                 } else if (step->u.sta_test->is_reconnect_enabled == false &&
