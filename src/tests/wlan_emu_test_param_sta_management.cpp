@@ -984,6 +984,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
     wlan_emu_msg_data_t *f_data = NULL;
+    sta_info_t *sta_info = NULL;
     char client_macaddr[32] = { 0 };
     char macaddr[32] = { 0 };
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
@@ -1036,7 +1037,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         __func__, __LINE__, step->step_number);
                     step->u.sta_test->is_station_associated = false;
                     step->u.sta_test->is_disconnection_sent = false;
-                    sta_info = get_devid_sta_info(sta->get_dev_id());
+                    sta_info = get_devid_sta_info(step->u.sta_test->get_dev_id());
 
                     if (sta_info == NULL) {
                         wlan_emu_print(wlan_emu_log_level_err,
