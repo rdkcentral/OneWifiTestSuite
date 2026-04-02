@@ -1027,11 +1027,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         __func__, __LINE__, macaddr, client_macaddr, step->step_number);
                     step->u.sta_test->is_station_associated = false;
                     step->m_sim_sta_mgr->remove_sta(step->u.sta_test);
-                    if (step->m_sim_sta_mgr->add_sta(step->u.sta_test) == RETURN_ERR) {
-                        wlan_emu_print(wlan_emu_log_level_err,
-                            "%s:%d: remove_sta failed for step %d\n", __func__, __LINE__,
-                            step->step_number);
-                    }
                 }
 
                 if (step->u.sta_test->is_reconnect_enabled == true &&
@@ -1041,9 +1036,23 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         __func__, __LINE__, step->step_number);
                     step->u.sta_test->is_station_associated = false;
                     step->u.sta_test->is_disconnection_sent = false;
-                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
-                    step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
-                    step->u.sta_test->is_decoded = false;
+                    sta_info = get_devid_sta_info(sta->get_dev_id());
+
+                    if (sta_info == NULL) {
+                        wlan_emu_print(wlan_emu_log_level_err,
+                            "%s:%d: failed to get sta info for step %d\n", __func__, __LINE__,
+                            step->step_number);
+                        return RETURN_ERR;
+                    }
+                    if (sta_info->status == sta_state_free) {
+                        step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
+                        step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
+                        step->u.sta_test->is_decoded = false;
+                    } else if (step->m_sim_sta_mgr->add_sta(step->u.sta_test) == RETURN_ERR) {
+                        wlan_emu_print(wlan_emu_log_level_err,
+                            "%s:%d: remove_sta failed for step %d\n", __func__, __LINE__,
+                            step->step_number);
+                    }
                 } else if (step->u.sta_test->is_reconnect_enabled == false &&
                     step->u.sta_test->is_station_associated == true) {
                     step->u.sta_test->is_station_associated = false;

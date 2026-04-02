@@ -269,6 +269,7 @@ void wlan_emu_sim_sta_mgr_t::remove_sta(sta_test_t *sta_test)
             sta_test->sta_vap_config->vap_index, sta->get_dev_id());
         wifi_hal_disconnect(sta_test->sta_vap_config->vap_index);
     }
+    sta_test->is_disconnection_sent = true;
 
     sta_info = get_devid_sta_info(sta->get_dev_id());
     if (sta_info == NULL) {
