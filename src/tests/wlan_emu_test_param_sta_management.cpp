@@ -1025,10 +1025,15 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     wlan_emu_print(wlan_emu_log_level_dbg,
                         "%s:%d: Deauth frame received for mac %s, client_macaddr %s for step %d\n",
                         __func__, __LINE__, macaddr, client_macaddr, step->step_number);
-
-                    if (step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test) == RETURN_ERR) {
+                    step->u.sta_test->is_station_associated = false;
+                    if (step->m_sim_sta_mgr->remove_sta(step->u.sta_test) == RETURN_ERR) {
                         wlan_emu_print(wlan_emu_log_level_err,
-                            "%s:%d: reconnect_sta failed for step %d\n", __func__, __LINE__,
+                            "%s:%d: remove_sta failed for step %d\n", __func__, __LINE__,
+                            step->step_number);
+                    }
+                    if (step->m_sim_sta_mgr->add_sta(step->u.sta_test) == RETURN_ERR) {
+                        wlan_emu_print(wlan_emu_log_level_err,
+                            "%s:%d: remove_sta failed for step %d\n", __func__, __LINE__,
                             step->step_number);
                     }
                 }
