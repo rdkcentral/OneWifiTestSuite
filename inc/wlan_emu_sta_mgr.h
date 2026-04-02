@@ -33,7 +33,7 @@ class wlan_emu_sim_sta_mgr_t {
     unsigned int m_sta_info_count;
     unsigned int m_dev_status[DEV_STATUS_ARR_SZ];
     int find_first_free_dev();
-    unsigned int get_dev_status(unsigned int dev_id);
+    unsigned int get_dev_status(sta_test_t *sta_test_config);
     void set_dev_busy(unsigned int dev_id);
     void set_dev_free(unsigned int dev_id);
 
