@@ -1036,6 +1036,13 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 // Added this check to make sure the Station MAC is present as part of frame
                 // received.
 
+                if (step->capture_frames == true) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: captured frame for mac received macaddr : %s client_macaddr : %s\n",
+                        __func__, __LINE__, macaddr, client_macaddr);
+                    msg->unload_frm80211_msg(step);
+                }
+
                 if ((wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type()) &&
                     step->u.sta_test->is_disconnection_sent == false) {
                     wlan_emu_print(wlan_emu_log_level_dbg,
@@ -1090,18 +1097,10 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
 
                 if ((step->capture_frames != true) ||
                     (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
-                    wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : "
-                        "%s\n",
-                        __func__, __LINE__, macaddr, client_macaddr);
                     return RETURN_UNHANDLED;
                 }
 
                 if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
-                    wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : "
-                        "%s\n",
-                        __func__, __LINE__, macaddr, client_macaddr);
                     return RETURN_UNHANDLED;
                 }
                 msg->unload_frm80211_msg(step);
