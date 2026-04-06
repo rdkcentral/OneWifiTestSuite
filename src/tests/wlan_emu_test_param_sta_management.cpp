@@ -1071,10 +1071,8 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 }
             }
 
-            if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                     f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
-                (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                     f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0)) {
+            if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                    f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
 
                 if (step->u.sta_test->sta_vap_config->u.sta_info.security.mode ==
                     wifi_security_mode_none) {
@@ -1115,16 +1113,10 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) {
                     if ((step->capture_frames != true) ||
                         (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
-                        wlan_emu_print(wlan_emu_log_level_dbg,
-                            "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
-                            __func__, __LINE__, macaddr, client_macaddr);
                         return RETURN_UNHANDLED;
                     }
 
                     if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
-                        wlan_emu_print(wlan_emu_log_level_dbg,
-                            "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
-                            __func__, __LINE__, macaddr, client_macaddr);
                         return RETURN_UNHANDLED;
                     }
                     msg->unload_frm80211_msg(step);
