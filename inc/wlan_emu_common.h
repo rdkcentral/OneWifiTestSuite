@@ -422,6 +422,7 @@ typedef struct {
     bool is_reconnect_enabled;
     unsigned int reconnect_interval;
     bool is_disconnection_sent;
+    unsigned int reconnect_timer;
     union {
         sta_management_t sta_management;
         // sta_mobility_t

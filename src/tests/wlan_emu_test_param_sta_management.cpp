@@ -818,6 +818,21 @@ int test_step_param_sta_management::step_timeout()
             return RETURN_OK;
         }
 
+        if (step->u.sta_test->is_reconnect_enabled &&
+            step->u.sta_test->is_disconnection_sent == true) {
+            step->u.sta_test->reconnect_timer++;
+            if (step->u.sta_test->reconnect_timer >= 3) {
+                if (step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test) == RETURN_ERR) {
+                    wlan_emu_print(wlan_emu_log_level_err,
+                        "%s:%d: reconnect_sta failed for step %d\n", __func__, __LINE__,
+                        step->step_number);
+                } else {
+                    step->u.sta_test->is_decoded = false;
+                    step->u.sta_test->is_disconnection_sent = false;
+                    step->u.sta_test->reconnect_timer = 0;
+                }
+            }
+        }
         if (step->u.sta_test->is_reconnect_enabled && step->timeout_count != 0 &&
             step->u.sta_test->reconnect_interval > 0 &&
             (step->timeout_count % step->u.sta_test->reconnect_interval) == 0) {
@@ -1214,6 +1229,7 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->u.sta_management.op_modes = 0;
     step->u.sta_test->is_ip_assigned = false;
     step->u.sta_test->reconnect_interval = 0;
+    step->u.sta_test->reconnect_timer = 0;
     step->u.sta_test->is_disconnection_sent = false;
     step->u.sta_test->is_reconnect_enabled = false;
 }
