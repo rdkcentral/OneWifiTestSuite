@@ -833,6 +833,7 @@ int test_step_param_sta_management::step_timeout()
                 }
             }
         }
+
         if (step->u.sta_test->is_reconnect_enabled && step->timeout_count != 0 &&
             step->u.sta_test->reconnect_interval > 0 &&
             (step->timeout_count % step->u.sta_test->reconnect_interval) == 0) {
@@ -1052,15 +1053,9 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     step->u.sta_test->is_station_associated = false;
                     step->u.sta_test->is_disconnection_sent = false;
 
-                    if (step->m_sim_sta_mgr->get_dev_status(step->u.sta_test) != sta_state_free) {
-                        step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
-                        step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
-                        step->u.sta_test->is_decoded = false;
-                    } else if (step->m_sim_sta_mgr->add_sta(step->u.sta_test) == RETURN_ERR) {
-                        wlan_emu_print(wlan_emu_log_level_err,
-                            "%s:%d: add_sta failed for step %d\n", __func__, __LINE__,
-                            step->step_number);
-                    }
+                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
+                    step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
+                    step->u.sta_test->is_decoded = false;
                 } else if (step->u.sta_test->is_reconnect_enabled == false &&
                     step->u.sta_test->is_station_associated == true) {
                     step->u.sta_test->is_station_associated = false;
@@ -1069,8 +1064,10 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 }
             }
 
-            if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                    f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
+            if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                     f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
+                (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                     f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0)) {
 
                 if (step->u.sta_test->sta_vap_config->u.sta_info.security.mode ==
                     wifi_security_mode_none) {
@@ -1080,7 +1077,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                             "%s:%d: captured assoc response for open security for mac %s\n",
                             __func__, __LINE__, client_macaddr);
                     }
-
                 } else {
                     if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
                         if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
@@ -1095,14 +1091,16 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 if ((step->capture_frames != true) ||
                     (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
                     wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
+                        "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : "
+                        "%s\n",
                         __func__, __LINE__, macaddr, client_macaddr);
                     return RETURN_UNHANDLED;
                 }
 
                 if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
                     wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
+                        "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : "
+                        "%s\n",
                         __func__, __LINE__, macaddr, client_macaddr);
                     return RETURN_UNHANDLED;
                 }

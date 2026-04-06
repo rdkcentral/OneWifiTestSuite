@@ -77,23 +77,6 @@ int wlan_emu_sim_sta_mgr_t::find_first_free_dev()
     return -1;
 }
 
-int wlan_emu_sim_sta_mgr_t::get_dev_status(sta_test_t *sta_test_config)
-{
-    wlan_emu_sta_t *sta;
-    sta_info_t *sta_info;
-
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Request to remove the sta with key : %s\n",
-        __func__, __LINE__, sta_test_config->key);
-    sta = (wlan_emu_sta_t *)hash_map_get(m_sta_map, sta_test_config->key);
-    if (sta == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta is NULL\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    sta_info = (sta_info_t *)queue_peek(m_sta_info_map, sta->get_dev_id());
-    return sta_info->status;
-}
-
 void wlan_emu_sim_sta_mgr_t::set_dev_busy(unsigned int dev_id)
 {
     sta_info_t *sta_info;
