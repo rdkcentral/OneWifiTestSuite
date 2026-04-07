@@ -828,7 +828,6 @@ int test_step_param_sta_management::step_timeout()
                         step->step_number);
                 } else {
                     step->u.sta_test->is_decoded = false;
-                    step->u.sta_test->is_disconnection_sent = false;
                     step->u.sta_test->reconnect_timer = 0;
                 }
             }
@@ -1086,6 +1085,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
                         if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
                             step->u.sta_test->is_station_associated = true;
+                            step->u.sta_test->is_disconnection_sent = false;
                             wlan_emu_print(wlan_emu_log_level_dbg,
                                 "%s:%d: captured eapol-msg3 for %s\n", __func__, __LINE__,
                                 client_macaddr);
