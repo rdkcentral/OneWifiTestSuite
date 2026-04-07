@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <memory>
 #define STATION_STEP_EXEC_TIMEOUT 3
+#define RECONNECT_TIMEOUT 3
 
 // Adding extra time time for external simulated client
 static int external_sta_grace_timeout = 3;
@@ -821,7 +822,7 @@ int test_step_param_sta_management::step_timeout()
         if (step->u.sta_test->is_reconnect_enabled &&
             step->u.sta_test->is_disconnection_sent == true) {
             step->u.sta_test->reconnect_timer++;
-            if (step->u.sta_test->reconnect_timer >= 3) {
+            if (step->u.sta_test->reconnect_timer >= RECONNECT_TIMEOUT) {
                 if (step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test) == RETURN_ERR) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: reconnect_sta failed for step %d\n", __func__, __LINE__,

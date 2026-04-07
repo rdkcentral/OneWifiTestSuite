@@ -62,7 +62,6 @@ public:
     int start();
     void stop();
 
-    int get_dev_status(sta_test_t *sta_test_config);
     int reconnect_sta(sta_test_t *sta_test_config);
     int clear_interface_data(sta_test_t *sta_test_config);
     int disconnect_sta(sta_test_t *sta_test_config);
