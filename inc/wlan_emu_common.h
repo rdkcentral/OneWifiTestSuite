@@ -424,6 +424,8 @@ typedef struct {
     std::string sta_interface_name;
     bool is_reconnect_enabled;
     unsigned int reconnect_interval;
+    bool is_disconnection_sent;
+    unsigned int reconnect_timer;
     bool is_ip_assigned;
     std::string ip_address;
     sta_key_t key;
