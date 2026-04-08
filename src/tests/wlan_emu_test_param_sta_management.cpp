@@ -872,7 +872,8 @@ int test_step_param_sta_management::step_timeout()
                             step->step_number);
                         ret = RETURN_ERR;
                     }
-                } else if (ret != RETURN_ERR) {
+                }
+                if (ret != RETURN_ERR) {
                     step->u.sta_test->is_decoded = false;
                     step->u.sta_test->reconnect_timer = 0;
                 }
