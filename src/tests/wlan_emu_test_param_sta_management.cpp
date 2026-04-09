@@ -1166,7 +1166,6 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                             "%s:%d: captured assoc response for open security for mac %s\n",
                             __func__, __LINE__, client_macaddr);
                     }
-
                 } else {
                     if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
                         if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
