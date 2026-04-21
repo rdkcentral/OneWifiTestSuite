@@ -1101,7 +1101,6 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->wait_connection = false;
     memset(step->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
     step->u.sta_test->u.sta_management.op_modes = 0;
-    step->u.sta_test->is_ip_assigned = false;
     step->u.sta_test->reconnect_interval = 0;
     step->u.sta_test->reconnect_timer = 0;
     step->u.sta_test->is_disconnection_sent = false;
