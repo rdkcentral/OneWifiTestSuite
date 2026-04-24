@@ -174,6 +174,11 @@ int wlan_ext_emu_t::ext_emu_state_machine()
         case ext_agent_test_state_complete:
             break;
         case ext_agent_test_state_fail:
+            if (ext_emu_test_obj != NULL) {
+                delete ext_emu_test_obj;
+                m_ext_msg_mgr.stop();
+                ext_emu_test_obj = NULL;
+            }
             break;
         default:
             break;
