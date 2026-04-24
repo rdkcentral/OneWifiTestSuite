@@ -375,6 +375,10 @@ typedef struct {
     mac_address_t custom_mac;
     wlan_emu_connection_type_t connection_type;
 
+    bool is_reconnect_enabled;
+    unsigned int reconnect_interval;
+    bool is_disconnection_sent;
+    unsigned int reconnect_timer;
     union {
         sta_management_t sta_management;
         // sta_mobility_t
