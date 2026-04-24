@@ -102,8 +102,7 @@ int wlan_ext_test_step_param_iperf_server::wlan_ext_step_execute()
             // spawn killall iperf3 process
             std::string iperf_kill_cmd = std::string("killall ") + std::string("/usr/bin/iperf3");
             if (step->u.iperf_server->interface_type == interface_type_ethernet) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: In ethernet name
-space\n", __func__, __LINE__);
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: In ethernet namespace\n", __func__, __LINE__);
                 ext_emu->enter_namespace("/var/run/netns/ots");
             }
             int result = execute_process_once(iperf_kill_cmd,
