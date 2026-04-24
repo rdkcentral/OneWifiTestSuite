@@ -56,10 +56,11 @@ int wlan_ext_test_step_param_iperf_client::wlan_ext_step_execute()
             __func__, __LINE__, step->step_number, iperf_client_cmd.c_str());
 
         if (step->u.iperf_client->interface_type == interface_type_ethernet) {
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: In ethernet namespace\n", __func__, __LINE__);
-            //list_interfaces_in_namespace();
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: In ethernet namespace\n", __func__,
+                __LINE__);
+            // list_interfaces_in_namespace();
             ext_emu->enter_namespace("/var/run/netns/ots");
-            //list_interfaces_in_namespace();
+            // list_interfaces_in_namespace();
         }
 
         int result = execute_process_once(iperf_client_cmd,
@@ -75,7 +76,7 @@ int wlan_ext_test_step_param_iperf_client::wlan_ext_step_execute()
         }
         if (step->u.iperf_client->interface_type == interface_type_ethernet) {
             ext_emu->leave_namespace();
-            //list_interfaces_in_namespace();
+            // list_interfaces_in_namespace();
         }
         cJSON_AddItemToArray(step->artifact_json_list,
             cJSON_CreateString(step->u.iperf_client->u.start_conf.result_file));
@@ -97,10 +98,11 @@ int wlan_ext_test_step_param_iperf_client::wlan_ext_step_execute()
         serv_init_step = ext_emu->get_ext_step_from_step_number(
             step->u.iperf_client->u.stop_conf.stop_step_number);
         if (serv_init_step == NULL) {
-            //spawn killall iperf3 process
+            // spawn killall iperf3 process
             std::string iperf_kill_cmd = std::string("killall ") + std::string("/usr/bin/iperf3");
             if (step->u.iperf_client->interface_type == interface_type_ethernet) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: In ethernet name space\n", __func__, __LINE__);
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: In ethernet name space\n", __func__,
+                    __LINE__);
                 ext_emu->enter_namespace("/var/run/netns/ots");
             }
             int result = execute_process_once(iperf_kill_cmd,
@@ -120,9 +122,7 @@ int wlan_ext_test_step_param_iperf_client::wlan_ext_step_execute()
             }
             step->step_state = wlan_emu_tests_state_cmd_results;
             return RETURN_OK;
-       }
         }
-
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: step number : %d stop step number : %d pid to stop : %d\n", __func__, __LINE__,
             step->step_number, step->u.iperf_client->u.stop_conf.stop_step_number,
