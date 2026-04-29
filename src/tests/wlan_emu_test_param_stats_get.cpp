@@ -8,6 +8,7 @@
 #include <cjson/cJSON.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <new>
 #include <sstream>
 #include <string>
 
@@ -199,21 +200,34 @@ int test_step_param_get_stats_t::update_output_file_name()
     return RETURN_ERR;
 }
 
-void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_data_t *p_data, void *userData)
+void test_step_param_get_stats_t::stats_get_event_handler(char *event_name,
+    bus_data_prop_t *p_data, void *userData)
 {
     bus_error_t rc = bus_error_success;
-    const char *json_str = NULL;
-    int len = 0;
+    char *json_str = NULL;
     test_step_params_t *step = NULL;
     char file_name[128] = { 0 };
-    char *temp_file_name;
     FILE *fp = NULL;
     char timestamp[24] = { 0 };
     webconfig_cci_t *cci_webconfig;
     raw_data_t data;
+    bool is_mutex_locked = false;
+
+    (void)p_data;
 
     step = static_cast<test_step_params_t *>(userData);
+    if (step == NULL || step->m_ui_mgr == NULL || step->m_bus_mgr == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: invalid callback context\n", __func__,
+            __LINE__);
+        return;
+    }
+
     cci_webconfig = step->m_ui_mgr->get_webconfig_data();
+    if (cci_webconfig == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: cci_webconfig is NULL\n", __func__,
+            __LINE__);
+        return;
+    }
 
     memset(&data, 0, sizeof(raw_data_t));
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: %d bus event callback Event is %s \n", __func__,
@@ -221,30 +235,29 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
 
     rc = step->m_bus_mgr->desc.bus_data_get_fn(&cci_webconfig->handle, event_name, &data);
 
-    if (rc != bus_error_success || (data.data_type != bus_data_type_string)) {
+    if (rc != bus_error_success || data.data_type != bus_data_type_string ||
+        data.raw_data.bytes == NULL || data.raw_data_len == 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: bus_data_get_fn failed for %s\n", __func__,
             __LINE__, event_name);
-        return;
+        goto cleanup;
     }
 
-    json_str = new char[data.raw_data_len + 1]();
-    strncpy((char *)json_str, (char *)data.raw_data.bytes, data.raw_data_len);
-    len = data.raw_data_len;
-
+    json_str = new (std::nothrow) char[data.raw_data_len + 1]();
     if (json_str == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s Null pointer,bus get string len=%d\n",
-            __FUNCTION__, len);
-        return;
+            __FUNCTION__, data.raw_data_len);
+        goto cleanup;
     }
 
+    strncpy(json_str, (char *)data.raw_data.bytes, data.raw_data_len);
     pthread_mutex_lock(&step->s_lock);
+    is_mutex_locked = true;
     step->u.wifi_stats_get->get_stats_count++;
 
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
             __LINE__);
-        free((void *)json_str);
-        return;
+        goto cleanup;
     }
 
     snprintf(file_name, sizeof(file_name), "%s/%s_%d_%s_%s_%d.json",
@@ -259,25 +272,41 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
             file_name);
         step->m_ui_mgr->cci_error_code = EFOPEN;
         step->test_state = wlan_emu_tests_state_cmd_abort;
-        pthread_mutex_unlock(&step->s_lock);
-        free((void *)json_str);
-        return;
+        goto cleanup;
     }
-    fputs((const char *)json_str, fp);
+    fputs(json_str, fp);
 
     fclose(fp);
-    temp_file_name = strdup(file_name);
-    if (step->m_ui_mgr->step_upload_files(temp_file_name) != RETURN_OK) {
+    fp = NULL;
+
+    if (step->m_ui_mgr->step_upload_files(file_name) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed for %s\n",
-            __func__, __LINE__, temp_file_name);
+            __func__, __LINE__, file_name);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
-        free((void *)json_str);
-        pthread_mutex_unlock(&step->s_lock);
-        return;
+        goto cleanup;
     }
 
-    pthread_mutex_unlock(&step->s_lock);
+cleanup:
+    if (fp != NULL) {
+        fclose(fp);
+    }
+
+    if (is_mutex_locked) {
+        pthread_mutex_unlock(&step->s_lock);
+    }
+
+    delete[] json_str;
+
+    if (data.raw_data.bytes != NULL) {
+        if (step->m_bus_mgr->desc.bus_data_free_fn != NULL) {
+            step->m_bus_mgr->desc.bus_data_free_fn(&data);
+        } else if (data.data_type == bus_data_type_string || data.data_type == bus_data_type_bytes) {
+            free(data.raw_data.bytes);
+        }
+    }
+
+    return;
 }
 
 int test_step_param_get_stats_t::start_subscription()
