@@ -141,6 +141,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
         } else if (step->u.gw_performance->cmd_option == cmd_option_mem) {
             fp_process = v_secure_popen("r", "%s \"%s\" \"%s\"", "top", "-bm", "-n1");
         } else {
+            fclose(out);
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return NULL;
         }

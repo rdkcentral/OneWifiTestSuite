@@ -245,6 +245,7 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
 
     pcap_dump((u_char *)dump_handle, &pkthdr, tmp_buff);
     pcap_dump_flush(dump_handle);
+    pcap_dump_close(dump_handle);
     pcap_close(handle);
 
     return RETURN_OK;
