@@ -401,6 +401,7 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
 
     pcap_dump((u_char *)dump_handle, &pkthdr, tmp_buff);
     pcap_dump_flush(dump_handle);
+    pcap_dump_close(dump_handle);
     pcap_close(handle);
 
     if (step->m_ui_mgr->step_upload_files(capture->pcap_file) != RETURN_OK) {
