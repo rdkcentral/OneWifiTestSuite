@@ -1087,14 +1087,11 @@ void test_step_param_sta_management::step_remove()
             wlan_emu_print(wlan_emu_log_level_info,
                 "%s:%d: Disconnecting the client at vap index : %d\n", __func__, __LINE__,
                 step->u.sta_test->sta_vap_config->vap_index);
-            if (step->u.sta_test->is_decoded == true) {
-                if (step->u.sta_test->connection_type == client_connection_type_external) {
-                    step->m_ext_sta_mgr->remove_sta(step->u.sta_test);
-                } else if (step->u.sta_test->connection_type == client_connection_type_internal) {
-                    step->m_sim_sta_mgr->remove_sta(step->u.sta_test);
-                } else if (step->u.sta_test->connection_type == client_connection_type_real) {
-                    step->m_real_sta_mgr->remove_sta(step);
-		}
+            if (step->u.sta_test->connection_type == client_connection_type_external) {
+                step->m_ext_sta_mgr->remove_sta(step->u.sta_test);
+                step->u.sta_test->is_station_associated = false;
+            } else if (step->u.sta_test->connection_type == client_connection_type_real) {
+                step->m_real_sta_mgr->remove_sta(step);
                 step->u.sta_test->is_station_associated = false;
             } else {
                 while (queue_count(step->u.sta_test->connected_client_info_q) > 0) {
