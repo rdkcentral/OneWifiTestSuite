@@ -125,10 +125,8 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
     if (msg_type == wlan_emu_msg_type_frm80211) {
         cap_len = sizeof(radio_tap_header) + f_data->u.frm80211.u.frame.frame_len;
     } else {
-        cap_len = sizeof(radio_tap_header) +
-          f_data->u.cfg80211.u.start_ap.head_len +
-          sizeof(traffic_indication_map) +
-          f_data->u.cfg80211.u.start_ap.tail_len;
+        cap_len = sizeof(radio_tap_header) + f_data->u.cfg80211.u.start_ap.head_len +
+            sizeof(traffic_indication_map) + f_data->u.cfg80211.u.start_ap.tail_len;
     }
 
     buff = malloc(cap_len);
@@ -175,7 +173,7 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
 
         head = (struct ieee80211_mgmt *)f_data->u.cfg80211.u.start_ap.beacon_head;
 
-         // Filling timestamp.
+        // Filling timestamp.
         memcpy(head->u.beacon.timestamp, &tv.tv_sec, sizeof(head->u.beacon.timestamp));
 
         // Filling Head
@@ -188,17 +186,16 @@ int wlan_ext_test_step_params_t::create_pcap(wlan_emu_msg_t *msg)
 
         // Filling Tail.
         memcpy(buff, f_data->u.cfg80211.u.start_ap.beacon_tail,
-                f_data->u.cfg80211.u.start_ap.tail_len);
+            f_data->u.cfg80211.u.start_ap.tail_len);
         buff += f_data->u.cfg80211.u.start_ap.tail_len;
 
-	if (f_data->u.cfg80211.u.start_ap.beacon_head != NULL) {
+        if (f_data->u.cfg80211.u.start_ap.beacon_head != NULL) {
             free(f_data->u.cfg80211.u.start_ap.beacon_head);
         }
 
         if (f_data->u.cfg80211.u.start_ap.beacon_tail != NULL) {
             free(f_data->u.cfg80211.u.start_ap.beacon_tail);
         }
-
     }
 
     memcpy(to_queue, fname, 248);

@@ -46,6 +46,6 @@ wlan_emu_ui_ssl_config::wlan_emu_ui_ssl_config()
     set_ssl_key(ssl_key);
 }
 
-wlan_emu_ui_ssl_config::~wlan_emu_ui_ssl_config() {
-
+wlan_emu_ui_ssl_config::~wlan_emu_ui_ssl_config()
+{
 }

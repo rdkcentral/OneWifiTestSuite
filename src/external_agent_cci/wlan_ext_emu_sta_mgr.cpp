@@ -354,8 +354,8 @@ int wlan_ext_emu_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
             }
 
             wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: num_vaps : %d, vap_name : %s interface_name : %s\n", __func__,
-                __LINE__, vap_info_map->num_vaps, sta_info->vap_name, sta_info->interface_name);
+                "%s:%d: num_vaps : %d, vap_name : %s interface_name : %s\n", __func__, __LINE__,
+                vap_info_map->num_vaps, sta_info->vap_name, sta_info->interface_name);
 
             for (unsigned int itr = 0; itr < vap_info_map->num_vaps; itr++) {
                 if (vap_info_map->vap_array[itr].vap_index == sta_info->index) {

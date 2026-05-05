@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static wlan_emu_bus_t *g_bus_obj = NULL; //rework needed on this
+static wlan_emu_bus_t *g_bus_obj = NULL; // rework needed on this
 
 static void add_bus_mgr(wlan_emu_bus_t *bus_mgr)
 {
@@ -235,7 +235,8 @@ static rbusElementType_t convert_bus_to_rbus_elem_type(bus_element_type_t bus_el
     return rbus_elem_type;
 }
 
-static bus_error_t get_rbus_property_data(char *event_name, rbusProperty_t property, raw_data_t *bus_data)
+static bus_error_t get_rbus_property_data(char *event_name, rbusProperty_t property,
+    raw_data_t *bus_data)
 {
     bus_error_t ret = bus_error_success;
     rbusValue_t value = rbusProperty_GetValue(property);
@@ -432,7 +433,8 @@ static bool remove_substring(char *str, const char *sub)
     return false;
 }
 
-static bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, raw_data_t *bus_data)
+static bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property,
+    raw_data_t *bus_data)
 {
     bus_error_t ret = bus_error_success;
     rbusValue_t value;
@@ -954,7 +956,8 @@ static bus_error_t bus_set(bus_handle_t *handle, char const *name, raw_data_t *d
     return convert_rbus_to_bus_error_code(rc);
 }
 
-static bus_event_sub_action_t convert_rbus_to_bus_sub_action_type(rbusEventSubAction_t rbus_sub_action)
+static bus_event_sub_action_t convert_rbus_to_bus_sub_action_type(
+    rbusEventSubAction_t rbus_sub_action)
 {
     bus_event_sub_action_t bus_sub_action;
 
@@ -1046,8 +1049,8 @@ static rbusError_t rbus_table_remove_row_handler(rbusHandle_t handle, char const
     return convert_bus_to_rbus_error_code(ret);
 }
 
-static rbusError_t rbus_method_handler(rbusHandle_t handle, char const *methodName, rbusObject_t inParams,
-    rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle)
+static rbusError_t rbus_method_handler(rbusHandle_t handle, char const *methodName,
+    rbusObject_t inParams, rbusObject_t outParams, rbusMethodAsyncHandle_t asyncHandle)
 {
     raw_data_t bus_input_data, bus_output_data;
     bus_error_t ret = bus_error_success;
@@ -1210,7 +1213,7 @@ static bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_
             strncpy(name, data_element[index].full_name, sizeof(name) - 1);
             if ((data_element[index].num_of_table_row) && (remove_substring(name, sub) == 1)) {
                 for (table_index = 1; table_index <= data_element[index].num_of_table_row;
-                    table_index++) {
+                     table_index++) {
                     rc = rbusTable_addRow(p_rbus_handle, name, NULL, NULL);
                     if (rc != RBUS_ERROR_SUCCESS) {
                         wlan_emu_print(wlan_emu_log_level_err,
@@ -1351,8 +1354,8 @@ static bus_error_t bus_event_publish(bus_handle_t *handle, char const *name, raw
     return convert_rbus_to_bus_error_code(rc);
 }
 
-static bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle, bus_event_sub_t *l_sub_info_map,
-    int num_sub, void *l_sub_handler, int timeout)
+static bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle,
+    bus_event_sub_t *l_sub_info_map, int num_sub, void *l_sub_handler, int timeout)
 {
     rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;

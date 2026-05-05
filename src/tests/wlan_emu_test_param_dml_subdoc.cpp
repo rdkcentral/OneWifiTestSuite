@@ -42,8 +42,8 @@ int test_step_param_dmlsubdoc::step_execute()
     step->frame_request.msg_type |= 1 << wlan_emu_msg_type_webconfig;
     step->frame_request.subdoc_type = webconfig_subdoc_type_dml;
 
-    rc = step->m_bus_mgr->desc.bus_data_get_fn(&webconfig_data->handle, WIFI_WEBCONFIG_INIT_DML_DATA,
-        &bus_data);
+    rc = step->m_bus_mgr->desc.bus_data_get_fn(&webconfig_data->handle,
+        WIFI_WEBCONFIG_INIT_DML_DATA, &bus_data);
     if (rc != bus_error_success) {
         wlan_emu_print(wlan_emu_log_level_err, "bus_get failed for [%s] with error [%d]\n",
             WIFI_WEBCONFIG_INIT_DML_DATA, rc);

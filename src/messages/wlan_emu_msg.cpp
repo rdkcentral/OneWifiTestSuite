@@ -243,10 +243,8 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
     if (msg_type == wlan_emu_msg_type_frm80211) {
         cap_len = sizeof(radio_tap_header) + f_data->u.frm80211.u.frame.frame_len;
     } else {
-        cap_len = sizeof(radio_tap_header) +
-            f_data->u.cfg80211.u.start_ap.head_len +
-            sizeof(traffic_indication_map) +
-            f_data->u.cfg80211.u.start_ap.tail_len;
+        cap_len = sizeof(radio_tap_header) + f_data->u.cfg80211.u.start_ap.head_len +
+            sizeof(traffic_indication_map) + f_data->u.cfg80211.u.start_ap.tail_len;
     }
 
     buff = malloc(cap_len);

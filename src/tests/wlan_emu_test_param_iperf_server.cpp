@@ -35,8 +35,8 @@ int test_step_param_iperf_server::step_execute()
     std::string agent_subdoc;
 
     if (step->u.iperf_server->input_operation == iperf_operation_type_stop) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__,
-            __LINE__, step->u.iperf_server->u.stop_conf.stop_step_number);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
+            step->u.iperf_server->u.stop_conf.stop_step_number);
 
         if (encode_external_iperf_server_stop_subdoc(agent_subdoc) == RETURN_ERR) {
             wlan_emu_print(wlan_emu_log_level_err,
@@ -48,8 +48,7 @@ int test_step_param_iperf_server::step_execute()
     } else if (step->u.iperf_server->input_operation == iperf_operation_type_start) {
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: interface_step_number : %d ServerLogResultName : %s cmd_options : %s\n",
-            __func__, __LINE__,
-            step->u.iperf_server->u.start_conf.interface_step_number,
+            __func__, __LINE__, step->u.iperf_server->u.start_conf.interface_step_number,
             step->u.iperf_server->u.start_conf.input_filename,
             step->u.iperf_server->u.start_conf.cmd_options);
 
@@ -92,8 +91,8 @@ int test_step_param_iperf_server::push_ext_iperf_server_result_files(
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: result file is : %s\n", __func__, __LINE__,
         step->u.iperf_server->u.start_conf.result_file);
     if (step->u.iperf_server->input_operation != iperf_operation_type_stop) {
-        if (step->m_ui_mgr->step_upload_files(
-                step->u.iperf_server->u.start_conf.result_file) != RETURN_OK) {
+        if (step->m_ui_mgr->step_upload_files(step->u.iperf_server->u.start_conf.result_file) !=
+            RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed\n", __func__,
                 __LINE__);
             step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
@@ -212,7 +211,6 @@ int test_step_param_iperf_server::step_timeout()
 
         return RETURN_OK;
     }
-
 
     if (step->test_state == wlan_emu_tests_state_cmd_results) {
 

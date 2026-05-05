@@ -297,9 +297,9 @@ int wlan_emu_ext_agent_interface_t::decode_external_agent_capability(const std::
             // Debug print for decoded Ethernet interface data
             char eth_mac_str[32] = { 0 };
             uint8_mac_to_string_mac(eth_dev->interface_mac, eth_mac_str);
-            wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: Decoded ETH: MAC=%s, Name=%s, IP=%s\n", __func__, __LINE__, eth_mac_str,
-                eth_dev->interface_name.c_str(), eth_dev->ip_address.c_str());
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Decoded ETH: MAC=%s, Name=%s, IP=%s\n",
+                __func__, __LINE__, eth_mac_str, eth_dev->interface_name.c_str(),
+                eth_dev->ip_address.c_str());
 
             queue_push(agent_details->eth_client_interfaces, eth_dev);
 
@@ -482,6 +482,7 @@ static int get_external_agent_details(uint instance_number, bus_handle_t *handle
 static bool check_hostname(const std::string &ip)
 {
     struct sockaddr_in sa {};
+
     char agent_host_name[] = "ots_ext_agent";
     sa.sin_family = AF_INET;
     inet_pton(AF_INET, ip.c_str(), &sa.sin_addr);
@@ -608,7 +609,8 @@ int wlan_emu_ext_agent_interface_t::get_external_agent_capabilities(hash_map_t *
         snprintf(capability_url, sizeof(capability_url), "%s:%d/%s",
             agent_details->agent_ip_address, 1234, "Capability");
 
-        if (http_get(capability_url, response, status_code, m_ui_mgr->cci_error_code) != RETURN_OK) {
+        if (http_get(capability_url, response, status_code, m_ui_mgr->cci_error_code) !=
+            RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: http_get failed for %s\n", __func__,
                 __LINE__, capability_url);
             agent_details = (wlan_emu_ext_agent_interface_t *)hash_map_get_next(ext_agent_map,

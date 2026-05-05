@@ -46,6 +46,7 @@ int wifi_hal_emu_set_radio_temp(unsigned int radio_index, bool emu_state, int te
     unsigned int phy_index, unsigned int interface_index);
 void copy_chanstats_to_chandata(radio_chan_data_t *chan_data, wifi_channelStats_t *chan_stats);
 }
+
 int test_step_param_set_stats_t::step_frame_filter(wlan_emu_msg_t *msg)
 {
     test_step_params_t *step = this;
@@ -704,7 +705,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
-    memset(assoc_stats, 0 , sizeof(wifi_associated_dev3_t));
+    memset(assoc_stats, 0, sizeof(wifi_associated_dev3_t));
     for (assoc_count = 0; assoc_count < (unsigned int)response->stat_array_size; assoc_count++) {
         uint8_mac_to_string_mac((uint8_t *)assoc_data[assoc_count].cli_MACAddress, str);
         string_mac_to_uint8_mac((uint8_t *)assoc_stats[assoc_count].cli_MACAddress, str);
@@ -839,7 +840,8 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
             assoc_stats[i].cli_AuthenticationFailures);
         wlan_emu_print(wlan_emu_log_level_dbg, "Associations %llu\n",
             assoc_stats[i].cli_Associations);
-        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Sent %lu\n", assoc_stats[i].cli_PacketsSent);
+        wlan_emu_print(wlan_emu_log_level_dbg, "Packets Sent %lu\n",
+            assoc_stats[i].cli_PacketsSent);
         wlan_emu_print(wlan_emu_log_level_dbg, "Packets Received %lu\n",
             assoc_stats[i].cli_PacketsReceived);
         wlan_emu_print(wlan_emu_log_level_dbg, "Errors Sent %lu\n", assoc_stats[i].cli_ErrorsSent);
@@ -1336,8 +1338,8 @@ int test_step_param_set_stats_t::step_timeout()
                 step->timeout_count++;
                 if (step->u.wifi_stats_set->set_exec_duration < reference->stats_duration) {
                     wlan_emu_print(wlan_emu_log_level_dbg,
-                            "%s:%d: Duration for current instance: %d\n", __func__, __LINE__,
-                            step->u.wifi_stats_set->set_exec_duration);
+                        "%s:%d: Duration for current instance: %d\n", __func__, __LINE__,
+                        step->u.wifi_stats_set->set_exec_duration);
                     step->u.wifi_stats_set->set_exec_duration++;
                     if (step->fork == true) {
                         step->test_state = wlan_emu_tests_state_cmd_wait;
@@ -1369,18 +1371,18 @@ int test_step_param_set_stats_t::step_timeout()
                 step->u.wifi_stats_set->current_stats_set_count = count - 1;
                 step->u.wifi_stats_set->set_exec_duration = 0;
                 wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: Next instance for step number : %d\n", __func__, __LINE__,
-                        step->step_number);
+                    "%s:%d: Next instance for step number : %d\n", __func__, __LINE__,
+                    step->step_number);
                 ret = webconfig_stats_set_instance();
                 if (ret != RETURN_OK) {
                     wlan_emu_print(wlan_emu_log_level_err,
-                            "%s:%d: webconfig_stats_set_instance failed\n", __func__, __LINE__);
+                        "%s:%d: webconfig_stats_set_instance failed\n", __func__, __LINE__);
                     step->m_ui_mgr->cci_error_code = EWEBSET;
                     step->test_state = wlan_emu_tests_state_cmd_abort;
                     return RETURN_ERR;
                 } else {
                     wlan_emu_print(wlan_emu_log_level_dbg,
-                            "%s:%d: webconfig_stats_set_instance success\n", __func__, __LINE__);
+                        "%s:%d: webconfig_stats_set_instance success\n", __func__, __LINE__);
                 }
                 step->u.wifi_stats_set->set_exec_duration++;
                 if (step->fork == true) {
@@ -1608,4 +1610,4 @@ test_step_param_set_radio_temperature_stats::~test_step_param_set_radio_temperat
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d\n", __func__, __LINE__);
 }
-#endif //CONFIG_EXT_AGENT_CCI
+#endif // CONFIG_EXT_AGENT_CCI

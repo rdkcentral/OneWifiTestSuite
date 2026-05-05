@@ -335,7 +335,8 @@ int copy_file(const char *source_path, long source_offset, const char *destinati
     return RETURN_OK;
 }
 
-int https_get_file(http_info_t *http_info, const char *url, const char *output_file, int &error_code)
+int https_get_file(http_info_t *http_info, const char *url, const char *output_file,
+    int &error_code)
 {
     CURL *curl;
     CURLcode res;
@@ -426,7 +427,8 @@ int https_get_file(http_info_t *http_info, const char *url, const char *output_f
     return ret;
 }
 
-int https_post_file(http_info_t *http_info, const char *post_url, const char *input_file, int &error_code)
+int https_post_file(http_info_t *http_info, const char *post_url, const char *input_file,
+    int &error_code)
 {
     int ret = RETURN_ERR;
     CURL *curl;
@@ -455,7 +457,8 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
         }
     } else {
 
-        if (get_last_substring_after_slash(input_file, file_name, sizeof(file_name), error_code) != RETURN_OK) {
+        if (get_last_substring_after_slash(input_file, file_name, sizeof(file_name), error_code) !=
+            RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: get_last_substring_after_slash failed for input_file : %s\n", __func__,
                 __LINE__, input_file);
@@ -515,7 +518,6 @@ int https_post_file(http_info_t *http_info, const char *post_url, const char *in
             // Clean up
             curl_easy_cleanup(curl);
             curl_mime_free(mime);
-
         }
 
         free(test_config_URL);
@@ -662,7 +664,8 @@ static size_t write_file_callback(void *contents, size_t size, size_t nmemb,
     return total_size;
 }
 
-int http_get_file(const std::string &url, const std::string &file_path, long &status_code, int &error_code)
+int http_get_file(const std::string &url, const std::string &file_path, long &status_code,
+    int &error_code)
 {
     CURLcode ret;
     CURL *curl = NULL;
@@ -843,7 +846,8 @@ int http_post(const std::string &url, const std::string &data, long &status_code
     return RETURN_OK;
 }
 
-int http_post_file(const std::string &url, const std::string &file_path, long &status_code, int &error_code)
+int http_post_file(const std::string &url, const std::string &file_path, long &status_code,
+    int &error_code)
 {
     CURLcode ret;
     CURL *curl = NULL;
@@ -852,8 +856,8 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
     char file_name[128] = { 0 };
     std::string url_with_filename;
 
-    if (get_last_substring_after_slash(file_path.c_str(), file_name, sizeof(file_name), error_code) !=
-        RETURN_OK) {
+    if (get_last_substring_after_slash(file_path.c_str(), file_name, sizeof(file_name),
+            error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: get_last_substring_after_slash failed for input_file: %s\n", __func__, __LINE__,
             file_path.c_str());
@@ -938,7 +942,8 @@ int http_post_file(const std::string &url, const std::string &file_path, long &s
     return RETURN_OK;
 }
 
-int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len, int &error_code)
+int get_last_substring_after_slash(const char *str, char *sub_string, int sub_str_len,
+    int &error_code)
 {
     char *last_slash = NULL;
     int ret = 0;

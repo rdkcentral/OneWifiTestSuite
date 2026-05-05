@@ -331,7 +331,7 @@ int test_step_param_packet_generator::update_brlan0_config()
     }
 
     vap_info = step->m_ui_mgr->get_cci_vap_info(
-            const_cast<char *>(step->u.packet_generator->vapname.c_str()));
+        const_cast<char *>(step->u.packet_generator->vapname.c_str()));
     if (vap_info == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: vap_info is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -477,6 +477,7 @@ unsigned int test_step_param_packet_generator::update_pcap_bssids(char *pcap_fil
     }
 
     struct ifreq if_idx {};
+
     strncpy(if_idx.ifr_name, step->u.packet_generator->bridge_name.c_str(), IFNAMSIZ - 1);
     if (ioctl(sockfd, SIOCGIFINDEX, &if_idx) < 0) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: SIOCGIFINDEX failed: %s\n", __func__,
@@ -537,11 +538,12 @@ unsigned int test_step_param_packet_generator::update_pcap_bssids(char *pcap_fil
     memcpy(full_packet + sizeof(ethernet_header_t) + sizeof(u8aRadiotapHeader), mgmt, mgmt_len);
 
     struct sockaddr_ll socket_address {};
+
     socket_address.sll_ifindex = if_idx.ifr_ifindex;
     socket_address.sll_halen = ETH_ALEN;
     memcpy(socket_address.sll_addr, step->u.packet_generator->brlan0_mac, ETH_ALEN);
 
-    //print_hex_dump(total_len, full_packet); //enable for debug
+    // print_hex_dump(total_len, full_packet); //enable for debug
 
     ssize_t sent = sendto(sockfd, full_packet, total_len, 0, (struct sockaddr *)&socket_address,
         sizeof(socket_address));

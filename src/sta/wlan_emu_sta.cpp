@@ -86,11 +86,10 @@ void wlan_emu_sta_t::send_radio_tap_header(heart_beat_data_t *heart_beat_data)
     memcpy(&char_buf[byte_count], &heart_beat_data->bitrate, sizeof(heart_beat_data->bitrate));
     byte_count += sizeof(heart_beat_data->bitrate);
 
-
     wlan_emu_print(wlan_emu_log_level_dbg,
-        "%s:%d: mac_str : %s rssi : %d noise : %d bitrate : %d\n",
-        __func__, __LINE__, to_mac_str(heart_beat_data->mac, mac_str), heart_beat_data->rssi,
-        heart_beat_data->noise, heart_beat_data->bitrate);
+        "%s:%d: mac_str : %s rssi : %d noise : %d bitrate : %d\n", __func__, __LINE__,
+        to_mac_str(heart_beat_data->mac, mac_str), heart_beat_data->rssi, heart_beat_data->noise,
+        heart_beat_data->bitrate);
     /*
         for (count = 0; count < byte_count; count++) {
             wlan_emu_print(wlan_emu_log_level_dbg, " %02X", char_buf[count]);

@@ -217,7 +217,8 @@ int test_step_param_get_stats_t::update_output_file_name()
     return RETURN_ERR;
 }
 
-void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_data_t *p_data, void *userData)
+void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_data_t *p_data,
+    void *userData)
 {
     bus_error_t rc = bus_error_success;
     const char *json_str = NULL;
@@ -267,7 +268,8 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
 
     snprintf(file_name, sizeof(file_name), "%s/%s_%d_%s_%s_%d.json",
         step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number,
-        timestamp, step->u.wifi_stats_get->output_file_name, step->u.wifi_stats_get->get_stats_count);
+        timestamp, step->u.wifi_stats_get->output_file_name,
+        step->u.wifi_stats_get->get_stats_count);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d file_name : %s\n", __FUNCTION__, __LINE__,
         file_name);
 
@@ -286,8 +288,8 @@ void test_step_param_get_stats_t::stats_get_event_handler(char *event_name, raw_
     fclose(fp);
     temp_file_name = strdup(file_name);
     if (step->m_ui_mgr->step_upload_files(temp_file_name) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed for %s\n",
-            __func__, __LINE__, temp_file_name);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed for %s\n", __func__,
+            __LINE__, temp_file_name);
         step->test_state = wlan_emu_tests_state_cmd_abort;
         step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
         free((void *)json_str);

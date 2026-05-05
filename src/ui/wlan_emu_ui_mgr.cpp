@@ -67,13 +67,14 @@ http_info_t *wlan_emu_ui_mgr_t::fill_http_info()
         return NULL;
     }
     http_info->is_local_host_enabled = is_local_host_enabled;
-    if (this->m_ssl_config.get_ssl_cert() == NULL ||
-        this->m_ssl_config.get_ssl_key() == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d SSL cert or key is NULL\n", __func__, __LINE__);
+    if (this->m_ssl_config.get_ssl_cert() == NULL || this->m_ssl_config.get_ssl_key() == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d SSL cert or key is NULL\n", __func__,
+            __LINE__);
         free(http_info);
         return NULL;
     }
-    strncpy(http_info->ssl_cert, this->m_ssl_config.get_ssl_cert(), sizeof(http_info->ssl_cert) - 1);
+    strncpy(http_info->ssl_cert, this->m_ssl_config.get_ssl_cert(),
+        sizeof(http_info->ssl_cert) - 1);
     strncpy(http_info->ssl_key, this->m_ssl_config.get_ssl_key(), sizeof(http_info->ssl_key) - 1);
     strncpy(http_info->interface, interface, sizeof(http_info->interface) - 1);
     strncpy(http_info->tda_url, tda_url, sizeof(http_info->tda_url) - 1);
@@ -172,8 +173,8 @@ int wlan_emu_ui_mgr_t::get_file_name_from_url(char *str, char *file_name, int le
         return RETURN_ERR;
     }
 
-    if (get_last_substring_after_slash(str, file_name_substr, sizeof(file_name_substr), cci_error_code) !=
-        RETURN_OK) {
+    if (get_last_substring_after_slash(str, file_name_substr, sizeof(file_name_substr),
+            cci_error_code) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__, __LINE__, str);
         free(http_info);
@@ -1060,15 +1061,15 @@ int wlan_emu_ui_mgr_t::decode_step_configure_upgrade_or_reboot(cJSON *step,
     test_step_params_t *step_config)
 {
     if (step == NULL || step_config == NULL || step_config->u.upgrade_or_reboot == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: step or upgrade_or_reboot is NULL\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step or upgrade_or_reboot is NULL\n",
+            __func__, __LINE__);
         return RETURN_ERR;
     }
 
     cJSON *config = cJSON_GetObjectItem(step, "UpgradeOrReboot");
     if (config == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: UpgradeOrReboot object not found\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: UpgradeOrReboot object not found\n",
+            __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -1096,8 +1097,8 @@ int wlan_emu_ui_mgr_t::decode_step_configure_upgrade_or_reboot(cJSON *step,
             }
         }
     } else {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: is_logging_enabled is missing or invalid\n", __func__, __LINE__);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: is_logging_enabled is missing or invalid\n",
+            __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -1154,8 +1155,8 @@ int wlan_emu_ui_mgr_t::decode_step_iperf_client(cJSON *step, test_step_params_t 
         iperf_client->input_operation = iperf_operation_type_stop;
 
         iperf_client->u.stop_conf.stop_step_number = param->valuedouble;
-        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
-            iperf_client->u.stop_conf.stop_step_number);
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: stop_step_number : %d\n", __func__,
+            __LINE__, iperf_client->u.stop_conf.stop_step_number);
 
     } else if (update_json_param_integer(config, "ClientInterfaceStepNumber", &param) ==
         RETURN_OK) {
@@ -3143,7 +3144,8 @@ int wlan_emu_ui_mgr_t::download_file(char *input_file_name, unsigned int input_f
         return RETURN_ERR;
     }
 
-    if (https_get_file(http_info, file_download_url, download_test_file, cci_error_code) != RETURN_OK) {
+    if (https_get_file(http_info, file_download_url, download_test_file, cci_error_code) !=
+        RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: https_get_file failed for %s\n", __func__,
             __LINE__, file_download_url);
         free(http_info);
@@ -3375,7 +3377,7 @@ int wlan_emu_ui_mgr_t::decode_reboot_case_json()
         }
     }
 
-        // "result_file"
+    // "result_file"
     cJSON *server_addr = cJSON_GetObjectItem(root, "server_address");
     if (cJSON_IsString(server_addr) && cfg_file->valuestring) {
         strncpy(server_address, server_addr->valuestring, STR_LEN);
@@ -3530,8 +3532,7 @@ int wlan_emu_ui_mgr_t::step_upload_files(char *output_file)
 
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: File: %s\n", __func__, __LINE__,
             output_file);
-        if (upload_file_to_server(output_file,
-                remote_test_results_loc) != RETURN_OK) {
+        if (upload_file_to_server(output_file, remote_test_results_loc) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to upload %s\n", __func__,
                 __LINE__, output_file);
             return RETURN_ERR;
@@ -3539,8 +3540,8 @@ int wlan_emu_ui_mgr_t::step_upload_files(char *output_file)
             wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
                 output_file);
             temp_res_file = strdup(output_file);
-            if (get_last_substring_after_slash(temp_res_file, res_file_name,
-                    sizeof(res_file_name), cci_error_code) != RETURN_OK) {
+            if (get_last_substring_after_slash(temp_res_file, res_file_name, sizeof(res_file_name),
+                    cci_error_code) != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__,
                     __LINE__, temp_res_file);
@@ -3727,8 +3728,8 @@ int wlan_emu_ui_mgr_t::upload_cci_log(char *test_case_id, char *test_case_name, 
     } else {
         wlan_emu_print(wlan_emu_log_level_info, "%s:%d: uploaded %s\n", __func__, __LINE__,
             cci_log_copy);
-        if (get_last_substring_after_slash(cci_log_copy, res_file_name, sizeof(res_file_name), cci_error_code) !=
-            RETURN_OK) {
+        if (get_last_substring_after_slash(cci_log_copy, res_file_name, sizeof(res_file_name),
+                cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: get_last_substring_after_slash failed for str : %s\n", __func__, __LINE__,
                 cci_log_copy);
@@ -3775,7 +3776,8 @@ unsigned int wlan_emu_ui_mgr_t::upload_results()
     }
     while (test != NULL) {
         // Call function to upload cci file
-        if (upload_cci_log(test->test_case_id, test->test_case_name, res_output_file_fp) == RETURN_ERR) {
+        if (upload_cci_log(test->test_case_id, test->test_case_name, res_output_file_fp) ==
+            RETURN_ERR) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to upload cci log for %s_%s\n",
                 __func__, __LINE__, test->test_case_id, test->test_case_name);
         }

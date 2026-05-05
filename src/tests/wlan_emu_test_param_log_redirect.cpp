@@ -164,7 +164,8 @@ int test_step_param_logredirect::step_execute()
         log_step->u.log_capture->log_operation = log_operation_type_stop;
         pthread_cancel(log_step->u.log_capture->thread_id);
         close(log_step->u.log_capture->redirect_fd);
-        if (step->m_ui_mgr->step_upload_files(log_step->u.log_capture->log_result_file) != RETURN_OK) {
+        if (step->m_ui_mgr->step_upload_files(log_step->u.log_capture->log_result_file) !=
+            RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed for %s\n",
                 __func__, __LINE__, log_step->u.log_capture->log_result_file);
             step->test_state = wlan_emu_tests_state_cmd_abort;

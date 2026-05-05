@@ -207,7 +207,6 @@ int wlan_common_utils::encode_pcap_frame_type(cJSON *fc_arr,
             }
             cJSON_AddItemToArray(fc_arr, frame_obj);
             cJSON_AddStringToObject(frame_obj, "FrameType", "Disassociation");
-
         }
         if (frame_capture_req.frm80211_ops & (1 << wlan_emu_frm80211_ops_type_eapol)) {
             frame_obj = cJSON_CreateObject();
@@ -225,8 +224,7 @@ int wlan_common_utils::encode_pcap_frame_type(cJSON *fc_arr,
             cJSON_AddItemToArray(fc_arr, frame_obj);
             cJSON_AddStringToObject(frame_obj, "FrameType", "ReassociationRequest");
         }
-        if (frame_capture_req.frm80211_ops &
-            (1 << wlan_emu_frm80211_ops_type_reassoc_resp)) {
+        if (frame_capture_req.frm80211_ops & (1 << wlan_emu_frm80211_ops_type_reassoc_resp)) {
             frame_obj = cJSON_CreateObject();
             if (frame_obj == NULL) {
                 return RETURN_ERR;

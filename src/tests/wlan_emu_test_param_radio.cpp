@@ -62,8 +62,7 @@ int test_step_param_radio::step_execute()
         cci_webconfig = step->m_ui_mgr->get_webconfig_data();
         root_json = cJSON_Parse(json_data);
         step->frame_request.msg_type |= 1 << wlan_emu_msg_type_webconfig;
-        step->frame_request.subdoc_type = find_subdoc_type(&cci_webconfig->webconfig,
-            root_json);
+        step->frame_request.subdoc_type = find_subdoc_type(&cci_webconfig->webconfig, root_json);
 
         // wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: subdoc_type : %d\n", __func__, __LINE__,
         // step->subdoc_type);
@@ -80,7 +79,7 @@ int test_step_param_radio::step_execute()
         free(json_data);
         cJSON_Delete(root_json);
 
-        //moved to wlan_emu_tests_state_cmd_results when subdoc received by step_frame_filter
+        // moved to wlan_emu_tests_state_cmd_results when subdoc received by step_frame_filter
         step->test_state = wlan_emu_tests_state_cmd_continue;
 
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step->test_state : %d\n", __func__, __LINE__,

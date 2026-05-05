@@ -104,12 +104,11 @@ static bus_error_t bus_get_trace_context(bus_handle_t *handle, char *traceParent
     return bus_error_success;
 }
 
-static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name,
-    uint32_t row_index, char const *alias)
+static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name, uint32_t row_index,
+    char const *alias)
 {
     return bus_error_success;
 }
-
 
 static bus_error_t bus_unreg_table_row(bus_handle_t *handle, char const *name)
 {

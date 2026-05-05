@@ -168,7 +168,7 @@ int wlan_emu_t::run()
 
             if (m_ui_mgr.upload_results() != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: upload_results failed for abort\n",
-                        __func__, __LINE__);
+                    __func__, __LINE__);
             }
 
             abort_test();
@@ -389,7 +389,8 @@ void wlan_emu_t::abort_test()
 
 #define STR_LEN 128
 
-bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data, bus_user_data_t *user_data)
+bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data,
+    bus_user_data_t *user_data)
 {
     (void)user_data;
     char parameter[STR_LEN] = { 0 };
@@ -473,7 +474,8 @@ bus_error_t wlan_emu_t::set_cci_handler(char *event_name, raw_data_t *data, bus_
     return bus_error_success;
 }
 
-bus_error_t wlan_emu_t::get_cci_handler(char *event_name, raw_data_t *data, bus_user_data_t *user_data)
+bus_error_t wlan_emu_t::get_cci_handler(char *event_name, raw_data_t *data,
+    bus_user_data_t *user_data)
 {
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: bus property=%s\n", __FUNCTION__, event_name);
     (void)user_data;

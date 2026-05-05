@@ -42,8 +42,8 @@ int test_step_param_iperf_client::step_execute()
     }
 
     if (step->u.iperf_client->input_operation == iperf_operation_type_stop) {
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__,
-            __LINE__, step->u.iperf_client->u.stop_conf.stop_step_number);
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
+            step->u.iperf_client->u.stop_conf.stop_step_number);
 
         if (encode_external_iperf_client_stop_subdoc(agent_subdoc) == RETURN_ERR) {
             wlan_emu_print(wlan_emu_log_level_err,
@@ -55,8 +55,7 @@ int test_step_param_iperf_client::step_execute()
     } else if (step->u.iperf_client->input_operation == iperf_operation_type_start) {
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: interface_step_number : %d ServerLogResultName : %s cmd_options : %s\n",
-            __func__, __LINE__,
-            step->u.iperf_client->u.start_conf.interface_step_number,
+            __func__, __LINE__, step->u.iperf_client->u.start_conf.interface_step_number,
             step->u.iperf_client->u.start_conf.input_filename,
             step->u.iperf_client->u.start_conf.cmd_options);
 
@@ -105,8 +104,8 @@ int test_step_param_iperf_client::push_ext_iperf_client_result_files(
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: result file is : %s\n", __func__, __LINE__,
         step->u.iperf_client->u.start_conf.result_file);
     if (step->u.iperf_client->input_operation != iperf_operation_type_stop) {
-        if (step->m_ui_mgr->step_upload_files(
-                step->u.iperf_client->u.start_conf.result_file) != RETURN_OK) {
+        if (step->m_ui_mgr->step_upload_files(step->u.iperf_client->u.start_conf.result_file) !=
+            RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed\n", __func__,
                 __LINE__);
             step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
@@ -213,7 +212,6 @@ int test_step_param_iperf_client::step_timeout()
         return RETURN_OK;
     }
 
-
     if (step->test_state == wlan_emu_tests_state_cmd_results) {
 
         if (step->u.iperf_client->input_operation == iperf_operation_type_stop) {
@@ -248,7 +246,6 @@ int test_step_param_iperf_client::step_timeout()
     } else {
         step->test_state = wlan_emu_tests_state_cmd_continue;
     }
-
 
     return RETURN_OK;
 }
@@ -397,8 +394,8 @@ int test_step_param_iperf_client::encode_external_iperf_client_start_subdoc(
             client_interface_step->u.sta_test->key);
 
         if (client_interface_step->u.sta_test->ip_address.empty() ||
-            client_interface_step->u.sta_test->ip_address.find_first_not_of(' ') == std
-::string::npos) {
+            client_interface_step->u.sta_test->ip_address.find_first_not_of(' ') ==
+                std ::string::npos) {
             step->m_ui_mgr->cci_error_code = EEXTAGENT;
             return RETURN_ERR;
         }
@@ -434,14 +431,15 @@ int test_step_param_iperf_client::encode_external_iperf_client_start_subdoc(
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
-/*
-        wlan_emu_print(wlan_emu_log_level_info,
-            "%s:%d: client interface step  : %d sta_name : %s ip_address : %s sta key : %s\n",
-            __func__, __LINE__, step->u.iperf_client->u.start_conf.interface_step_number,
-            client_interface_step->u.eth_lan_client->eth_dev_info.interface_name.c_str(),
-            client_interface_step->u.eth_lan_client->eth_dev_info.ip_address.c_str(),
-            client_interface_step->u.eth_lan_client->key);
-*/
+        /*
+                wlan_emu_print(wlan_emu_log_level_info,
+                    "%s:%d: client interface step  : %d sta_name : %s ip_address : %s sta key :
+           %s\n",
+                    __func__, __LINE__, step->u.iperf_client->u.start_conf.interface_step_number,
+                    client_interface_step->u.eth_lan_client->eth_dev_info.interface_name.c_str(),
+                    client_interface_step->u.eth_lan_client->eth_dev_info.ip_address.c_str(),
+                    client_interface_step->u.eth_lan_client->key);
+        */
 
         client_cmd = std::string(step->u.iperf_client->u.start_conf.cmd_options) +
             std::string(" -B ") + client_interface_step->u.eth_lan_client->eth_dev_info.ip_address +

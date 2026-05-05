@@ -43,8 +43,7 @@ int test_step_param_get_file::step_execute()
         return RETURN_ERR;
     }
 
-    if (copy_file(step->u.get_file->source_file, 0, step->u.get_file->dest_filename) !=
-        RETURN_OK) {
+    if (copy_file(step->u.get_file->source_file, 0, step->u.get_file->dest_filename) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: File copy failed from src %s to dest %s step : %d\n", __func__, __LINE__,
             step->u.get_file->source_file, step->u.get_file->dest_filename, step->step_number);
