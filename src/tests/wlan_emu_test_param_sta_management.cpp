@@ -947,8 +947,21 @@ int test_step_param_sta_management::step_timeout()
                             step->m_sim_sta_mgr->send_heart_beat(client_info->key,
                                 heart_beat_data);
                             delete (heart_beat_data);
-                            if (connect_profile->counter == connect_profile->duration) {
+                            if (connect_profile->counter ==
+                                connect_profile->duration *
+                                    queue_count(step->u.sta_test->connected_client_info_q)) {
                                 connect_profile->test_state = test_state_complete;
+                                for (uint tmp_client_id = 0; tmp_client_id <
+                                    queue_count(step->u.sta_test->connected_client_info_q);
+                                    tmp_client_id++) {
+                                    connected_client_info_t *tmp_client_info =
+                                        (connected_client_info_t *)queue_peek(
+                                            step->u.sta_test->connected_client_info_q, tmp_client_id);
+                                    if (tmp_client_info == NULL) {
+                                        break;
+                                    }
+                                    step->m_sim_sta_mgr->remove_sta(step->u.sta_test, tmp_client_info);
+                                }
                                 step->u.sta_test->u.sta_management.current_profile_count--;
                                 if (step->u.sta_test->u.sta_management.current_profile_count ==
                                     -1) {
