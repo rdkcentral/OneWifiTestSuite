@@ -823,7 +823,6 @@ int test_step_param_sta_management::step_timeout_ext_sta()
 int test_step_param_sta_management::step_timeout()
 {
     test_step_params_t *step = this;
-    heart_beat_data_t *heart_beat_data;
     int ret = 0;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test Step Num : %d timeout_count : %d\n",
@@ -891,7 +890,8 @@ int test_step_param_sta_management::step_timeout()
                     break;
                 }
                 if (client_info->is_station_associated == true &&
-                    step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info) == RETURN_ERR) {
+                    step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info) ==
+                        RETURN_ERR) {
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: disconnect_sta failed for step %d\n", __func__, __LINE__,
                         step->step_number);
@@ -966,6 +966,14 @@ int test_step_param_sta_management::step_timeout()
             }
         }
 
+        for (uint client_id = 0; client_id < queue_count(step->u.sta_test->connected_client_info_q);
+            client_id++) {
+            connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
+                step->u.sta_test->connected_client_info_q, client_id);
+
+            if (client_info == NULL) {
+                continue;
+            }
             if (step->fork == true) {
                 if (step->u.sta_test->wait_connection == true) {
                     // Dont go to next step until station is connected.
