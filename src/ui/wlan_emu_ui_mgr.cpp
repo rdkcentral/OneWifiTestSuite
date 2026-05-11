@@ -29,6 +29,7 @@
 #include <experimental/filesystem>
 #include <fcntl.h>
 #include <iostream>
+#include <new>
 #include "wlan_emu_bus.h"
 #include <stdio.h>
 #include <string.h>
@@ -4852,7 +4853,7 @@ void wlan_emu_ui_mgr_t::cci_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus_data,
+void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, bus_data_prop_t *bus_data,
     void *userData)
 {
     (void)userData;
@@ -4864,15 +4865,22 @@ void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus
     wlan_emu_print(wlan_emu_log_level_dbg, "%s: %d bus event callback Event is %s \n", __func__,
         __LINE__, event_name);
 
-    ptr = static_cast<wlan_emu_ui_mgr_t *>(userData);
-    pTmp = new char[bus_data->raw_data_len + 1]();
-    if (pTmp == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: malloc failed\n", __func__, __LINE__);
+    if (bus_data == NULL || bus_data->value.data_type != bus_data_type_string ||
+        bus_data->value.raw_data.bytes == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d invalid bus event payload for %s\n",
+            __func__, __LINE__, event_name);
         return;
     }
 
-    len = bus_data->raw_data_len;
-    copy_string(pTmp, (char *)bus_data->raw_data.bytes, bus_data->raw_data_len);
+    ptr = static_cast<wlan_emu_ui_mgr_t *>(userData);
+    pTmp = new (std::nothrow) char[bus_data->value.raw_data_len + 1]();
+    if (pTmp == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: memory allocation failed\n", __func__, __LINE__);
+        return;
+    }
+
+    len = bus_data->value.raw_data_len;
+    copy_string(pTmp, (char *)bus_data->value.raw_data.bytes, bus_data->value.raw_data_len);
 
     // setup the raw data
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
@@ -4880,6 +4888,7 @@ void wlan_emu_ui_mgr_t::set_webconfig_cci_data(char *event_name, raw_data_t *bus
     if (data == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s %d Failed to allocate memory\n", __func__,
             __LINE__);
+        delete[] pTmp;
         return;
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
