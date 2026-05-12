@@ -349,16 +349,16 @@ void wlan_emu_msg_hdlr_t::msg_hdlr_thread_func()
             msg->get_ops_string_by_msg_type());
         if ((msg->get_msg_type() == wlan_emu_msg_type_emu80211) &&
             (msg->get_emu80211_ops_type() == wlan_emu_emu80211_ops_type_close)) {
-            delete msg;
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: received type close command: %s\n",
                 __func__, __LINE__, msg->get_ops_string_by_msg_type());
+            delete msg;
             m_threadExit = true;
             break;
         }
         queue_msg(msg);
         delete msg;
     }
-
+    system("rm -rf /tmp/cci_res/*");
     close(m_fd);
     m_fd = -1;
 

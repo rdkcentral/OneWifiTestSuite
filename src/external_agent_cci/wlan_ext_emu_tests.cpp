@@ -318,6 +318,7 @@ void *wlan_ext_emu_tests_t::test_function(void *arg)
                     cJSON_free(agent_status);
                     pthread_mutex_unlock(&test->m_lock);
                     pthread_exit(NULL);
+                    system("rm -rf /tmp/cci_res/*");
                     return NULL;
                 }
                 // if we get results here, then change the state to results.
