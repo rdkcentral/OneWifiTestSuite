@@ -634,6 +634,7 @@ int wlan_emu_t::init()
     if (m_ext_sta_mgr.init() == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d:  external_station manager init failed\n",
             __func__, __LINE__);
+        free(if_map);
         return RETURN_ERR;
     }
     FILE *fp = fopen(CCI_TEST_REBOOT_STEP_CONFIG_JSON, "r");

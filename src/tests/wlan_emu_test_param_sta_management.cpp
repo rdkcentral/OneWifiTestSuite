@@ -198,7 +198,8 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     free(json_data);
 
     param = cJSON_GetObjectItem(sta_root_json, "ConnectionType");
-    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
+        (param->valuestring[0] != '\0')) {
         if (strcmp(param->valuestring, "Internal") == 0) {
             step_config->u.sta_test->connection_type = client_connection_type_internal;
         } else if (strcmp(param->valuestring, "External") == 0) {

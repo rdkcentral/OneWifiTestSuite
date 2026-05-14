@@ -209,6 +209,7 @@ void *test_step_param_gateway_performance::performance_log(void *arg)
             step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
             return NULL;
         }
+        free(res_file);
         iteration++;
         // Skip wait for last iteration
         if (iteration < step->u.gw_performance->iteration) {
