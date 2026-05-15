@@ -154,6 +154,18 @@ int test_step_param_iperf_server::step_timeout()
     wlan_emu_ext_agent_interface_t *ext_agent;
     ext_agent_status_resp_t status = {};
 
+    if (step->u.iperf_server->u.start_conf.connection_type == client_connection_type_real) {
+        step->timeout_count++;
+        if (step->timeout_count == step->execution_time) {
+            step->test_state = wlan_emu_tests_state_cmd_results;
+	    return RETURN_OK;
+	} else if (step->execution_time > step->timeout_count) {
+            step->test_state = wlan_emu_tests_state_cmd_continue;
+            return RETURN_OK;
+	}
+        return RETURN_ERR;
+    }
+
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: sta test key: %s\n", __func__, __LINE__,
         step->u.iperf_server->sta_key.c_str());
 
