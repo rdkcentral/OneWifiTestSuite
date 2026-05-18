@@ -1032,6 +1032,7 @@ int execute_process_once(std::string dhcp_cmd, pid_t *pid, bool wait_pid)
     int status;
     std::string temp_cmd = dhcp_cmd.c_str();
 
+    wlan_emu_print(wlan_emu_log_level_err, "%s: Command is %s\n", __func__, dhcp_cmd.c_str());
     std::istringstream iss(dhcp_cmd);
     std::vector<std::string> tokens;
     std::string token;

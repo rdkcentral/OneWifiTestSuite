@@ -65,7 +65,7 @@ int test_step_param_iperf_server::step_execute()
                 }
                 waitpid(server_start_step->u.iperf_server->u.start_conf.iperf_server_pid, NULL, 0);
             } else {
-                iperf_server_cmd = std::string("killall ") + std::string("/usr/bin/iperf3");
+                iperf_server_cmd = std::string("/usr/bin/killall ") + std::string("/usr/bin/iperf3");
                 result = execute_process_once(iperf_server_cmd,
                     &step->u.iperf_server->u.start_conf.iperf_server_pid, false);
                 if (result != RETURN_OK) {
