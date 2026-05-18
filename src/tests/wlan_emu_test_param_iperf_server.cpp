@@ -75,6 +75,8 @@ int test_step_param_iperf_server::step_execute()
                     return RETURN_ERR;
                 }
             }
+            step->test_state = wlan_emu_tests_state_cmd_results;
+            return RETURN_OK;
         } else {
             if (encode_external_iperf_server_stop_subdoc(agent_subdoc) == RETURN_ERR) {
                 wlan_emu_print(wlan_emu_log_level_err,
@@ -186,6 +188,10 @@ int test_step_param_iperf_server::step_timeout()
             return RETURN_OK;
 	}
         return RETURN_ERR;
+    }
+
+    if (step->u.iperf_server->u.stop_conf.connection_type == client_connection_type_real) {
+        return RETURN_OK;
     }
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: sta test key: %s\n", __func__, __LINE__,
