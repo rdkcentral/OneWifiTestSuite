@@ -24,6 +24,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #define IPERF_STOP_STEP_NUMBER 7
 static int external_sta_grace_timeout = 3;
@@ -43,15 +45,35 @@ int test_step_param_iperf_server::step_execute()
             step->u.iperf_server->u.stop_conf.stop_step_number);
 
         if (step->u.iperf_server->u.stop_conf.connection_type == client_connection_type_real) {
-            // TODO kill the iperf server started via pid
-            iperf_server_cmd = std::string("killall ") + std::string("iperf3");
-            result = execute_process_once(iperf_server_cmd,
-                &step->u.iperf_server->u.start_conf.iperf_server_pid, false);
-            if (result != RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to stop the server\n",
-                    __func__, __LINE__);
-                step->test_state = wlan_emu_tests_state_cmd_abort;
-                return RETURN_ERR;
+            // kill the iperf server started via pid
+            wlan_emu_test_case_config *test_case_config =
+                (wlan_emu_test_case_config *)step->param_get_test_case_config();
+            test_step_params_t *server_start_step = (test_step_params_t *)step->m_ui_mgr->get_step_from_step_number(
+                test_case_config, step->u.iperf_server->u.stop_conf.stop_step_number);
+
+            if (server_start_step != NULL && server_start_step->u.iperf_server->u.start_conf.iperf_server_pid > 0) {
+                if (kill(server_start_step->u.iperf_server->u.start_conf.iperf_server_pid, SIGTERM) == 0) {
+                    wlan_emu_print(wlan_emu_log_level_info,
+                        "%s:%d: step number : %d iperf process pid : %d terminate successful\n", __func__,
+                        __LINE__, step->step_number,
+                        server_start_step->u.iperf_server->u.start_conf.iperf_server_pid);
+                } else {
+                    wlan_emu_print(wlan_emu_log_level_err,
+                        "%s:%d: step number : %d iperf process pid : %d terminate not successful\n",
+                        __func__, __LINE__, step->step_number,
+                        server_start_step->u.iperf_server->u.start_conf.iperf_server_pid);
+                }
+                waitpid(server_start_step->u.iperf_server->u.start_conf.iperf_server_pid, NULL, 0);
+            } else {
+                iperf_server_cmd = std::string("killall ") + std::string("/usr/bin/iperf3");
+                result = execute_process_once(iperf_server_cmd,
+                    &step->u.iperf_server->u.start_conf.iperf_server_pid, false);
+                if (result != RETURN_OK) {
+                    wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to stop the server\n",
+                        __func__, __LINE__);
+                    step->test_state = wlan_emu_tests_state_cmd_abort;
+                    return RETURN_ERR;
+                }
             }
         } else {
             if (encode_external_iperf_server_stop_subdoc(agent_subdoc) == RETURN_ERR) {
