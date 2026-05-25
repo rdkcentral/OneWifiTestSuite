@@ -903,7 +903,8 @@ int test_step_param_sta_management::step_timeout()
             }
         }
 
-        if ((queue_count(step->u.sta_test->u.sta_management.connectivity_q) > 0) &&
+        if (step->u.sta_test->u.sta_management.connectivity_q != NULL &&
+            (queue_count(step->u.sta_test->u.sta_management.connectivity_q) > 0) &&
             (step->u.sta_test->u.sta_management.current_profile_count >= 0)) {
             station_connectivity_profile_t *connect_profile = (station_connectivity_profile_t *)
                 queue_peek(step->u.sta_test->u.sta_management.connectivity_q,
