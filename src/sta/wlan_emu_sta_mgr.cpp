@@ -282,7 +282,7 @@ void wlan_emu_sim_sta_mgr_t::remove_sta(sta_test_t *sta_test, connected_client_i
         wifi_hal_disconnect_sta(sta_test->sta_vap_config->vap_index, sta_info->mac);
     }
 
-    sta_test->is_disconnection_sent = true;
+    client_info->is_disconnection_sent = true;
     remove_from_bridge(sta_info->interface_name, sta_test->sta_vap_config->bridge_name);
     ovs_fdb_flush(sta_test->sta_vap_config->bridge_name);
 
@@ -556,7 +556,7 @@ int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connecte
         return RETURN_ERR;
     }
 
-    sta_test_config->is_disconnection_sent = true;
+    client_info->is_disconnection_sent = true;
     remove_from_bridge(sta_info->interface_name, sta_test_config->sta_vap_config->bridge_name);
     ovs_fdb_flush(sta_test_config->sta_vap_config->bridge_name);
 
@@ -840,7 +840,7 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
             delete (sta);
             return RETURN_ERR;
         }
-
+        memset(connected_client_info, 0, sizeof(connected_client_info_t));
         memcpy(connected_client_info->sta_mac, sta_test_config->sta_vap_config->u.sta_info.mac,
             sizeof(mac_addr_t));
         memcpy(connected_client_info->key, key, sizeof(sta_key_t));
