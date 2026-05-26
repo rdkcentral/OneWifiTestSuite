@@ -264,8 +264,9 @@ int test_step_param_sta_management::decode_step_sta_management_config()
 
     param = cJSON_GetObjectItem(sta_root_json, "TestDuration");
     if ((param == NULL) || (cJSON_IsNumber(param) == false)) {
-        step_config->u.sta_test->u.sta_management.test_duration = 0;
-        step_config->u.sta_test->u.sta_management.connectivity_q = NULL;
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid or missing TestDuration\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
     } else {
         step_config->u.sta_test->u.sta_management.test_duration = param->valuedouble;
         step_config->execution_time = step_config->u.sta_test->u.sta_management.test_duration;
