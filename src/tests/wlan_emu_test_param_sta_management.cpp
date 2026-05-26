@@ -884,8 +884,6 @@ int test_step_param_sta_management::step_timeout()
         if (step->u.sta_test->is_reconnect_enabled && step->timeout_count != 0 &&
             step->u.sta_test->reconnect_interval > 0 &&
             (step->timeout_count % step->u.sta_test->reconnect_interval) == 0) {
-                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Sending disconnect for connected stations for step %d\n",
-                    __func__, __LINE__, step->step_number);
             for (uint client_id = 0;
                 client_id < queue_count(step->u.sta_test->connected_client_info_q); client_id++) {
                 connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
@@ -906,20 +904,9 @@ int test_step_param_sta_management::step_timeout()
             }
         }
 
-        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: before handling connectivity profile : %d\n",
-            __func__, __LINE__, step->u.sta_test->u.sta_management.current_profile_count);
-
-        if (step->u.sta_test->u.sta_management.connectivity_q == NULL) {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: connectivity_q is NULL\n", __func__,
-                __LINE__);
-        }
-
         if (step->u.sta_test->u.sta_management.connectivity_q != NULL &&
             (queue_count(step->u.sta_test->u.sta_management.connectivity_q) > 0) &&
             (step->u.sta_test->u.sta_management.current_profile_count >= 0)) {
-
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: handling connectivity profile : %d\n",
-                __func__, __LINE__, step->u.sta_test->u.sta_management.current_profile_count);
             station_connectivity_profile_t *connect_profile = (station_connectivity_profile_t *)
                 queue_peek(step->u.sta_test->u.sta_management.connectivity_q,
                     step->u.sta_test->u.sta_management.current_profile_count);
