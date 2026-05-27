@@ -1127,13 +1127,17 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     msg->unload_frm80211_msg(step);
                 }
 
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: value of disconnection_sent : %d for the client mac %s\n", __func__,
+                    __LINE__, client_info->is_disconnection_sent, macaddr);
                 if ((wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type()) &&
                     client_info->is_disconnection_sent == false) {
                     wlan_emu_print(wlan_emu_log_level_dbg,
                         "%s:%d: Deauth frame received for mac %s, client_macaddr %s for step %d\n",
                         __func__, __LINE__, macaddr, client_macaddr, step->step_number);
                     step->u.sta_test->is_station_associated = false;
-                    step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info);
+                    //step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info);
+                    client_info->is_disconnection_sent = true;
                     return RETURN_UNHANDLED;
                 }
 
