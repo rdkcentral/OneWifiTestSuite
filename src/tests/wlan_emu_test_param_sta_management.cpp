@@ -827,6 +827,7 @@ int test_step_param_sta_management::step_timeout()
 {
     test_step_params_t *step = this;
     int ret = 0;
+    mac_addr_str_t connected_client_mac_str;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test Step Num : %d timeout_count : %d\n",
         __func__, __LINE__, step->step_number, step->timeout_count);
@@ -864,6 +865,11 @@ int test_step_param_sta_management::step_timeout()
                 if (client_info == NULL) {
                     break;
                 }
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: client_mac : %s is_disconnection_sent : %s reconnect_timer : %d\n",
+                    __func__, __LINE__, to_mac_str(client_info->sta_mac, connected_client_mac_str),
+                    client_info->is_disconnection_sent ? "true" : "false",
+                    client_info->reconnect_timer);
                 if (client_info->is_disconnection_sent == true) {
                     client_info->reconnect_timer++;
                     if (client_info->reconnect_timer >= RECONNECT_TIMEOUT) {
@@ -899,6 +905,7 @@ int test_step_param_sta_management::step_timeout()
                     wlan_emu_print(wlan_emu_log_level_err,
                         "%s:%d: disconnect_sta failed for step %d\n", __func__, __LINE__,
                         step->step_number);
+                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                 } else if (client_info->is_station_associated == false) {
                     step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                     step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test, client_info);
@@ -1136,21 +1143,12 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                         "%s:%d: Deauth frame received for mac %s, client_macaddr %s for step %d\n",
                         __func__, __LINE__, macaddr, client_macaddr, step->step_number);
                     step->u.sta_test->is_station_associated = false;
-                    //step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info);
-                    client_info->is_disconnection_sent = true;
+                    step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info);
+                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                     return RETURN_UNHANDLED;
                 }
 
-                if (step->u.sta_test->is_reconnect_enabled == true &&
-                    (wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type())) {
-                    wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: STA trying to reconnect within expected time for step %d\n",
-                        __func__, __LINE__, step->step_number);
-                    client_info->is_station_associated = false;
-                    client_info->is_disconnection_sent = false;
-                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
-                    step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test, client_info);
-                } else if (step->u.sta_test->is_reconnect_enabled == false &&
+                if (step->u.sta_test->is_reconnect_enabled == false &&
                     client_info->is_station_associated == true) {
                     client_info->is_station_associated = false;
                     step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
