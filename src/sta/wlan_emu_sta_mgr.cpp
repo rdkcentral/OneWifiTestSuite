@@ -546,7 +546,7 @@ int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connecte
         return RETURN_ERR;
     }
 
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: Connected client with MAC : %s with key : %s\n",
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: disconnected client with MAC : %s with key : %s\n",
         __func__, __LINE__, to_mac_str(client_info->sta_mac, connected_client_mac_str),
         client_info->key);
 
@@ -569,6 +569,7 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
     wifi_bss_info_t bss;
     sta_info_t *sta_info = NULL;
     mac_update_t mac_update;
+    mac_addr_str_t connected_client_mac_str;
 
     if (sta_test_config == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_test is NULL\n", __func__, __LINE__);
@@ -595,6 +596,13 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
 
     add_to_bridge(sta_info->interface_name, sta_test_config->sta_vap_config->bridge_name);
     set_bridge_mac(sta_test_config->sta_vap_config->bridge_name);
+
+    wlan_emu_print(wlan_emu_log_level_info,
+        "%s:%d: Reconnecting the client with MAC : %s with key : %s\n", __func__, __LINE__,
+        to_mac_str(client_info->sta_mac, connected_client_mac_str), client_info->key);
+    memset(connected_client_mac_str, 0, sizeof(connected_client_mac_str));
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: sta_info->mac is %s\n", __func__, __LINE__,
+        to_mac_str(sta_info->mac, connected_client_mac_str));
 
     memset(&mac_update, 0, sizeof(mac_update_t));
     memcpy(mac_update.old_mac, sta_info->mac, sizeof(mac_address_t));
