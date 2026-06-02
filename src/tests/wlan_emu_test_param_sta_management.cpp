@@ -874,6 +874,7 @@ int test_step_param_sta_management::step_timeout()
                     client_info->reconnect_timer++;
                     if (client_info->reconnect_timer >= RECONNECT_TIMEOUT) {
                         step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info);
+                        WaitForDuration(2000);
                         step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                         if (step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test, client_info) ==
                             RETURN_ERR) {
