@@ -883,6 +883,7 @@ int test_step_param_sta_management::step_timeout()
                                 step->step_number);
                             ret = RETURN_ERR;
                         }
+                        WaitForDuration(2000);
                         if (ret != RETURN_ERR) {
                             step->u.sta_test->is_decoded = false;
                             client_info->reconnect_timer = 0;
@@ -902,16 +903,9 @@ int test_step_param_sta_management::step_timeout()
                 if (client_info == NULL) {
                     break;
                 }
-                if (client_info->is_station_associated == true &&
-                    step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info) ==
-                        RETURN_ERR) {
-                    wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: disconnect_sta failed for step %d\n", __func__, __LINE__,
-                        step->step_number);
-                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
-                } else if (client_info->is_station_associated == false) {
-                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
-                    step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test, client_info);
+                if (client_info->is_station_associated == true) {
+                    client_info->is_disconnection_sent = true;
+                    client_info->is_station_associated = false;
                 }
             }
         }
