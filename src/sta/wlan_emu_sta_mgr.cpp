@@ -515,7 +515,7 @@ int wlan_emu_sim_sta_mgr_t::clear_interface_data(sta_test_t *sta_test_config)
     return RETURN_OK;
 }
 
-int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connected_client_info_t *client_info)
+/*int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connected_client_info_t *client_info)
 {
     wlan_emu_sta_t *sta;
     sta_info_t *sta_info = NULL;
@@ -561,7 +561,7 @@ int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connecte
     ovs_fdb_flush(sta_test_config->sta_vap_config->bridge_name);
 
     return RETURN_OK;
-}
+}*/
 
 int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected_client_info_t *client_info)
 {
@@ -570,6 +570,7 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
     sta_info_t *sta_info = NULL;
     mac_update_t mac_update;
     mac_addr_str_t connected_client_mac_str;
+    wifi_vap_info_map_t *map = NULL;
 
     if (sta_test_config == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_test is NULL\n", __func__, __LINE__);
@@ -612,6 +613,25 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
         sizeof(mac_update.bridge_name));
 
     mac_update.op_modes = sta_test_config->u.sta_management.op_modes;
+
+    map = (wifi_vap_info_map_t *)malloc(sizeof(wifi_vap_info_map_t));
+    if (map == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to allocate memory\n", __func__,
+            __LINE__);
+        delete (sta);
+        return RETURN_ERR;
+    }
+    map->num_vaps = 1;
+    memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
+
+    if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: wifi_hal_createVAP failed for radio index : %d\n", __func__, __LINE__,
+            sta_info->rdk_radio_index);
+        delete (sta);
+        free(map);
+        return RETURN_ERR;
+    }
 
     sta->send_mac_update(&mac_update);
 
