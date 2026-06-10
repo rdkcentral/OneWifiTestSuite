@@ -618,17 +618,16 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
     if (map == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to allocate memory\n", __func__,
             __LINE__);
-        delete (sta);
         return RETURN_ERR;
     }
     map->num_vaps = 1;
+    memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, client_info->sta_mac, sizeof(mac_address_t));
     memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
 
     if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: wifi_hal_createVAP failed for radio index : %d\n", __func__, __LINE__,
             sta_info->rdk_radio_index);
-        delete (sta);
         free(map);
         return RETURN_ERR;
     }
@@ -639,7 +638,6 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
         if (configure_proto_types_on_sta(sta_test_config) == RETURN_ERR) {
             wlan_emu_print(wlan_emu_log_level_err,
                 "%s:%d: Unable to configure proto types on sta\n", __func__, __LINE__);
-            delete (sta);
             return RETURN_ERR;
         }
     }
@@ -660,7 +658,6 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
     if (wifi_hal_connect(sta_test_config->sta_vap_config->vap_index, &bss) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: hal connect failed for vap_index : %d\n",
             __func__, __LINE__, sta_test_config->sta_vap_config->vap_index);
-        delete (sta);
         return RETURN_ERR;
     }
 
