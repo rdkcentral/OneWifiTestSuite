@@ -274,17 +274,17 @@ void wlan_emu_sim_sta_mgr_t::remove_sta(sta_test_t *sta_test, connected_client_i
     if (client_info->is_station_associated == true) {
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: Disconnect sta vap %d Freeing the device : %d \n", __func__, __LINE__,
-            sta_test->sta_vap_config->vap_index, sta->get_dev_id());
+            sta_info->index, sta->get_dev_id());
         wlan_emu_print(wlan_emu_log_level_info,
             "%s:%d: disconnecting the client with MAC : %s with key : %s\n", __func__, __LINE__,
             to_mac_str(client_info->sta_mac, connected_client_mac_str),
             client_info->key);
-        wifi_hal_disconnect_sta(sta_test->sta_vap_config->vap_index, sta_info->mac);
+        wifi_hal_disconnect_sta(sta_info->index, sta_info->mac);
     }
 
     client_info->is_disconnection_sent = true;
-    remove_from_bridge(sta_info->interface_name, sta_test->sta_vap_config->bridge_name);
-    ovs_fdb_flush(sta_test->sta_vap_config->bridge_name);
+    remove_from_bridge(sta_info->interface_name, sta_info->bridge_name);
+    ovs_fdb_flush(sta_info->bridge_name);
 
     set_dev_free(sta->get_dev_id());
     hash_map_remove(m_sta_map, client_info->key);
@@ -550,9 +550,9 @@ int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connecte
         __func__, __LINE__, to_mac_str(client_info->sta_mac, connected_client_mac_str),
         client_info->key);
 
-    if (wifi_hal_disconnect_sta(sta_test_config->sta_vap_config->vap_index, sta_info->mac) != RETURN_OK) {
+    if (wifi_hal_disconnect_sta(sta_info->index, sta_info->mac) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: hal disconnect failed for vap_index : %d\n",
-            __func__, __LINE__, sta_test_config->sta_vap_config->vap_index);
+            __func__, __LINE__, sta_info->index);
         return RETURN_ERR;
     }
 
@@ -622,15 +622,18 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
     }
     map->num_vaps = 1;
     memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, client_info->sta_mac, sizeof(mac_address_t));
+    sta_test_config->sta_vap_config->vap_index = sta_info->index;
+    sta_test_config->sta_vap_config->radio_index = sta_info->rdk_radio_index;
+    sta_test_config->phy_index = sta_info->phy_index;
     memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
 
-    if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) != RETURN_OK) {
+    /*if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
             "%s:%d: wifi_hal_createVAP failed for radio index : %d\n", __func__, __LINE__,
             sta_info->rdk_radio_index);
         free(map);
         return RETURN_ERR;
-    }
+    }*/
 
     sta->send_mac_update(&mac_update);
 
@@ -662,7 +665,7 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
     }
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: hal connect succesful for vap_index : %d\n",
-        __func__, __LINE__, sta_test_config->sta_vap_config->vap_index);
+        __func__, __LINE__, sta_info->index);
 
     return 0;
 }
