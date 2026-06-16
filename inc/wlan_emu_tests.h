@@ -100,7 +100,7 @@ public:
 
     inline void add_real_sta_mgr(wlan_emu_real_sta_mgr_t *mgr)
     {
-	m_real_sta_mgr = mgr;
+        m_real_sta_mgr = mgr;
     }
 
     inline void add_test_config(wlan_emu_test_case_config *test_config)
@@ -156,7 +156,7 @@ public:
 
     inline wlan_emu_real_sta_mgr_t *get_real_sta_mgr()
     {
-	return m_real_sta_mgr;
+        return m_real_sta_mgr;
     }
 
     inline wlan_emu_bus_t *get_bus_mgr()
@@ -176,7 +176,8 @@ public:
     ~wlan_emu_tests_t();
     wlan_emu_tests_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *m_ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *m_real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr);
+        wlan_emu_real_sta_mgr_t *m_real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr);
     void clear_pending_step(unsigned int step_seq_num);
     int get_next_pending_step(test_step_params_t **next_step);
 };
@@ -185,7 +186,8 @@ class wlan_emu_tests_private_vap_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_private_vap_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_ns_private) {
@@ -205,7 +207,8 @@ class wlan_emu_tests_radio_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_radio_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_radio) {
@@ -225,9 +228,9 @@ class wlan_emu_tests_xfinity_open_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_xfinity_open_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
-        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr,
-			config, bus_mgr)
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_ns_public_xfinity_open) {
             snprintf(config->test_case_name, sizeof(config->test_case_name), "%s",
@@ -247,7 +250,8 @@ class wlan_emu_tests_xfinity_secure_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_xfinity_secure_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_ns_public_xfinity_secure) {
@@ -268,7 +272,8 @@ class wlan_emu_tests_xhs_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_xhs_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_ns_managed_xhs) {
@@ -288,7 +293,8 @@ class wlan_emu_tests_lnf_enterprise_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_lnf_enterprise_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_ns_managed_lnf_enterprise) {
@@ -309,7 +315,8 @@ class wlan_emu_tests_lnf_secure_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_lnf_secure_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_ns_managed_lnf_secure) {
@@ -330,7 +337,8 @@ class wlan_emu_tests_mesh_backhaul_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_mesh_backhaul_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_ns_managed_mesh_backhaul) {
@@ -351,7 +359,8 @@ class wlan_emu_tests_mesh_client_t : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_mesh_client_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_ns_managed_mesh_client) {
@@ -372,7 +381,8 @@ class wlan_emu_tests_cli_probe_response : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_cli_probe_response(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_cc_probe_response) {
@@ -393,7 +403,8 @@ class wlan_emu_tests_cli_auth : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_cli_auth(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_1_subtype_cc_authentication) {
@@ -414,7 +425,8 @@ class wlan_emu_tests_connection_admission : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_connection_admission(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_connection_admission) {
@@ -435,7 +447,8 @@ class wlan_emu_tests_access_control : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_access_control(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_access_control) {
@@ -456,7 +469,8 @@ class wlan_emu_tests_stats_manager : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_stats_manager(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_stats_manager) {
@@ -477,7 +491,8 @@ class wlan_emu_tests_steering_manager : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_steering_manager(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_steering_manager) {
@@ -498,7 +513,8 @@ class wlan_emu_tests_optimization : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_optimization(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_optimization) {
@@ -519,7 +535,8 @@ class wlan_emu_tests_grey_listing : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_grey_listing(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_grey_listing) {
@@ -540,7 +557,8 @@ class wlan_emu_tests_active_passive_msrmt : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_active_passive_msrmt(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_active_passive_msrmnts) {
@@ -561,7 +579,8 @@ class wlan_emu_tests_whix : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_whix(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_whix) {
@@ -581,7 +600,8 @@ class wlan_emu_tests_blaster : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_blaster(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_blaster) {
@@ -601,7 +621,8 @@ class wlan_emu_tests_motion : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_motion(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_motion) {
@@ -621,7 +642,8 @@ class wlan_emu_tests_finger_printing : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_finger_printing(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_finger_printing) {
@@ -642,7 +664,8 @@ class wlan_emu_tests_tr_181 : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_tr_181(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_tr_181) {
@@ -662,7 +685,8 @@ class wlan_emu_tests_webconfig : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_webconfig(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_webconfig) {
@@ -682,7 +706,8 @@ class wlan_emu_tests_webpa : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_webpa(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_2_subtype_af_webpa) {
@@ -702,7 +727,8 @@ class wlan_emu_tests_stats_get : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_stats_get(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_3_subtype_pm_stats_get) {
@@ -722,7 +748,8 @@ class wlan_emu_tests_stats_set : public wlan_emu_tests_t {
 public:
     wlan_emu_tests_stats_set(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr) :
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config,
+        wlan_emu_bus_t *bus_mgr) :
         wlan_emu_tests_t(msg_mgr, ui_mgr, sta_mgr, ext_sta_mgr, real_sta_mgr, config, bus_mgr)
     {
         if (config->test_type == wlan_emu_test_3_subtype_pm_stats_set) {

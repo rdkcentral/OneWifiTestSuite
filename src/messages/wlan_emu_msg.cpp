@@ -139,16 +139,19 @@ const char *wlan_emu_msg_t::get_ops_string_by_msg_type()
 
     return str;
 }
+
 static unsigned int get_radio_index_from_vapname(char *vap_name, test_step_params_t *step)
 {
     wifi_vap_info_t *ap_vap_info = NULL;
 
     ap_vap_info = step->m_ui_mgr->get_cci_vap_info(vap_name);
     if (ap_vap_info == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to get vap info\n", __func__, __LINE__);
-	return 0;
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to get vap info\n", __func__,
+            __LINE__);
+        return 0;
     }
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: radio index is %u for vap %s\n", __func__, __LINE__, ap_vap_info->radio_index, vap_name);
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: radio index is %u for vap %s\n", __func__,
+        __LINE__, ap_vap_info->radio_index, vap_name);
     return ap_vap_info->radio_index;
 }
 
@@ -294,21 +297,23 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
             radio_index = step->u.mgmt_frame_capture->radio_index;
         } else {
             if (step->u.sta_test->connection_type == client_connection_type_real) {
-                radio_index = get_radio_index_from_vapname(step->u.sta_test->u.sta_management.ap_vap_name, step);
+                radio_index = get_radio_index_from_vapname(
+                    step->u.sta_test->u.sta_management.ap_vap_name, step);
             } else {
                 step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.frm80211.u.frame.macaddr,
                     &radio_index);
-	    }
+            }
         }
 
         if (step->param_type == step_param_type_station_management) {
             if (step->u.sta_test->capture_sta_requests == true) {
-		if (step->u.sta_test->connection_type == client_connection_type_real) {
-			radio_index = get_radio_index_from_vapname(step->u.sta_test->u.sta_management.ap_vap_name, step);
-		} else {
-                    step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.frm80211.u.frame.client_macaddr,
-                    &radio_index);
-		}
+                if (step->u.sta_test->connection_type == client_connection_type_real) {
+                    radio_index = get_radio_index_from_vapname(
+                        step->u.sta_test->u.sta_management.ap_vap_name, step);
+                } else {
+                    step->m_ui_mgr->get_radioindex_from_bssid(
+                        f_data->u.frm80211.u.frame.client_macaddr, &radio_index);
+                }
             }
         }
 

@@ -40,7 +40,8 @@ int test_step_param_iperf_server::step_execute()
     char timestamp[24] = { 0 };
 
     if (step->u.iperf_server->input_operation == iperf_operation_type_stop) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Connection type is %d\n", __func__, __LINE__, step->u.iperf_server->u.stop_conf.connection_type);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Connection type is %d\n", __func__, __LINE__,
+            step->u.iperf_server->u.stop_conf.connection_type);
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: stop_step_number : %d\n", __func__, __LINE__,
             step->u.iperf_server->u.stop_conf.stop_step_number);
 
@@ -87,7 +88,8 @@ int test_step_param_iperf_server::step_execute()
             }
         }
     } else if (step->u.iperf_server->input_operation == iperf_operation_type_start) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Connection type is %d\n", __func__, __LINE__, step->u.iperf_server->u.start_conf.connection_type);
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d Connection type is %d\n", __func__, __LINE__,
+            step->u.iperf_server->u.start_conf.connection_type);
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: interface_step_number : %d ServerLogResultName : %s cmd_options : %s\n",
             __func__, __LINE__, step->u.iperf_server->u.start_conf.interface_step_number,
