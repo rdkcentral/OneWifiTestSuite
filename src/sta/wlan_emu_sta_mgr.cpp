@@ -540,19 +540,20 @@ int wlan_emu_sim_sta_mgr_t::disconnect_sta(sta_test_t *sta_test_config, connecte
         return RETURN_ERR;
     }
 
-    sta_info = get_devid_sta_info(sta->get_dev_id());
+    sta_info = get_devid_sta_info(get_dev_id_from_key(client_info->key));
     if (sta_info == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
-    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: disconnected client with MAC : %s with key : %s\n",
+    wlan_emu_print(wlan_emu_log_level_info,
+        "%s:%d: disconnected client with MAC : %s with key : %s and client vap_index is %d\n",
         __func__, __LINE__, to_mac_str(client_info->sta_mac, connected_client_mac_str),
-        client_info->key);
+        client_info->key, client_info->vap_index);
 
-    if (wifi_hal_disconnect_sta(sta_info->index, sta_info->mac) != RETURN_OK) {
+    if (wifi_hal_disconnect_sta(client_info->vap_index, sta_info->mac) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: hal disconnect failed for vap_index : %d\n",
-            __func__, __LINE__, sta_info->index);
+            __func__, __LINE__, client_info->vap_index);
         return RETURN_ERR;
     }
 
@@ -589,9 +590,19 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
         return RETURN_ERR;
     }
 
-    sta_info = get_devid_sta_info(sta->get_dev_id());
+    sta_info = get_devid_sta_info(get_dev_id_from_key(client_info->key));
     if (sta_info == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    sta_test_config->sta_vap_config->vap_index = client_info->vap_index;
+    sta_test_config->sta_vap_config->radio_index = sta_info->rdk_radio_index;
+    sta_test_config->phy_index = sta_info->phy_index;
+
+    if (clear_interface_data(sta_test_config) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: clear_interface_data failed for vap_index : %d\n",
+            __func__, __LINE__, client_info->vap_index);
         return RETURN_ERR;
     }
 
@@ -622,9 +633,6 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
     }
     map->num_vaps = 1;
     memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, client_info->sta_mac, sizeof(mac_address_t));
-    sta_test_config->sta_vap_config->vap_index = sta_info->index;
-    sta_test_config->sta_vap_config->radio_index = sta_info->rdk_radio_index;
-    sta_test_config->phy_index = sta_info->phy_index;
     memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
 
     /*if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) != RETURN_OK) {
@@ -665,7 +673,7 @@ int wlan_emu_sim_sta_mgr_t::reconnect_sta(sta_test_t *sta_test_config, connected
     }
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: hal connect succesful for vap_index : %d\n",
-        __func__, __LINE__, sta_info->index);
+        __func__, __LINE__, client_info->vap_index);
 
     return 0;
 }
@@ -873,11 +881,12 @@ int wlan_emu_sim_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
             sizeof(mac_addr_t));
         memcpy(connected_client_info->key, key, sizeof(sta_key_t));
         connected_client_info->is_station_associated = true;
+        connected_client_info->vap_index = sta_test_config->sta_vap_config->vap_index;
         queue_push(sta_test_config->connected_client_info_q, connected_client_info);
         wlan_emu_print(wlan_emu_log_level_info,
-            "%s:%d: Connected client with MAC : %s with key : %s\n", __func__, __LINE__,
+            "%s:%d: Connected client with MAC : %s with key : %s and vap_index : %d\n", __func__, __LINE__,
             to_mac_str(connected_client_info->sta_mac, connected_client_mac_str),
-            connected_client_info->key);
+            connected_client_info->key, connected_client_info->vap_index);
 
         wlan_emu_print(wlan_emu_log_level_dbg,
             "%s:%d: hal connect succesful for dev_id : %d for vap_index : %d\n", __func__, __LINE__,

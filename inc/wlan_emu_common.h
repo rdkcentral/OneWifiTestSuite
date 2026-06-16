@@ -399,6 +399,7 @@ typedef struct {
 typedef struct {
     mac_addr_t sta_mac;
     sta_key_t key;
+    unsigned int vap_index;
     bool is_station_associated;
     bool is_disconnection_sent;
     unsigned int reconnect_timer;

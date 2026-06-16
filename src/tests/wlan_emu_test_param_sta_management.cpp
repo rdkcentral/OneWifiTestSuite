@@ -873,7 +873,6 @@ int test_step_param_sta_management::step_timeout()
                 if (client_info->is_disconnection_sent == true) {
                     client_info->reconnect_timer++;
                     if (client_info->reconnect_timer >= RECONNECT_TIMEOUT) {
-                        step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
                         if (step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test, client_info) ==
                             RETURN_ERR) {
                             wlan_emu_print(wlan_emu_log_level_err,
