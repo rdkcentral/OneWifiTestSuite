@@ -26,6 +26,7 @@
 #include "wlan_emu_msg_mgr.h"
 #include "wlan_emu_sta_mgr.h"
 #include "wlan_emu_ext_sta_mgr.h"
+#include "wlan_emu_real_sta_mgr.h"
 #include "wlan_emu_ui_mgr.h"
 #include "wlan_emu_bus.h"
 
@@ -46,6 +47,7 @@ class wlan_emu_t {
     wlan_emu_bus_t m_bus_mgr;
     wlan_emu_sim_sta_mgr_t m_sim_sta_mgr;
     wlan_emu_ext_sta_mgr_t m_ext_sta_mgr;
+    wlan_emu_real_sta_mgr_t m_real_sta_mgr;
 #ifdef LINUX_VM
     wlan_emu_standalone_ui_mgr_t m_ui_mgr;
 #else
