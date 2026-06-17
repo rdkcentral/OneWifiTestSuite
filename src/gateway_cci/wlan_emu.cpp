@@ -216,132 +216,132 @@ int wlan_emu_t::start_test()
         switch (config->test_type) {
         case wlan_emu_test_1_subtype_radio:
             test = new wlan_emu_tests_radio_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
-                config, &m_bus_mgr);
+                &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_private:
             test = new wlan_emu_tests_private_vap_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_public_xfinity_open:
             test = new wlan_emu_tests_xfinity_open_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_public_xfinity_secure:
             test = new wlan_emu_tests_xfinity_secure_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr,  &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_xhs:
             test = new wlan_emu_tests_xhs_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
-                config, &m_bus_mgr);
+                &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_lnf_enterprise:
             test = new wlan_emu_tests_lnf_enterprise_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_lnf_secure:
             test = new wlan_emu_tests_lnf_secure_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_mesh_backhaul:
             test = new wlan_emu_tests_mesh_backhaul_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_ns_managed_mesh_client:
             test = new wlan_emu_tests_mesh_client_t(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_cc_probe_response:
             test = new wlan_emu_tests_cli_probe_response(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_1_subtype_cc_authentication:
             test = new wlan_emu_tests_cli_auth(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_connection_admission:
             test = new wlan_emu_tests_connection_admission(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_access_control:
             test = new wlan_emu_tests_access_control(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_stats_manager:
             test = new wlan_emu_tests_stats_manager(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_steering_manager:
             test = new wlan_emu_tests_steering_manager(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_optimization:
             test = new wlan_emu_tests_optimization(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_grey_listing:
             test = new wlan_emu_tests_grey_listing(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_active_passive_msrmnts:
             test = new wlan_emu_tests_active_passive_msrmt(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_whix:
             test = new wlan_emu_tests_whix(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
-                config, &m_bus_mgr);
+                &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_blaster:
             test = new wlan_emu_tests_blaster(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
-                config, &m_bus_mgr);
+                &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_motion:
             test = new wlan_emu_tests_motion(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
-                config, &m_bus_mgr);
+                &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_finger_printing:
             test = new wlan_emu_tests_finger_printing(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_tr_181:
             test = new wlan_emu_tests_tr_181(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
-                config, &m_bus_mgr);
+                &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_webconfig:
             test = new wlan_emu_tests_webconfig(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_2_subtype_af_webpa:
             test = new wlan_emu_tests_webpa(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr, &m_ext_sta_mgr,
-                config, &m_bus_mgr);
+                &m_real_sta_mgr, config, &m_bus_mgr);
             test->start();
             break;
         case wlan_emu_test_3_subtype_pm_stats_get:
             test = new wlan_emu_tests_stats_get(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: Config test type : wlan_emu_test_3_subtype_pm_stats_get\n", __func__,
                 __LINE__);
@@ -351,7 +351,7 @@ int wlan_emu_t::start_test()
             break;
         case wlan_emu_test_3_subtype_pm_stats_set:
             test = new wlan_emu_tests_stats_set(&m_msg_mgr, &m_ui_mgr, &m_sim_sta_mgr,
-                &m_ext_sta_mgr, config, &m_bus_mgr);
+                &m_ext_sta_mgr, &m_real_sta_mgr, config, &m_bus_mgr);
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: Config test type : wlan_emu_test_3_subtype_pm_stats_set\n", __func__,
                 __LINE__);
