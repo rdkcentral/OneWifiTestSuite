@@ -238,7 +238,6 @@ private:
     int download_file(char *input_file_name, unsigned int input_file_name_len);
     int download_step_param_config(test_step_params_t *step);
     int download_step_common_config(test_step_params_t *step);
-    int cci_post_result_to_tda(unsigned int type, char *str);
     int decode_step_get_file(cJSON *step, test_step_params_t *step_config);
     int decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config);
     int decode_step_get_pattern_files(cJSON *step, test_step_params_t *step_config);
@@ -254,6 +253,7 @@ public:
     unsigned int upload_results(void);
     int upload_cci_log(char *test_case_id, char *test_case_name, FILE *fp);
     int decode_reboot_case_json();
+    int cci_post_result_to_tda(unsigned int type, char *str);
     int cci_error_code;
 
     inline void add_bus_mgr(wlan_emu_bus_t *bus_mgr)

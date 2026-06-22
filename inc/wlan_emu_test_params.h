@@ -32,6 +32,7 @@ class wlan_emu_msg_mgr_t;
 class wlan_emu_ui_mgr_t;
 class wlan_emu_sim_sta_mgr_t;
 class wlan_emu_ext_sta_mgr_t;
+class wlan_emu_real_sta_mgr_t;
 class wlan_emu_msg_t;
 
 class test_step_params_t {
@@ -40,6 +41,7 @@ public:
     wlan_emu_ui_mgr_t *m_ui_mgr;
     wlan_emu_sim_sta_mgr_t *m_sim_sta_mgr;
     wlan_emu_ext_sta_mgr_t *m_ext_sta_mgr;
+    wlan_emu_real_sta_mgr_t *m_real_sta_mgr;
     wlan_emu_test_case_config *m_step_parent_test_config;
     wlan_emu_bus_t *m_bus_mgr;
     step_param_type_t param_type;
@@ -114,6 +116,11 @@ public:
         m_ext_sta_mgr = mgr;
     }
 
+    inline void param_add_real_sta_mgr(wlan_emu_real_sta_mgr_t *mgr)
+    {
+        m_real_sta_mgr = mgr;
+    }
+
     inline void param_add_test_config(wlan_emu_test_case_config *mgr)
     {
         m_step_parent_test_config = mgr;
@@ -131,7 +138,7 @@ public:
 
     inline void step_add_mgr_data(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
         wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-        wlan_emu_test_case_config *test_config, wlan_emu_bus_t *bus_mgr)
+        wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *test_config, wlan_emu_bus_t *bus_mgr)
     {
         param_add_msg_mgr(msg_mgr);
         param_add_ui_mgr(ui_mgr);
@@ -174,6 +181,7 @@ class test_step_param_sta_management : public test_step_param_sta {
 private:
 
     int step_timeout_ext_sta();
+    int step_timeout_real_sta(test_step_params_t *step);
     int push_ext_sta_result_files(const std::vector<std::string> &files);
 
 public:

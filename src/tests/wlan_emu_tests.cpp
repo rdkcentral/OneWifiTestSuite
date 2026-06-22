@@ -178,6 +178,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
     wlan_emu_msg_mgr_t *tmp_msg_mgr = test->get_msg_mgr();
     wlan_emu_sim_sta_mgr_t *tmp_sta_mgr = test->get_sta_mgr();
     wlan_emu_ext_sta_mgr_t *tmp_ext_sta_mgr = test->get_ext_sta_mgr();
+    wlan_emu_real_sta_mgr_t *tmp_real_sta_mgr = test->get_real_sta_mgr();
     wlan_emu_test_case_config *temp_test_config = test->get_test_config();
     wlan_emu_bus_t *tmp_bus_mgr = test->get_bus_mgr();
 
@@ -200,7 +201,7 @@ void *wlan_emu_tests_t::test_function(void *arg)
             test_config->current_test_step);
         if (step->test_state == wlan_emu_tests_state_cmd_request) {
             step->step_add_mgr_data(tmp_msg_mgr, tmp_ui_mgr, tmp_sta_mgr, tmp_ext_sta_mgr,
-                temp_test_config, tmp_bus_mgr);
+                tmp_real_sta_mgr, temp_test_config, tmp_bus_mgr);
             test_config->current_test_step = (step_total - (step->step_seq_num) - 1);
             snprintf(step->test_case_name, sizeof(step->test_case_name), "%s",
                 test_config->test_case_name);
@@ -614,7 +615,7 @@ wlan_emu_tests_t::~wlan_emu_tests_t()
 
 wlan_emu_tests_t::wlan_emu_tests_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_t *ui_mgr,
     wlan_emu_sim_sta_mgr_t *sta_mgr, wlan_emu_ext_sta_mgr_t *ext_sta_mgr,
-    wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr)
+    wlan_emu_real_sta_mgr_t *real_sta_mgr, wlan_emu_test_case_config *config, wlan_emu_bus_t *bus_mgr)
 {
     m_exit = false;
     m_tid = 0;
@@ -632,6 +633,7 @@ wlan_emu_tests_t::wlan_emu_tests_t(wlan_emu_msg_mgr_t *msg_mgr, wlan_emu_ui_mgr_
     add_ui_mgr(ui_mgr);
     add_sta_mgr(sta_mgr);
     add_ext_sta_mgr(ext_sta_mgr);
+    add_real_sta_mgr(real_sta_mgr);
     add_test_config(config);
     add_bus_mgr(bus_mgr);
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step total : %d \n", __func__, __LINE__,

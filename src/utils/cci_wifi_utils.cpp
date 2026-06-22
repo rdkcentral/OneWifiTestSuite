@@ -1032,6 +1032,7 @@ int execute_process_once(std::string dhcp_cmd, pid_t *pid, bool wait_pid)
     int status;
     std::string temp_cmd = dhcp_cmd.c_str();
 
+    wlan_emu_print(wlan_emu_log_level_err, "%s: Command is %s\n", __func__, dhcp_cmd.c_str());
     std::istringstream iss(dhcp_cmd);
     std::vector<std::string> tokens;
     std::string token;
@@ -1347,20 +1348,19 @@ int is_valid_ip(const char *addr)
     struct sockaddr_in sa;
     struct sockaddr_in6 sa6;
 
-    if (inet_pton(AF_INET, addr, &(sa.sin_addr)) == 1) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to resolve ipv4 addr: %s\n", __func__,
-            __LINE__, addr);
-        return RETURN_ERR;
+    // Try IPv4
+    if (inet_pton(AF_INET, addr, &(sa.sin_addr)) > 0) {
+        return RETURN_OK;
     }
 
     // Try IPv6
-    if (inet_pton(AF_INET6, addr, &(sa6.sin6_addr)) == 1) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to resolve ipv6 addr: %s\n", __func__,
-            __LINE__, addr);
-        return RETURN_ERR;
+    if (inet_pton(AF_INET6, addr, &(sa6.sin6_addr)) > 0) {
+        return RETURN_OK;
     }
 
-    return RETURN_OK;
+    wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to resolve addr: %s\n", __func__,
+        __LINE__, addr);
+    return RETURN_ERR;
 }
 
 int is_resolvable_hostname(const char *hostname)
