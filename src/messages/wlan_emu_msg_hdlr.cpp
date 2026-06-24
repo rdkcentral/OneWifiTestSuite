@@ -45,6 +45,18 @@ static void handle_cfg80211_start_ap(char *f_tmp, wlan_emu_msg_data_t *f_data)
     memcpy(&(f_data->u.cfg80211.u.start_ap.phy_index), f_tmp, sizeof(int));
     f_tmp += sizeof(int);
 
+    memcpy(&(f_data->u.cfg80211.u.start_ap.ssid_len), f_tmp, sizeof(size_t));
+    f_tmp += sizeof(size_t);
+
+    if (f_data->u.cfg80211.u.start_ap.ssid_len > sizeof(f_data->u.cfg80211.u.start_ap.ssid)) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: ssid_len %zu exceeds buffer size\n",
+            __func__, __LINE__, f_data->u.cfg80211.u.start_ap.ssid_len);
+        return;
+    }
+    memcpy(f_data->u.cfg80211.u.start_ap.ssid, f_tmp,
+        f_data->u.cfg80211.u.start_ap.ssid_len);
+    f_tmp += f_data->u.cfg80211.u.start_ap.ssid_len;
+
     memcpy(&(f_data->u.cfg80211.u.start_ap.head_len), f_tmp, sizeof(size_t));
 
     f_tmp += sizeof(size_t);
