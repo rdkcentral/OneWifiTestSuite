@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sched.h>
+#include <stdio.h>
 
 #include <ifaddrs.h>
 #include <sys/types.h>
@@ -85,6 +86,8 @@ int get_current_time_string(char *time_str, int time_str_len)
     if ((ret < 0) || (ret >= time_str_len)) {
         return RETURN_ERR;
     }
+
+    printdf("Test Coverity workflow %s\n");
 
     return RETURN_OK;
 }
