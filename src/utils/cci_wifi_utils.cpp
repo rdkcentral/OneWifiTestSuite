@@ -87,7 +87,7 @@ int get_current_time_string(char *time_str, int time_str_len)
         return RETURN_ERR;
     }
 
-    printdf("Test Coverity workflow %s\n");
+    printf("Test Coverity workflow %s\n");
 
     return RETURN_OK;
 }
