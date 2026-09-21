@@ -2731,6 +2731,14 @@ int wlan_emu_ui_mgr_t::decode_coverage_1_config(cJSON *test_coverage_entry)
                     __LINE__);
                 return RETURN_ERR;
             }
+        } else if ((list = cJSON_GetObjectItem(test, "RealClient")) != NULL) {
+            if (decode_coverage_config(list, wlan_emu_test_coverage_1,
+                    wlan_emu_test_1_subtype_ns_private, &config) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: decode_coverage_config failed for RealClient\n", __func__,
+                    __LINE__);
+                return RETURN_ERR;
+            }
         }
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid Configuration\n", __func__,
