@@ -34,6 +34,7 @@ int test_step_param_command::step_execute()
         if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n",
                 __func__, __LINE__);
+	    pclose(fp);
             return RETURN_ERR;
         }
 
@@ -50,6 +51,7 @@ int test_step_param_command::step_execute()
                 __LINE__, step->u.cmd->cmd_exec_log_filename);
             step->m_ui_mgr->cci_error_code = EFOPEN;
             step->test_state = wlan_emu_tests_state_cmd_abort;
+	    pclose(fp);
             return RETURN_ERR;
         }
     }
@@ -58,6 +60,10 @@ int test_step_param_command::step_execute()
     if (buff == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: buff allocation failed\n", __func__,
             __LINE__);
+	if (is_file_capture_required == true) {
+            fclose(destination_file);
+        }
+        pclose(fp);
         return RETURN_ERR;
     }
 

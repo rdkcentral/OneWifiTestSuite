@@ -256,7 +256,9 @@ int test_step_param_sta_management::decode_step_sta_management_config()
 
     param = cJSON_GetObjectItem(sta_root_json, "TestDuration");
     if ((param == NULL) || (cJSON_IsNumber(param) == false)) {
-        step_config->u.sta_test->u.sta_management.test_duration = 0;
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Invalid or missing TestDuration\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
     } else {
         step_config->u.sta_test->u.sta_management.test_duration = param->valuedouble;
         step_config->execution_time = step_config->u.sta_test->u.sta_management.test_duration;
@@ -796,7 +798,12 @@ int test_step_param_sta_management::step_timeout_ext_sta()
 int test_step_param_sta_management::step_timeout()
 {
     test_step_params_t *step = this;
+<<<<<<< HEAD
     heart_beat_data_t *heart_beat_data;
+=======
+    int ret = 0;
+    mac_addr_str_t connected_client_mac_str;
+>>>>>>> main
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test Step Num : %d timeout_count : %d\n",
         __func__, __LINE__, step->step_number, step->timeout_count);
@@ -818,55 +825,64 @@ int test_step_param_sta_management::step_timeout()
             return RETURN_OK;
         }
 
-        if (step->u.sta_test->is_reconnect_enabled && step->timeout_count != 0 &&
-            step->u.sta_test->reconnect_interval > 0 &&
-            (step->timeout_count % step->u.sta_test->reconnect_interval) == 0) {
-            if (step->u.sta_test->is_station_associated == true &&
-                step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test) == RETURN_ERR) {
-                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: disconnect_sta failed for step %d\n",
-                    __func__, __LINE__, step->step_number);
-            } else if (step->u.sta_test->is_station_associated == false) {
-                step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
-                step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
-                step->u.sta_test->is_decoded = false;
+        if (step->u.sta_test->is_reconnect_enabled) {
+            for (uint client_id = 0;
+                client_id < queue_count(step->u.sta_test->connected_client_info_q);
+                client_id++) {
+                connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
+                    step->u.sta_test->connected_client_info_q, client_id);
+                if (client_info == NULL) {
+                    break;
+                }
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: client_mac : %s is_disconnection_sent : %s reconnect_timer : %d\n",
+                    __func__, __LINE__, to_mac_str(client_info->sta_mac, connected_client_mac_str),
+                    client_info->is_disconnection_sent ? "true" : "false",
+                    client_info->reconnect_timer);
+                if (client_info->is_disconnection_sent == true) {
+                    client_info->reconnect_timer++;
+                    if (client_info->reconnect_timer >= RECONNECT_TIMEOUT) {
+                        if (step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test, client_info) ==
+                            RETURN_ERR) {
+                            wlan_emu_print(wlan_emu_log_level_err,
+                                "%s:%d: reconnect_sta failed for step %d\n", __func__, __LINE__,
+                                step->step_number);
+                            ret = RETURN_ERR;
+                        }
+                        WaitForDuration(2000);
+                        if (ret != RETURN_ERR) {
+                            step->u.sta_test->is_decoded = false;
+                            client_info->reconnect_timer = 0;
+                        }
+                    }
+                }
             }
         }
 
-        if (step->u.sta_test->is_station_associated == true) {
-            // add the logic  connectivity profile
-            if (step->u.sta_test->u.sta_management.is_sta_management_timer == true) {
-                if (step->u.sta_test->u.sta_management.connectivity_q != NULL) {
-                    if ((queue_count(step->u.sta_test->u.sta_management.connectivity_q) > 0) &&
-                        (step->u.sta_test->u.sta_management.current_profile_count >= 0)) {
-                        station_connectivity_profile_t *connect_profile =
-                            (station_connectivity_profile_t *)queue_peek(
-                                step->u.sta_test->u.sta_management.connectivity_q,
-                                step->u.sta_test->u.sta_management.current_profile_count);
-                        if (connect_profile == NULL) {
-                            wlan_emu_print(wlan_emu_log_level_err,
-                                "%s:%d: connect_profile is NULL for  %d\n", __func__, __LINE__,
-                                step->u.sta_test->u.sta_management.current_profile_count);
-                            return RETURN_OK;
-                        }
-                        wlan_emu_print(wlan_emu_log_level_dbg,
-                            "%s:%d: Rssi : %d Duration : %d Counter : %d\n", __func__, __LINE__,
-                            connect_profile->rssi, connect_profile->duration,
-                            connect_profile->counter);
-                        connect_profile->counter++;
-                        // create the heart beat data
-                        heart_beat_data = new (std::nothrow) heart_beat_data_t;
-                        if (heart_beat_data == NULL) {
-                            wlan_emu_print(wlan_emu_log_level_err,
-                                "%s:%d: Unable to send the heart beat for step %d\n", __func__,
-                                __LINE__, step->step_number);
-                            return RETURN_ERR;
-                        }
-                        memset(heart_beat_data, 0, sizeof(heart_beat_data_t));
-                        memcpy(heart_beat_data->mac,
-                            step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                            sizeof(mac_address_t));
-                        heart_beat_data->rssi = connect_profile->rssi;
-                        heart_beat_data->noise = connect_profile->noise;
+        if (step->u.sta_test->is_reconnect_enabled && step->timeout_count != 0 &&
+            step->u.sta_test->reconnect_interval > 0 &&
+            (step->timeout_count % step->u.sta_test->reconnect_interval) == 0) {
+            for (uint client_id = 0;
+                client_id < queue_count(step->u.sta_test->connected_client_info_q); client_id++) {
+                connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
+                    step->u.sta_test->connected_client_info_q, client_id);
+                if (client_info == NULL) {
+                    break;
+                }
+                if (client_info->is_station_associated == true) {
+                    step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info);
+                    WaitForDuration(2000);
+                    client_info->is_station_associated = false;
+                }
+            }
+        }
+
+        if (step->u.sta_test->u.sta_management.connectivity_q != NULL &&
+            (queue_count(step->u.sta_test->u.sta_management.connectivity_q) > 0) &&
+            (step->u.sta_test->u.sta_management.current_profile_count >= 0)) {
+            station_connectivity_profile_t *connect_profile = (station_connectivity_profile_t *)
+                queue_peek(step->u.sta_test->u.sta_management.connectivity_q,
+                    step->u.sta_test->u.sta_management.current_profile_count);
 
                         step->m_sim_sta_mgr->send_heart_beat(step->u.sta_test->key,
                             heart_beat_data);
@@ -1019,20 +1035,32 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
                 // Added this check to make sure the Station MAC is present as part of frame
                 // received.
-                if (step->u.sta_test->is_reconnect_enabled == true &&
-                    (wlan_emu_frm80211_ops_type_disassoc == msg->get_frm80211_ops_type())) {
-                    wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: STA trying to reconnect within expected time for step %d\n",
-                        __func__, __LINE__, step->step_number);
+
+                if (step->capture_frames == true) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: captured frame for mac received macaddr : %s client_macaddr : %s\n",
+                        __func__, __LINE__, macaddr, client_macaddr);
+                    msg->unload_frm80211_msg(step);
+                }
+
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: value of disconnection_sent : %d for the client mac %s\n", __func__,
+                    __LINE__, client_info->is_disconnection_sent, macaddr);
+                if ((wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type()) &&
+                    client_info->is_disconnection_sent == false) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: Deauth frame received for mac %s, client_macaddr %s for step %d\n",
+                        __func__, __LINE__, macaddr, client_macaddr, step->step_number);
                     step->u.sta_test->is_station_associated = false;
-                    step->m_sim_sta_mgr->clear_interface_data(step->u.sta_test);
-                    step->m_sim_sta_mgr->reconnect_sta(step->u.sta_test);
-                    step->u.sta_test->is_decoded = false;
-                } else if (step->u.sta_test->is_reconnect_enabled == false &&
-                    step->u.sta_test->is_station_associated == true) {
-                    step->u.sta_test->is_station_associated = false;
-                    step->m_sim_sta_mgr->remove_sta(step->u.sta_test);
-                    step->u.sta_test->is_decoded = false;
+                    step->m_sim_sta_mgr->disconnect_sta(step->u.sta_test, client_info);
+                    client_info->is_disconnection_sent = true;
+                    return RETURN_UNHANDLED;
+                }
+
+                if (step->u.sta_test->is_reconnect_enabled == false &&
+                    client_info->is_station_associated == true) {
+                    client_info->is_station_associated = false;
+                    step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
                 }
             }
 
@@ -1051,7 +1079,8 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 } else {
                     if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
                         if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
-                            step->u.sta_test->is_station_associated = true;
+                            client_info->is_station_associated = true;
+                            client_info->is_disconnection_sent = false;
                             wlan_emu_print(wlan_emu_log_level_dbg,
                                 "%s:%d: captured eapol-msg3 for %s\n", __func__, __LINE__,
                                 client_macaddr);
@@ -1182,8 +1211,12 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->wait_connection = false;
     memset(step->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
     step->u.sta_test->u.sta_management.op_modes = 0;
+<<<<<<< HEAD
     step->u.sta_test->is_ip_assigned = false;
     step->u.sta_test->reconnect_interval = 20;
+=======
+    step->u.sta_test->reconnect_interval = 0;
+>>>>>>> main
     step->u.sta_test->is_reconnect_enabled = false;
 }
 
