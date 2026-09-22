@@ -1,7 +1,28 @@
+/**
+ * Copyright 2025 Comcast Cable Communications Management, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "wlan_emu_log.h"
 #include "wlan_ext_emu.h"
 #include "wlan_ext_emu_test_step_params.h"
 #include <cjson/cJSON.h>
+#include <spawn.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 int wlan_ext_test_step_param_sta_management::wlan_ext_step_execute()
 {
@@ -17,7 +38,11 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_execute()
         return RETURN_ERR;
     }
 
-    step->step_state = wlan_emu_tests_state_cmd_continue;
+    if ((step->u.sta_test->is_ip_assigned == false) || (step->fork == false)) {
+        step->step_state = wlan_emu_tests_state_cmd_continue;
+    } else {
+        step->step_state = wlan_emu_tests_state_cmd_wait;
+    }
 
     return RETURN_OK;
 }
@@ -27,11 +52,17 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_timeout()
     wlan_ext_test_step_params_t *step = this;
     wlan_ext_emu_sta_mgr_t *m_sta_mgr = get_agent_sta_mgr();
     step->timeout_count++;
-    if (step->timeout_count == step->execution_time) {
+    if (step->timeout_count >= step->execution_time) {
         step->step_state = wlan_emu_tests_state_cmd_results;
-        if (step->u.sta_test->is_station_associated == true) {
-            m_sta_mgr->remove_sta(step->u.sta_test);
-            step->u.sta_test->is_station_associated = false;
+        wlan_emu_print(wlan_emu_log_level_dbg,
+            "%s:%d: step number : %d timeout count : %d in results\n", __func__, __LINE__,
+            step->step_number, step->timeout_count);
+    } else {
+
+        if ((step->u.sta_test->is_ip_assigned == false) || (step->fork == false)) {
+            step->step_state = wlan_emu_tests_state_cmd_continue;
+        } else {
+            step->step_state = wlan_emu_tests_state_cmd_wait;
         }
     }
     return RETURN_OK;
@@ -41,7 +72,20 @@ void wlan_ext_test_step_param_sta_management::wlan_ext_step_remove()
 {
     wlan_ext_test_step_params_t *step = this;
     wlan_ext_emu_sta_mgr_t *m_sta_mgr = get_agent_sta_mgr();
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
+        step->step_number);
     if (step->u.sta_test->is_station_associated == true) {
+        if (kill(step->u.sta_test->dhcp_pid, SIGTERM) == 0) {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: step number : %d intf : %s sigterm success for dhcp pid : %d\n", __func__,
+                __LINE__, step->step_number, step->u.sta_test->sta_interface_name.c_str(),
+                step->u.sta_test->dhcp_pid);
+        } else {
+            wlan_emu_print(wlan_emu_log_level_info,
+                "%s:%d: step number : %d intf : %s sigterm failed for dhcp pid : %d\n", __func__,
+                __LINE__, step->step_number, step->u.sta_test->sta_interface_name.c_str(),
+                step->u.sta_test->dhcp_pid);
+        }
         m_sta_mgr->remove_sta(step->u.sta_test);
         step->u.sta_test->is_station_associated = false;
     }
@@ -54,6 +98,9 @@ void wlan_ext_test_step_param_sta_management::wlan_ext_step_remove()
     }
 
     cJSON_free(step->artifact_json_list);
+
+    delete step;
+    step = NULL;
 }
 
 int wlan_ext_test_step_param_sta_management::wlan_ext_step_frame_filter(wlan_emu_msg_t *msg)
@@ -64,8 +111,11 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_frame_filter(wlan_emu
     char client_macaddr[32] = { 0 };
     char macaddr[32] = { 0 };
     char sta_mac[32] = { 0 };
+    std::string dhcp_cmd;
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step number : %d\n", __func__, __LINE__,
         step->step_number);
+    int ret;
+    const char *temp_cmd;
 
     if (msg == NULL) {
         return RETURN_UNHANDLED;
@@ -97,6 +147,7 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_frame_filter(wlan_emu
                 if (step->u.sta_test->is_station_associated == true) {
                     step->u.sta_test->is_station_associated = false;
                     m_sta_mgr->remove_sta(step->u.sta_test);
+                    step->u.sta_test->is_decoded = false;
                 }
             }
 
@@ -159,6 +210,102 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_frame_filter(wlan_emu
                 __func__, __LINE__, macaddr, client_macaddr, sta_mac);
         }
         break;
+    case wlan_emu_msg_type_agent:
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: agent step number : %d msg_type : %d\n",
+            __func__, __LINE__, step->step_number, msg->get_msg_type());
+        f_data = msg->get_msg();
+
+        if (f_data->u.agent_msg.u.agent_notif.sub_ops_type ==
+            wlan_msg_ext_agent_ops_sub_type_wifi_notification) {
+
+            if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                     f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_mac_addr,
+                     sizeof(mac_addr_t)) == 0)) {
+                uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, sta_mac);
+                if (f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_state ==
+                    wlan_emu_ext_wifi_sta_state_connected) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: step number : %d sta_mac : %s connected for interface : %s\n",
+                        __func__, __LINE__, step->step_number, sta_mac,
+                        step->u.sta_test->sta_interface_name.c_str());
+
+                    dhcp_cmd = std::string("/sbin/udhcpc -i ") +
+                        step->u.sta_test->sta_interface_name + std::string(" -n -q ");
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: step number : %d sta_mac : %s dhcp_cmd : %s\n", __func__, __LINE__,
+                        step->step_number, sta_mac, dhcp_cmd.c_str());
+
+                    int max_retries = 3;
+                    for (int attempt = 0; attempt <= 3; ++attempt) {
+                        int result = execute_process_once(dhcp_cmd, &step->u.sta_test->dhcp_pid,
+                            true);
+
+                        if (result == 0) {
+                            wlan_emu_print(wlan_emu_log_level_dbg,
+                                "%s:%d: step number : %d  dhcp pid : %d for  interface : %s\n",
+                                __func__, __LINE__, step->step_number, step->u.sta_test->dhcp_pid,
+                                step->u.sta_test->sta_interface_name.c_str());
+
+                            if (get_ip_from_interface_name(step->u.sta_test->sta_interface_name,
+                                    step->u.sta_test->ip_address) != RETURN_OK) {
+                                wlan_emu_print(wlan_emu_log_level_dbg,
+                                    "%s:%d: step number : %d dhcp pid : %d interface : %s "
+                                    "ip_address failed\n",
+                                    __func__, __LINE__, step->step_number,
+                                    step->u.sta_test->dhcp_pid,
+                                    step->u.sta_test->sta_interface_name.c_str(),
+                                    step->u.sta_test->ip_address.c_str());
+
+                            } else {
+                                wlan_emu_print(wlan_emu_log_level_dbg,
+                                    "%s:%d: step number : %d dhcp pid : %d interface : %s "
+                                    "ip_address %s\n",
+                                    __func__, __LINE__, step->step_number,
+                                    step->u.sta_test->dhcp_pid,
+                                    step->u.sta_test->sta_interface_name.c_str(),
+                                    step->u.sta_test->ip_address.c_str());
+                                step->u.sta_test->is_ip_assigned = true;
+                            }
+
+                            return RETURN_HANDLED;
+                        } else {
+                            usleep(500000);
+                        }
+                    }
+                    if (step->u.sta_test->is_ip_assigned == false) {
+                        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d Failed to get IP so aborting\n", __func__, __LINE__);
+                        step->step_state = wlan_emu_tests_state_cmd_abort;
+                    }
+
+                    return RETURN_HANDLED;
+                } else if (f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_state ==
+                    wlan_emu_ext_wifi_sta_state_disconnected) {
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: step number : %d sta_mac : %s disconnected for interface : %s\n",
+                        __func__, __LINE__, step->step_number, sta_mac,
+                        step->u.sta_test->sta_interface_name.c_str());
+
+                    if (kill(step->u.sta_test->dhcp_pid, SIGTERM) == 0) {
+                        wlan_emu_print(wlan_emu_log_level_dbg,
+                            "%s:%d: step number : %d intf : %s kill success dhcp pid : %d\n",
+                            __func__, __LINE__, step->step_number,
+                            step->u.sta_test->sta_interface_name.c_str(),
+                            step->u.sta_test->dhcp_pid);
+                    } else {
+                        wlan_emu_print(wlan_emu_log_level_dbg,
+                            "%s:%d: step number : %d intf : %s kill failed for dhcp pid : %d\n",
+                            __func__, __LINE__, step->step_number,
+                            step->u.sta_test->sta_interface_name.c_str(),
+                            step->u.sta_test->dhcp_pid);
+                    }
+                    step->u.sta_test->is_ip_assigned = false;
+                    step->u.sta_test->ip_address.clear();
+
+                    return RETURN_HANDLED;
+                }
+            }
+        }
+        break;
     case wlan_emu_msg_type_cfg80211: // beacon
     case wlan_emu_msg_type_webconfig: // onewifi_webconfig
     default:
@@ -177,7 +324,18 @@ void wlan_ext_test_step_param_sta_management::wlan_ext_step_status_update(cJSON 
     char *json_str;
     wlan_ext_test_step_params_t *step = this;
 
-    step->update_step_status_json(agent_status);
+    cJSON *step_private;
+
+    step_private = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(step_private, "InterfaceName",
+        step->u.sta_test->sta_interface_name.c_str());
+    if (step->u.sta_test->is_ip_assigned == true) {
+        cJSON_AddStringToObject(step_private, "IpAddress", step->u.sta_test->ip_address.c_str());
+    }
+    step->update_step_status_json(agent_status, step_private);
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Interface Name : %s\n", __func__, __LINE__,
+        step->u.sta_test->sta_interface_name.c_str());
 }
 
 int wlan_ext_test_step_param_sta_management::wlan_ext_step_decode_subdocument(cJSON *root_json,
@@ -253,6 +411,7 @@ int wlan_ext_test_step_param_sta_management::wlan_ext_step_decode_subdocument(cJ
     decode_param_object(root_json, "RadioOperatingParams", radio_operation_params);
     decode_param_integer(radio_operation_params, "Channel", param);
     test_params->radio_oper_param->channel = param->valuedouble;
+    test_params->radio_oper_param->enable = true;
 
     // station proto to be handled later on
     // Handle RSSI values also
@@ -301,7 +460,11 @@ wlan_ext_test_step_param_sta_management::wlan_ext_test_step_param_sta_management
         step->is_step_initialized = false;
         return;
     }
+    step->u.sta_test->is_ip_assigned = false;
+    step->u.sta_test->ip_address.clear();
     memset(step->u.sta_test->radio_oper_param, 0, sizeof(wifi_radio_operationParam_t));
+    step->u.sta_test->is_ip_assigned = false;
+    step->u.sta_test->ip_address.clear();
 }
 
 wlan_ext_test_step_param_sta_management::~wlan_ext_test_step_param_sta_management()
