@@ -75,6 +75,9 @@ public:
         get_pattern_files_t *get_pattern_files;
         gw_performance_t *gw_performance;
         packet_generator_t *packet_generator;
+        iperf_server_t *iperf_server;
+        iperf_client_t *iperf_client;
+        eth_lan_interface_t *eth_lan_client;
         device_upgrade_t *upgrade_or_reboot;
     } u;
 
@@ -397,6 +400,45 @@ public:
     int update_brlan0_config();
     test_step_param_packet_generator();
     ~test_step_param_packet_generator();
+};
+
+class test_step_param_iperf_server : public test_step_params_t {
+public:
+    int step_execute();
+    int step_timeout();
+    int step_frame_filter(wlan_emu_msg_t *msg);
+    void step_remove();
+    int encode_external_iperf_server_stop_subdoc(std::string &agent_subdoc);
+    int encode_external_iperf_server_start_subdoc(std::string &agent_subdoc);
+    int push_ext_iperf_server_result_files(const std::vector<std::string> &files);
+    test_step_param_iperf_server();
+    ~test_step_param_iperf_server();
+};
+
+class test_step_param_iperf_client : public test_step_params_t {
+public:
+    int step_execute();
+    int step_timeout();
+    int step_frame_filter(wlan_emu_msg_t *msg);
+    void step_remove();
+    int encode_external_iperf_client_stop_subdoc(std::string &agent_subdoc);
+    int encode_external_iperf_client_start_subdoc(std::string &agent_subdoc);
+    int push_ext_iperf_client_result_files(const std::vector<std::string> &files);
+    test_step_param_iperf_client();
+    ~test_step_param_iperf_client();
+};
+
+class test_step_param_eth_lan_client : public test_step_params_t {
+public:
+    int step_execute();
+    int step_timeout();
+    int step_frame_filter(wlan_emu_msg_t *msg);
+    void step_remove();
+    int encode_external_eth_lan_client_subdoc(std::string &agent_subdoc);
+    int push_ext_eth_lan_client_result_files(const std::vector<std::string> &files);
+    int parse_step_private_data(std::string private_data_str);
+    test_step_param_eth_lan_client();
+    ~test_step_param_eth_lan_client();
 };
 
 class test_step_param_upgrade_or_reboot : public test_step_params_t {
