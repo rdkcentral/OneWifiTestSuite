@@ -809,6 +809,10 @@ int test_step_param_sta_management::step_timeout()
         return step_timeout_ext_sta();
     }
 
+    if (step->u.sta_test->connection_type == client_connection_type_real) {
+	    return step_timeout_real_sta(step);
+    }
+
     if (step->test_state != wlan_emu_tests_state_cmd_results) {
         step->timeout_count++;
 
@@ -888,66 +892,98 @@ int test_step_param_sta_management::step_timeout()
                 queue_peek(step->u.sta_test->u.sta_management.connectivity_q,
                     step->u.sta_test->u.sta_management.current_profile_count);
 
-                        step->m_sim_sta_mgr->send_heart_beat(step->u.sta_test->key,
-                            heart_beat_data);
-                        delete (heart_beat_data);
-                        if (connect_profile->counter == connect_profile->duration) {
-                            connect_profile->test_state = test_state_complete;
-                            step->u.sta_test->u.sta_management.current_profile_count--;
-                            if (step->u.sta_test->u.sta_management.current_profile_count == -1) {
-                                step->test_state = wlan_emu_tests_state_cmd_results;
-                                wlan_emu_print(wlan_emu_log_level_info,
-                                    "%s:%d: connectivity test case completed for step : %d\n",
-                                    __func__, __LINE__, step->step_number);
-                                return RETURN_OK;
-                            }
-                        } else {
-                            connect_profile->test_state = test_state_active;
-                        }
-                    }
+            if (connect_profile == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: connect_profile is NULL for %d\n",
+                    __func__, __LINE__, step->u.sta_test->u.sta_management.current_profile_count);
+                return RETURN_OK;
+            }
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Rssi : %d Duration : %d Counter : %d\n",
+                __func__, __LINE__, connect_profile->rssi, connect_profile->duration,
+                connect_profile->counter);
+
+            connect_profile->counter++;
+            for (uint client_id = 0;
+                client_id < queue_count(step->u.sta_test->connected_client_info_q); client_id++) {
+                connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
+                    step->u.sta_test->connected_client_info_q, client_id);
+
+                if (client_info == NULL) {
+                    continue;
                 }
-            } else {
-                heart_beat_data = new (std::nothrow) heart_beat_data_t;
+                heart_beat_data_t *heart_beat_data = new (std::nothrow) heart_beat_data_t;
+
                 if (heart_beat_data == NULL) {
                     wlan_emu_print(wlan_emu_log_level_err,
-                        "%s:%d: Unable to send the heart beat for step %d\n", __func__, __LINE__,
+                        "%s:%d: Unable to create heart beat data for step %d\n", __func__, __LINE__,
                         step->step_number);
                     return RETURN_ERR;
                 }
-                memset(heart_beat_data, 0, sizeof(heart_beat_data_t));
-                memcpy(heart_beat_data->mac, step->u.sta_test->sta_vap_config->u.sta_info.mac,
-                    sizeof(mac_address_t));
-                heart_beat_data->rssi = -25;
-                heart_beat_data->noise = -85;
 
-                step->m_sim_sta_mgr->send_heart_beat(step->u.sta_test->key, heart_beat_data);
-                delete (heart_beat_data);
+                memset(heart_beat_data, 0, sizeof(heart_beat_data_t));
+                memcpy(heart_beat_data->mac, client_info->sta_mac, sizeof(mac_address_t));
+
+                if ((client_info->is_station_associated == true) &&
+                    (step->u.sta_test->u.sta_management.is_sta_management_timer == true)) {
+                    heart_beat_data->rssi = connect_profile->rssi;
+                    heart_beat_data->noise = connect_profile->noise;
+                } else {
+                    heart_beat_data->rssi = -25;
+                    heart_beat_data->noise = -85;
+                }
+
+                step->m_sim_sta_mgr->send_heart_beat(client_info->key, heart_beat_data);
+                delete heart_beat_data;
+            }
+
+            if (connect_profile->counter >= connect_profile->duration) {
+                connect_profile->test_state = test_state_complete;
+                step->u.sta_test->u.sta_management.current_profile_count--;
+                if (step->u.sta_test->u.sta_management.current_profile_count == -1) {
+                    step->test_state = wlan_emu_tests_state_cmd_results;
+                    wlan_emu_print(wlan_emu_log_level_info,
+                        "%s:%d: connectivity test case completed for step : %d\n", __func__,
+                        __LINE__, step->step_number);
+                    return RETURN_OK;
+                }
+            } else {
+                connect_profile->test_state = test_state_active;
             }
         }
 
-        if (step->fork == true) {
-            if (step->u.sta_test->wait_connection == true) {
-                // Dont go to next step until station is connected.
-                if (step->u.sta_test->is_station_associated == false) {
-                    wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: Waiting for STA to Associate for step %d\n", __func__, __LINE__,
-                        step->step_number);
-                    step->test_state = wlan_emu_tests_state_cmd_continue;
-                    return RETURN_OK; // Exit and wait for the next timeout
-                }
+        for (uint client_id = 0; client_id < queue_count(step->u.sta_test->connected_client_info_q);
+            client_id++) {
+            connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
+                step->u.sta_test->connected_client_info_q, client_id);
+
+            if (client_info == NULL) {
+                continue;
             }
-            // execute next available step
-            step->test_state = wlan_emu_tests_state_cmd_wait;
-            wlan_emu_print(wlan_emu_log_level_dbg,
-                "%s:%d: wait for test Step Num : %d execution_time : %d timeout_count %d\n",
-                __func__, __LINE__, step->step_number, step->execution_time, step->timeout_count);
-        } else { // step->fork == false
-            /*Until the execution is done remain in the same step*/
-            if (step->execution_time > step->timeout_count) {
-                step->test_state = wlan_emu_tests_state_cmd_continue;
+            if (step->fork == true) {
+                if (step->u.sta_test->wait_connection == true) {
+                    // Dont go to next step until station is connected.
+                    if (client_info->is_station_associated == false) {
+                        wlan_emu_print(wlan_emu_log_level_dbg,
+                            "%s:%d: Waiting for STA to Associate for step %d\n", __func__, __LINE__,
+                            step->step_number);
+                        step->test_state = wlan_emu_tests_state_cmd_continue;
+                        continue; // Exit and wait for the next timeout
+                    }
+                }
+                // execute next available step
+                step->test_state = wlan_emu_tests_state_cmd_wait;
                 wlan_emu_print(wlan_emu_log_level_dbg,
-                    "%s:%d: Test Step Num : %d execution_time : %d timeout_count %d\n", __func__,
-                    __LINE__, step->step_number, step->execution_time, step->timeout_count);
+                    "%s:%d: wait for test Step Num : %d execution_time : %d timeout_count %d\n",
+                    __func__, __LINE__, step->step_number, step->execution_time,
+                    step->timeout_count);
+            } else { // step->fork == false
+                /*Until the execution is done remain in the same step*/
+                if (step->execution_time > step->timeout_count) {
+                    step->test_state = wlan_emu_tests_state_cmd_continue;
+                    wlan_emu_print(wlan_emu_log_level_dbg,
+                        "%s:%d: Test Step Num : %d execution_time : %d timeout_count %d\n",
+                        __func__, __LINE__, step->step_number, step->execution_time,
+                        step->timeout_count);
+                }
             }
         }
     }
