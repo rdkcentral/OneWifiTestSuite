@@ -531,6 +531,7 @@ int wlan_emu_ext_agent_interface_t::send_external_agent_command(const std::strin
 {
     long status_code;
     std::string url;
+    int cci_error_code;
 
     url = agent_proto + std::string(agent_ip_address) + agent_port + command_endpoint;
     if (http_post(url, command, status_code, cci_error_code) != RETURN_OK) {

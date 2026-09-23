@@ -120,6 +120,8 @@ public:
     unsigned int total_supported_clients;
     unsigned int free_clients; // get_num_free_clients
     wlan_emu_tests_t *test;
+    queue_t *eth_client_interfaces; // eth_dev_info_t
+    unsigned int total_supported_eth_clients;
     wlan_emu_ui_mgr_t* m_ui_mgr;
 
     // Get the capability file to decode
