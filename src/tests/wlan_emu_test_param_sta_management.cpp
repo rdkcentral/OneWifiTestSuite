@@ -809,10 +809,6 @@ int test_step_param_sta_management::step_timeout()
         return step_timeout_ext_sta();
     }
 
-    if (step->u.sta_test->connection_type == client_connection_type_real) {
-	    return step_timeout_real_sta(step);
-    }
-
     if (step->test_state != wlan_emu_tests_state_cmd_results) {
         step->timeout_count++;
 
@@ -1006,20 +1002,29 @@ void test_step_param_sta_management::step_remove()
             wlan_emu_print(wlan_emu_log_level_info,
                 "%s:%d: Disconnecting the client at vap index : %d\n", __func__, __LINE__,
                 step->u.sta_test->sta_vap_config->vap_index);
-            if (step->u.sta_test->is_decoded == true) {
-                if (step->u.sta_test->connection_type == client_connection_type_external) {
-                    step->m_ext_sta_mgr->remove_sta(step->u.sta_test);
-                } else {
-                    step->m_sim_sta_mgr->remove_sta(step->u.sta_test);
-                }
+            if (step->u.sta_test->connection_type == client_connection_type_external) {
+                step->m_ext_sta_mgr->remove_sta(step->u.sta_test);
                 step->u.sta_test->is_station_associated = false;
-                step->u.sta_test->is_decoded = false;
+            } else {
+                while (queue_count(step->u.sta_test->connected_client_info_q) > 0) {
+                    connected_client_info_t *client_info = (connected_client_info_t *)queue_pop(
+                        step->u.sta_test->connected_client_info_q);
+                    if (client_info == NULL) {
+                        break;
+                    }
+                    if (client_info->is_station_associated == true) {
+                        step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
+                    }
+                    free(client_info);
+                }
+                delete step->u.sta_test->sta_vap_config;
             }
-
-            delete step->u.sta_test->sta_vap_config;
         }
-
         delete step->u.sta_test->radio_oper_param;
+
+        if (step->u.sta_test->connected_client_info_q != NULL) {
+            queue_destroy(step->u.sta_test->connected_client_info_q);
+        }
 
         if (step->u.sta_test->station_prototype != nullptr) {
             queue_destroy(step->u.sta_test->station_prototype->fc_prototype_q);
@@ -1052,7 +1057,7 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
     // expect only wlan_emu_msg_type_cfg80211 or  wlan_emu_msg_type_webconfig
     switch (msg->get_msg_type()) {
     case wlan_emu_msg_type_frm80211: // mgmt
-
+    {
         // irrespective of capture_frames check for eapol-3 to confirm whether the client is
         // associated or not
         f_data = msg->get_msg();
@@ -1060,15 +1065,29 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.client_macaddr, client_macaddr);
         uint8_mac_to_string_mac(f_data->u.frm80211.u.frame.macaddr, macaddr);
 
-        if ((memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+        if (step->u.sta_test == NULL || step->u.sta_test->connected_client_info_q == NULL) {
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: step config is not available for step %d, macaddr : %s client_macaddr : %s\n",
+                __func__, __LINE__, step->step_number, macaddr, client_macaddr);
+            return RETURN_UNHANDLED;
+        }
+
+        for (uint client_id = 0; client_id < queue_count(step->u.sta_test->connected_client_info_q); client_id++) {
+            connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
+            step->u.sta_test->connected_client_info_q, client_id);
+            if (client_info == NULL) {
+                break;
+            }
+
+        if ((memcmp(client_info->sta_mac,
                  f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) ||
-            (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+            (memcmp(client_info->sta_mac,
                  f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0)) {
             if (msg->get_msgname_from_msgtype() != RETURN_OK) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: invalid msgname received from macaddr : %s client_macaddr : %s\n",
                     __func__, __LINE__, macaddr, client_macaddr);
-                return RETURN_UNHANDLED;
+                continue;
             }
 
             if ((wlan_emu_frm80211_ops_type_deauth == msg->get_frm80211_ops_type()) ||
@@ -1104,18 +1123,17 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 }
             }
 
-            if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+            if (memcmp(client_info->sta_mac,
                     f_data->u.frm80211.u.frame.client_macaddr, sizeof(mac_addr_t)) == 0) {
 
                 if (step->u.sta_test->sta_vap_config->u.sta_info.security.mode ==
                     wifi_security_mode_none) {
                     if (wlan_emu_frm80211_ops_type_assoc_resp == msg->get_frm80211_ops_type()) {
-                        step->u.sta_test->is_station_associated = true;
+                        client_info->is_station_associated = true;
                         wlan_emu_print(wlan_emu_log_level_dbg,
                             "%s:%d: captured assoc response for open security for mac %s\n",
                             __func__, __LINE__, client_macaddr);
                     }
-
                 } else {
                     if (wlan_emu_frm80211_ops_type_eapol == msg->get_frm80211_ops_type()) {
                         if (strncmp(msg->get_msg_name(), "eapol-msg3", strlen("eapol-msg3")) == 0) {
@@ -1137,25 +1155,25 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                     return RETURN_UNHANDLED;
                 }
                 msg->unload_frm80211_msg(step);
-                return RETURN_HANDLED;
+                continue;
             }
 
             if (step->u.sta_test->capture_sta_requests == true) {
                 wlan_emu_print(wlan_emu_log_level_dbg,
                     "%s:%d: capture_sta_requests in macaddr : %s client_macaddr : %s\n", __func__,
                     __LINE__, macaddr, client_macaddr);
-                if (memcmp(step->u.sta_test->sta_vap_config->u.sta_info.mac,
+                if (memcmp(client_info->sta_mac,
                         f_data->u.frm80211.u.frame.macaddr, sizeof(mac_addr_t)) == 0) {
                     if ((step->capture_frames != true) ||
                         (!(step->frame_request.msg_type & (1 << msg->get_msg_type())))) {
-                        return RETURN_UNHANDLED;
+                        continue;
                     }
 
                     if (!(step->frame_request.frm80211_ops & (1 << msg->get_frm80211_ops_type()))) {
-                        return RETURN_UNHANDLED;
+                        continue;
                     }
                     msg->unload_frm80211_msg(step);
-                    return RETURN_HANDLED;
+                    continue;
                 }
             }
         } else {
@@ -1163,7 +1181,9 @@ int test_step_param_sta_management::step_frame_filter(wlan_emu_msg_t *msg)
                 "%s:%d: unhandled frame for mac received macaddr : %s client_macaddr : %s\n",
                 __func__, __LINE__, macaddr, client_macaddr);
         }
+    }
         break;
+    }
     case wlan_emu_msg_type_cfg80211: // beacon
     case wlan_emu_msg_type_webconfig: // onewifi_webconfig
     default:

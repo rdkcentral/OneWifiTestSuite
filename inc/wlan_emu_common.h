@@ -28,6 +28,8 @@
 #include <vector>
 #include <string>
 #include <cstdio>
+#include <variant>
+#include <unordered_map>
 
 #ifdef __cplusplus
 extern "C" {
@@ -421,7 +423,7 @@ typedef struct {
     unsigned int client_count;
     queue_t *connected_client_info_q; // connected_client_info_t
     wlan_emu_connection_type_t connection_type;
-
+    std::string sta_interface_name;
     bool is_reconnect_enabled;
     unsigned int reconnect_interval;
     bool is_ip_assigned;
