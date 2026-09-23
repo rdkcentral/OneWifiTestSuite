@@ -183,6 +183,7 @@ public:
     void step_remove();
     int step_frame_filter(wlan_emu_msg_t *msg);
     int encode_external_sta_management_subdoc(std::string &cli_subdoc);
+    int parse_step_private_data(std::string private_data_str);
     test_step_param_sta_management();
     ~test_step_param_sta_management();
 };

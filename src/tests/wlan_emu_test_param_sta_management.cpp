@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <memory>
 #define STATION_STEP_EXEC_TIMEOUT 3
+#define RECONNECT_TIMEOUT 3
 
 // Adding extra time time for external simulated client
 static int external_sta_grace_timeout = 3;
@@ -798,12 +799,8 @@ int test_step_param_sta_management::step_timeout_ext_sta()
 int test_step_param_sta_management::step_timeout()
 {
     test_step_params_t *step = this;
-<<<<<<< HEAD
-    heart_beat_data_t *heart_beat_data;
-=======
     int ret = 0;
     mac_addr_str_t connected_client_mac_str;
->>>>>>> main
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test Step Num : %d timeout_count : %d\n",
         __func__, __LINE__, step->step_number, step->timeout_count);
@@ -820,8 +817,15 @@ int test_step_param_sta_management::step_timeout()
             wlan_emu_print(wlan_emu_log_level_info,
                 "%s:%d: Test duration of %d  completed for step %d\n", __func__, __LINE__,
                 step->execution_time, step->step_number);
-            step->m_sim_sta_mgr->remove_sta(step->u.sta_test);
-            step->u.sta_test->is_decoded = false;
+            for (uint client_id = 0;
+                client_id < queue_count(step->u.sta_test->connected_client_info_q); client_id++) {
+                connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
+                    step->u.sta_test->connected_client_info_q, client_id);
+                if (client_info == NULL) {
+                    break;
+                }
+                step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
+            }
             return RETURN_OK;
         }
 
@@ -1211,12 +1215,8 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->wait_connection = false;
     memset(step->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
     step->u.sta_test->u.sta_management.op_modes = 0;
-<<<<<<< HEAD
     step->u.sta_test->is_ip_assigned = false;
-    step->u.sta_test->reconnect_interval = 20;
-=======
     step->u.sta_test->reconnect_interval = 0;
->>>>>>> main
     step->u.sta_test->is_reconnect_enabled = false;
 }
 

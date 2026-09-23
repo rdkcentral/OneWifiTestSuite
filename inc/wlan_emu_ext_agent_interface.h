@@ -45,6 +45,7 @@ typedef struct {
     int step_number;
     wlan_emu_tests_state_t state;
     std::vector<std::string> result_files;
+    std::string step_private_json_data;
 } ext_agent_step_status_t;
 
 typedef struct {

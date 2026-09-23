@@ -144,6 +144,42 @@ typedef enum {
     wlan_emu_tests_state_cmd_abort = 0x0000F000
 } wlan_emu_tests_state_t;
 
+//  Enum to String mapping
+static inline const std::unordered_map<wlan_emu_tests_state_t, std::string> step_state_to_str = {
+    { wlan_emu_tests_state_cmd_none,     "none"     },
+    { wlan_emu_tests_state_cmd_wait,     "wait"     },
+    { wlan_emu_tests_state_cmd_request,  "request"  },
+    { wlan_emu_tests_state_cmd_start,    "start"    },
+    { wlan_emu_tests_state_cmd_results,  "results"  },
+    { wlan_emu_tests_state_cmd_continue, "continue" },
+    { wlan_emu_tests_state_cmd_abort,    "abort"    }
+};
+
+// String to Enum mapping
+static inline const std::unordered_map<std::string, wlan_emu_tests_state_t> str_to_step_state = {
+    { "none",     wlan_emu_tests_state_cmd_none     },
+    { "wait",     wlan_emu_tests_state_cmd_wait     },
+    { "request",  wlan_emu_tests_state_cmd_request  },
+    { "start",    wlan_emu_tests_state_cmd_start    },
+    { "results",  wlan_emu_tests_state_cmd_results  },
+    { "continue", wlan_emu_tests_state_cmd_continue },
+    { "abort",    wlan_emu_tests_state_cmd_abort    }
+};
+
+// Convert Enum to String
+static std::string step_state_as_string(wlan_emu_tests_state_t state)
+{
+    auto it = step_state_to_str.find(state);
+    return (it != step_state_to_str.end()) ? it->second : "Unknown";
+}
+
+// Convert String to Enum
+static wlan_emu_tests_state_t step_state_as_enum(const std::string &str)
+{
+    auto it = str_to_step_state.find(str);
+    return (it != str_to_step_state.end()) ? it->second : wlan_emu_tests_state_cmd_none;
+}
+
 typedef enum {
     wlan_emu_dml_tests_state_idle,
     wlan_emu_dml_tests_state_running,
@@ -214,6 +250,9 @@ typedef enum {
     step_param_type_ext_station_management,
     step_param_type_gateway_performance,
     step_param_type_packet_generator,
+    step_param_type_config_iperf_server,
+    step_param_type_config_iperf_client,
+    step_param_type_ethernet_lan_interface,
     step_param_type_upgrade_or_reboot
 } step_param_type_t;
 

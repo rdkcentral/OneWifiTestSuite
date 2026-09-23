@@ -44,6 +44,11 @@ public:
     int configure_proto_types_on_sta(sta_test_t *sta_test_config);
     wlan_emu_ext_agent_interface_t *get_ext_agent(char *key);
 
+    void remove_eth_intf(eth_lan_interface_t *eth_lan_interface);
+    int add_eth_lan_device(test_step_params_t *step, const std::string &cli_subdoc);
+    wlan_emu_ext_agent_interface_t *get_ext_agent_from_eth_dev_mac(char *key);
+    wlan_emu_ext_agent_interface_t *find_first_free_eth_dev(eth_dev_info_t *eth_dev_info);
+
     wlan_emu_ext_sta_mgr_t();
     ~wlan_emu_ext_sta_mgr_t();
 };
