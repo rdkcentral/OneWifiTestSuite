@@ -1,3 +1,21 @@
+/**
+ * Copyright 2025 Comcast Cable Communications Management, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "wlan_emu.h"
 #include "wlan_emu_bus.h"
 #include "wlan_emu_tests.h"
@@ -75,6 +93,7 @@ int wlan_emu_t::run()
     // wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Test program started on %d\n", __func__,
     // __LINE__,
     //        get_platform_type());
+
     m_msg_mgr.start();
     m_sim_sta_mgr.start();
     //    std::signal(SIGTERM, StationDisconnectHandler);
@@ -87,12 +106,14 @@ int wlan_emu_t::run()
             // download the test and respective configs will be downloaded
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: in case wlan_emu_tests_state_cmd_request\n", __func__, __LINE__);
-            if (m_ext_sta_mgr.init() != RETURN_OK) {
-                wlan_emu_print(wlan_emu_log_level_err,
-                    "%s:%d: update_external_agent_capabilities failed\n", __func__, __LINE__);
-                m_ui_mgr.signal_report_test_fail();
-                dml_state = wlan_emu_dml_tests_state_complete_failure;
-                break;
+            if (strstr(m_ui_mgr.get_tda_url(), IPERF_TEST_CASE) != NULL) {
+                if (m_ext_sta_mgr.init() != RETURN_OK) {
+                    wlan_emu_print(wlan_emu_log_level_err,
+                        "%s:%d: update_external_agent_capabilities failed\n", __func__, __LINE__);
+                    m_ui_mgr.signal_report_test_fail();
+                    dml_state = wlan_emu_dml_tests_state_complete_failure;
+                    break;
+                }
             }
 
             if (m_ui_mgr.analyze_request() == RETURN_OK) {
@@ -140,6 +161,7 @@ int wlan_emu_t::run()
                 m_state = wlan_emu_tests_state_cmd_wait;
                 dml_state = wlan_emu_dml_tests_state_complete_failure;
             }
+            system("rm -rf /tmp/cci_res/*");
             break;
         case wlan_emu_tests_state_cmd_abort:
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d:\n", __func__, __LINE__);
@@ -153,6 +175,7 @@ int wlan_emu_t::run()
             m_state = wlan_emu_tests_state_cmd_wait;
             dml_state = wlan_emu_dml_tests_state_complete_failure;
             m_ui_mgr.update_log_file_offset();
+            system("rm -rf /tmp/cci_res/*");
             // exit = true; //cci needs to run all the time even upon failure
             break;
         default:
@@ -565,13 +588,6 @@ int wlan_emu_t::init()
 
     m_ui_mgr.set_simulated_client_count(sim_client_count);
 
-    memset(buf, 0, sizeof(buf));
-    snprintf(buf, sizeof(buf), "%d", sim_client_count);
-    if (syscfg_set_commit(NULL, CCI_SIM_CLI_COUNT_SYS_ENTRY, buf) != 0) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d unable to set the simulated clients to  %d\n",
-            __FUNCTION__, __LINE__, sim_client_count);
-    }
-
     if_map = (wifi_interface_name_idex_map_t *)malloc(
         sizeof(wifi_interface_name_idex_map_t) * sim_client_count);
     unsigned int if_map_size = 0;
@@ -640,7 +656,6 @@ int wlan_emu_t::init()
 
         m_ui_mgr.set_reboot_test_executed(true);
     }
-    m_ext_sta_mgr.ext_agent_iface.m_ui_mgr = &m_ui_mgr;
 
     // wlan_emu_print(wlan_emu_log_level_info, "%s:%d: wlan emu msg collection started on platform
     // type: %d\n", __func__, __LINE__,

@@ -28,6 +28,8 @@
 #include <vector>
 #include <string>
 #include <cstdio>
+#include <variant>
+#include <unordered_map>
 
 #ifdef __cplusplus
 extern "C" {
@@ -144,6 +146,42 @@ typedef enum {
     wlan_emu_tests_state_cmd_abort = 0x0000F000
 } wlan_emu_tests_state_t;
 
+//  Enum to String mapping
+static inline const std::unordered_map<wlan_emu_tests_state_t, std::string> step_state_to_str = {
+    { wlan_emu_tests_state_cmd_none,     "none"     },
+    { wlan_emu_tests_state_cmd_wait,     "wait"     },
+    { wlan_emu_tests_state_cmd_request,  "request"  },
+    { wlan_emu_tests_state_cmd_start,    "start"    },
+    { wlan_emu_tests_state_cmd_results,  "results"  },
+    { wlan_emu_tests_state_cmd_continue, "continue" },
+    { wlan_emu_tests_state_cmd_abort,    "abort"    }
+};
+
+// String to Enum mapping
+static inline const std::unordered_map<std::string, wlan_emu_tests_state_t> str_to_step_state = {
+    { "none",     wlan_emu_tests_state_cmd_none     },
+    { "wait",     wlan_emu_tests_state_cmd_wait     },
+    { "request",  wlan_emu_tests_state_cmd_request  },
+    { "start",    wlan_emu_tests_state_cmd_start    },
+    { "results",  wlan_emu_tests_state_cmd_results  },
+    { "continue", wlan_emu_tests_state_cmd_continue },
+    { "abort",    wlan_emu_tests_state_cmd_abort    }
+};
+
+// Convert Enum to String
+static std::string step_state_as_string(wlan_emu_tests_state_t state)
+{
+    auto it = step_state_to_str.find(state);
+    return (it != step_state_to_str.end()) ? it->second : "Unknown";
+}
+
+// Convert String to Enum
+static wlan_emu_tests_state_t step_state_as_enum(const std::string &str)
+{
+    auto it = str_to_step_state.find(str);
+    return (it != str_to_step_state.end()) ? it->second : wlan_emu_tests_state_cmd_none;
+}
+
 typedef enum {
     wlan_emu_dml_tests_state_idle,
     wlan_emu_dml_tests_state_running,
@@ -214,6 +252,9 @@ typedef enum {
     step_param_type_ext_station_management,
     step_param_type_gateway_performance,
     step_param_type_packet_generator,
+    step_param_type_config_iperf_server,
+    step_param_type_config_iperf_client,
+    step_param_type_ethernet_lan_interface,
     step_param_type_upgrade_or_reboot
 } step_param_type_t;
 
@@ -382,7 +423,7 @@ typedef struct {
     unsigned int client_count;
     queue_t *connected_client_info_q; // connected_client_info_t
     wlan_emu_connection_type_t connection_type;
-
+    std::string sta_interface_name;
     bool is_reconnect_enabled;
     unsigned int reconnect_interval;
     bool is_ip_assigned;
@@ -481,6 +522,90 @@ typedef struct {
     queue_t *process_status;
     pthread_t process_tid;
 } gw_performance_t;
+
+typedef enum {
+    interface_type_ethernet = 1,
+    interface_type_wifi,
+} interface_type_t;
+
+typedef enum {
+    iperf_operation_type_start = 1,
+    iperf_operation_type_stop,
+    iperf_operation_type_invalid,
+} iperf_operation_type_t;
+
+typedef struct {
+    unsigned int interface_step_number;
+    char input_filename[128];
+    char interface_name[128];
+    char cmd_options[128];
+    char result_file[128];
+    pid_t iperf_server_pid;
+    wlan_emu_connection_type_t connection_type;
+} iperf_server_start_conf_t;
+
+typedef struct {
+    unsigned int stop_step_number;
+    wlan_emu_connection_type_t connection_type;
+} iperf_server_stop_conf_t;
+
+typedef struct {
+    iperf_operation_type_t input_operation;
+    interface_type_t interface_type;
+    std::string sta_key;
+
+    union {
+        iperf_server_stop_conf_t stop_conf;
+        iperf_server_start_conf_t start_conf;
+    } u;
+} iperf_server_t;
+
+typedef struct {
+    unsigned int interface_step_number;
+    unsigned int server_step_number;
+    char input_filename[128];
+    char interface_name[128];
+    char cmd_options[128];
+    char result_file[128];
+    char device_id[64];
+    char service_prefer[16];
+    pid_t iperf_client_pid;
+    sta_model_type_t sta_type;
+    wlan_emu_connection_type_t connection_type;
+} iperf_client_start_conf_t;
+
+typedef struct {
+    unsigned int stop_step_number;
+} iperf_client_stop_conf_t;
+
+typedef struct {
+    iperf_operation_type_t input_operation;
+    interface_type_t interface_type;
+    std::string sta_key;
+
+    union {
+        iperf_client_stop_conf_t stop_conf;
+        iperf_client_start_conf_t start_conf;
+    } u;
+} iperf_client_t;
+
+typedef enum { eth_interface_state_free = 0, eth_interface_state_in_use } eth_interface_state_t;
+
+typedef struct {
+    std::string interface_name;
+    mac_address_t interface_mac;
+    std::string ip_address;
+    bool is_ip_assigned;
+    eth_interface_state_t state;
+} eth_dev_info_t;
+
+typedef struct {
+    unsigned int test_id;
+    eth_dev_info_t eth_dev_info;
+    std::string result_file;
+    sta_key_t key;
+    int duration;
+} eth_lan_interface_t;
 
 typedef struct {
     uint step_number;

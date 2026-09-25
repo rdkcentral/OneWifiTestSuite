@@ -45,6 +45,7 @@ typedef struct {
     int step_number;
     wlan_emu_tests_state_t state;
     std::vector<std::string> result_files;
+    std::string step_private_json_data;
 } ext_agent_step_status_t;
 
 typedef struct {
@@ -119,11 +120,13 @@ public:
     unsigned int total_supported_clients;
     unsigned int free_clients; // get_num_free_clients
     wlan_emu_tests_t *test;
+    queue_t *eth_client_interfaces; // eth_dev_info_t
+    unsigned int total_supported_eth_clients;
     wlan_emu_ui_mgr_t* m_ui_mgr;
 
     // Get the capability file to decode
     int get_external_agent_capabilities(hash_map_t *ext_agent_map);
-    int get_external_agent_test_status(ext_agent_status_resp_t &status);
+    int get_external_agent_test_status(ext_agent_status_resp_t &status, int &cci_error_code);
     // used by the gateway
     int get_external_agent_info(hash_map_t *ext_agent_map, bus_handle_t *handle,
         wlan_emu_bus_t *bus_mgr);
@@ -142,7 +145,7 @@ public:
         std::string &json_str);
     int decode_external_agent_test_status(const std::string &json, ext_agent_status_resp_t &status);
 
-    int download_external_agent_result_files(const std::vector<std::string> &files);
+    int download_external_agent_result_files(const std::vector<std::string> &files, int &cci_error_code);
 
     int send_external_agent_start_command();
     int send_external_agent_stop_command();

@@ -1,3 +1,21 @@
+/**
+ * Copyright 2025 Comcast Cable Communications Management, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "wlan_emu_ext_sta_mgr.h"
 #include "wlan_emu_log.h"
 #include "wlan_emu_sta_mgr.h"
@@ -5,6 +23,7 @@
 #include "wlan_emu_err_code.h"
 #include "wlan_common_utils.h"
 #include <assert.h>
+#include <memory>
 #define STATION_STEP_EXEC_TIMEOUT 3
 #define RECONNECT_TIMEOUT 3
 
@@ -196,7 +215,6 @@ int test_step_param_sta_management::decode_step_sta_management_config()
     }
 
     decode_param_string(sta_root_json, "StationType", param);
-
     if (strcmp(param->valuestring, "Iphone") == 0) {
         step_config->u.sta_test->sta_type = sta_model_type_iphone;
     } else if (strcmp(param->valuestring, "Pixel") == 0) {
@@ -231,16 +249,10 @@ int test_step_param_sta_management::decode_step_sta_management_config()
         step_config->m_ui_mgr->cci_get_radio_operation_param(ap_vap_info->radio_index),
         sizeof(wifi_radio_operationParam_t));
 
-    param = cJSON_GetObjectItem(sta_root_json, "ClientCount");
-    if (param != NULL && (cJSON_IsNumber(param) == true)) {
-        step_config->u.sta_test->client_count = param->valueint;
-    } else {
-        step_config->u.sta_test->client_count = 1;
-        param = cJSON_GetObjectItem(sta_root_json, "CustomStationMac");
-        if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
-            ((WiFi_IsValidMacAddr(param->valuestring) == TRUE))) {
-            string_mac_to_uint8_mac(step_config->u.sta_test->custom_mac, param->valuestring);
-        }
+    param = cJSON_GetObjectItem(sta_root_json, "CustomStationMac");
+    if (param != NULL && (cJSON_IsString(param) == true) && (param->valuestring != NULL) &&
+        ((WiFi_IsValidMacAddr(param->valuestring) == TRUE))) {
+        string_mac_to_uint8_mac(step_config->u.sta_test->custom_mac, param->valuestring);
     }
 
     param = cJSON_GetObjectItem(sta_root_json, "TestDuration");
@@ -423,7 +435,6 @@ int test_step_param_sta_management::step_execute()
     FILE *fp;
     char *json_str;
     char sta_connect_info[256] = { 0 };
-    char client_info_str[64] = { 0 };
 
     test_step_params_t *step = this;
 
@@ -436,8 +447,8 @@ int test_step_param_sta_management::step_execute()
         if (decode_step_sta_management_config() == RETURN_ERR) {
             return RETURN_ERR;
         }
-        step->u.sta_test->test_id = step->step_number;
         step->u.sta_test->is_decoded = true;
+        step->u.sta_test->test_id = step->step_number;
 
         if (step->u.sta_test->connection_type == client_connection_type_internal) {
             if (step->m_sim_sta_mgr->add_sta(step->u.sta_test) == RETURN_ERR) {
@@ -453,6 +464,9 @@ int test_step_param_sta_management::step_execute()
                 step->test_state = wlan_emu_tests_state_cmd_results;
             }
         } else if (step->u.sta_test->connection_type == client_connection_type_external) {
+            if (is_zero_mac(step->u.sta_test->custom_mac) == false) { 
+                memcpy(step->u.sta_test->sta_vap_config->u.sta_info.mac, step->u.sta_test->custom_mac, sizeof(mac_address_t));
+            }
             if (encode_external_sta_management_subdoc(cli_subdoc) == RETURN_ERR) {
                 wlan_emu_print(wlan_emu_log_level_err,
                     "%s:%d: encode failed for external client for step : %d\n", __func__, __LINE__,
@@ -468,6 +482,7 @@ int test_step_param_sta_management::step_execute()
             step->test_state = wlan_emu_tests_state_cmd_continue;
         }
     }
+
     // Creation of json for station
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
@@ -475,29 +490,10 @@ int test_step_param_sta_management::step_execute()
         return RETURN_ERR;
     }
 
-    if (step->u.sta_test->connection_type == client_connection_type_external) {
-
-        json = cJSON_CreateObject();
-        cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
-        uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, mac_str);
-        cJSON_AddStringToObject(json, "StationMacAddress", mac_str);
-    } else {
-        json = cJSON_CreateObject();
-        cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
-        for (uint client_id = 0; client_id < queue_count(step->u.sta_test->connected_client_info_q);
-            client_id++) {
-            connected_client_info_t *client_info = (connected_client_info_t *)queue_peek(
-                step->u.sta_test->connected_client_info_q, client_id);
-            if (client_info == NULL) {
-                break;
-            }
-            char client_info_mac_str[32] = { 0 };
-            uint8_mac_to_string_mac(client_info->sta_mac, client_info_mac_str);
-            snprintf(client_info_str, sizeof(client_info_str), "StationMacAddress_%d", client_id + 1);
-            cJSON_AddStringToObject(json, client_info_str, client_info_mac_str);
-            memset(client_info_str, 0, sizeof(client_info_str));
-        }
-    }
+    json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
+    uint8_mac_to_string_mac(step->u.sta_test->sta_vap_config->u.sta_info.mac, mac_str);
+    cJSON_AddStringToObject(json, "StationMacAddress", mac_str);
 
     snprintf(sta_connect_info, sizeof(sta_connect_info), "%s/%s_%d_%s_STATION_%d.json",
         step->m_ui_mgr->get_test_results_dir_path(), step->test_case_id, step->step_number,
@@ -574,6 +570,32 @@ int test_step_param_sta_management::push_ext_sta_result_files(const std::vector<
     return RETURN_OK;
 }
 
+int test_step_param_sta_management::parse_step_private_data(std::string private_data_str)
+{
+    cJSON *root_json = NULL, *param = NULL;
+    test_step_params_t *step = this;
+
+    root_json = cJSON_Parse(private_data_str.c_str());
+    if (root_json == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: NULL json pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    std::unique_ptr<cJSON, decltype(&cJSON_Delete)> json_wrapper(root_json, cJSON_Delete);
+    decode_param_string(root_json, "InterfaceName", param);
+    step->u.sta_test->sta_interface_name = std::string(param->valuestring);
+
+    param = cJSON_GetObjectItem(root_json, "IpAddress");
+    if (param != NULL && cJSON_IsString(param)) {
+        step->u.sta_test->is_ip_assigned = true;
+        step->u.sta_test->ip_address = std::string(param->valuestring);
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: ip_address : %s\n", __func__, __LINE__,
+            step->u.sta_test->ip_address.c_str());
+    }
+
+    return RETURN_OK;
+}
+
 int test_step_param_sta_management::step_timeout_ext_sta()
 {
     wlan_emu_ext_agent_interface_t *ext_agent;
@@ -583,7 +605,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: sta test key: %s\n", __func__, __LINE__,
         step->u.sta_test->key);
 
-    ext_agent = step->m_ext_sta_mgr->get_ext_agent(u.sta_test->key);
+    ext_agent = step->m_ext_sta_mgr->get_ext_agent(step->u.sta_test->key);
     if (ext_agent == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to find external agent for key: %s\n",
             __func__, __LINE__, step->u.sta_test->key);
@@ -592,10 +614,9 @@ int test_step_param_sta_management::step_timeout_ext_sta()
         return RETURN_ERR;
     }
 
-    if (ext_agent->get_external_agent_test_status(status) == RETURN_ERR) {
+    if (ext_agent->get_external_agent_test_status(status, step->m_ui_mgr->cci_error_code) == RETURN_ERR) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to get external agent status\n",
             __func__, __LINE__);
-        step->m_ui_mgr->cci_error_code = EEXTAGENT;
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
@@ -606,7 +627,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
 
     for (const ext_agent_step_status_t &step : status.steps) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step num: %d step state: %s\n", __func__,
-            __LINE__, step.step_number, ext_agent->step_state_as_string(step.state).c_str());
+            __LINE__, step.step_number, step_state_as_string(step.state).c_str());
         for (const std::string &file : step.result_files) {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: result file: %s\n", __func__, __LINE__,
                 file.c_str());
@@ -624,15 +645,55 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     }
 
     if (status.state == ext_agent_test_state_running) {
-        if ((step->execution_time + external_sta_grace_timeout) == (step->timeout_count)) {
+        if ((step->execution_time + external_sta_grace_timeout) <= (step->timeout_count)) {
             step->test_state = wlan_emu_tests_state_cmd_results;
             wlan_emu_print(wlan_emu_log_level_info,
                 "%s:%d: Test duration of %d completed for step %d\n", __func__, __LINE__,
                 step->execution_time, step->step_number);
-        } else {
-            wlan_emu_print(wlan_emu_log_level_err, "%s:%d: state: %s step number: %d\n", __func__,
-                __LINE__, ext_agent->step_state_as_string(step->test_state).c_str(), step_number);
+
+            auto step_iter = status.steps.begin();
+            for (; step_iter != status.steps.end(); ++step_iter) {
+                wlan_emu_print(wlan_emu_log_level_dbg,
+                    "%s:%d: step_iter->step_number : %d step_state : %s agent_state : %s\n",
+                    __func__, __LINE__, step_iter->step_number,
+                    step_state_as_string(step_iter->state).c_str(),
+                    ext_agent->agent_state_as_string(status.state).c_str());
+                if (step_iter->step_number == step_number) {
+                    step->test_state = step_iter->state;
+                    break;
+                }
+            }
+
+            if (step_iter->step_private_json_data.empty()) {
+                wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step private data is NULL\n",
+                    __func__, __LINE__);
+            } else {
+                wlan_emu_print(wlan_emu_log_level_info, "%s:%d: step private data is %s\n",
+                    __func__, __LINE__, step_iter->step_private_json_data.c_str());
+                parse_step_private_data(step_iter->step_private_json_data);
+            }
+
+            if (ext_agent->download_external_agent_result_files(step_iter->result_files, step->m_ui_mgr->cci_error_code) !=
+                RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
+                    __func__, __LINE__);
+                step->m_ui_mgr->cci_error_code = EDNLDTSTRESFILE;
+                step->test_state = wlan_emu_tests_state_cmd_abort;
+                return RETURN_ERR;
+            }
+
+            if (push_ext_sta_result_files(step_iter->result_files) != RETURN_OK) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to push test results\n",
+                    __func__, __LINE__);
+                step->m_ui_mgr->cci_error_code = EPUSHTSTRESFILE;
+                step->test_state = wlan_emu_tests_state_cmd_abort;
+                return RETURN_ERR;
+            }
+
             return RETURN_OK;
+        } else {
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: state: %s step number: %d\n", __func__,
+                __LINE__, step_state_as_string(step->test_state).c_str(), step_number);
         }
     }
 
@@ -655,8 +716,9 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     auto step_iter = status.steps.begin();
     for (; step_iter != status.steps.end(); ++step_iter) {
         wlan_emu_print(wlan_emu_log_level_dbg,
-            "%s:%d: step_iter->step_number : %d agent_state : %s\n", __func__, __LINE__,
-            step_iter->step_number, ext_agent->agent_state_as_string(status.state).c_str());
+            "%s:%d: step_iter->step_number : %d step_state : %s agent_state : %s\n", __func__,
+            __LINE__, step_iter->step_number, step_state_as_string(step_iter->state).c_str(),
+            ext_agent->agent_state_as_string(status.state).c_str());
         if (step_iter->step_number == step_number) {
             step->test_state = step_iter->state;
             break;
@@ -664,16 +726,36 @@ int test_step_param_sta_management::step_timeout_ext_sta()
     }
 
     if (step_iter == status.steps.end()) {
-        wlan_emu_print(wlan_emu_log_level_err,
+        wlan_emu_print(wlan_emu_log_level_info,
             "%s:%d: failed to get step state for number: %d agent_state : %s\n", __func__, __LINE__,
             step_number, ext_agent->agent_state_as_string(status.state).c_str());
-        // step->test_state = wlan_emu_tests_state_cmd_abort;
-        // return RETURN_ERR;
+        if (step->fork == true) {
+            step->test_state = wlan_emu_tests_state_cmd_wait;
+        } else {
+            step->test_state = wlan_emu_tests_state_cmd_continue;
+        }
+
+        if (step->u.sta_test->is_ip_assigned == false) {
+            step->test_state = wlan_emu_tests_state_cmd_continue;
+        }
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: test state: %s step number: %d\n", __func__,
+            __LINE__, step_state_as_string(step->test_state).c_str(), step_number);
+
         return RETURN_OK;
     }
 
+    if (step_iter->step_private_json_data.empty()) {
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: step private data is NULL\n", __func__,
+            __LINE__);
+    } else {
+        //        char *json_string = cJSON_Print(step_iter->step_private_json_data);
+        wlan_emu_print(wlan_emu_log_level_info, "%s:%d: step private data is %s\n", __func__,
+            __LINE__, step_iter->step_private_json_data.c_str());
+        parse_step_private_data(step_iter->step_private_json_data);
+    }
+
     if (step->test_state == wlan_emu_tests_state_cmd_results) {
-        if (ext_agent->download_external_agent_result_files(step_iter->result_files) != RETURN_OK) {
+        if (ext_agent->download_external_agent_result_files(step_iter->result_files, step->m_ui_mgr->cci_error_code) != RETURN_OK) {
             wlan_emu_print(wlan_emu_log_level_err, "%s:%d: failed to download test results\n",
                 __func__, __LINE__);
             step->m_ui_mgr->cci_error_code = EDNLDTSTRESFILE;
@@ -688,6 +770,7 @@ int test_step_param_sta_management::step_timeout_ext_sta()
             step->test_state = wlan_emu_tests_state_cmd_abort;
             return RETURN_ERR;
         }
+        return RETURN_OK;
     } else if (step->test_state == wlan_emu_tests_state_cmd_abort) {
         step->m_ui_mgr->cci_error_code = ESTEPSTOPPED;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: abort step number: %d\n", __func__, __LINE__,
@@ -695,8 +778,19 @@ int test_step_param_sta_management::step_timeout_ext_sta()
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: test state: %s step number: %d\n", __func__,
-            __LINE__, ext_agent->step_state_as_string(step->test_state).c_str(), step_number);
+            __LINE__, step_state_as_string(step->test_state).c_str(), step_number);
+        //__LINE__, ext_agent->step_state_as_string(step->test_state).c_str(), step_number);
         // step->test_state = wlan_emu_tests_state_cmd_abort;
+    }
+
+    if (step->fork == true) {
+        step->test_state = wlan_emu_tests_state_cmd_wait;
+    } else {
+        step->test_state = wlan_emu_tests_state_cmd_continue;
+    }
+
+    if (step->u.sta_test->is_ip_assigned == false) {
+        step->test_state = wlan_emu_tests_state_cmd_continue;
     }
 
     return RETURN_OK;
@@ -1117,6 +1211,7 @@ test_step_param_sta_management::test_step_param_sta_management()
         return;
     }
 
+    step->u.sta_test->is_decoded = false;
     step->u.sta_test->sta_vap_config = new (std::nothrow) wifi_vap_info_t;
     if (step->u.sta_test->sta_vap_config == nullptr) {
         wlan_emu_print(wlan_emu_log_level_err,
@@ -1153,18 +1248,6 @@ test_step_param_sta_management::test_step_param_sta_management()
     }
     memset(step->u.sta_test->station_prototype, 0, sizeof(station_prototype_t));
 
-    step->u.sta_test->connected_client_info_q = queue_create();
-    if (step->u.sta_test->connected_client_info_q == nullptr) {
-        wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: Queue create failed for connected_client_info_q\n", __func__, __LINE__);
-        delete step->u.sta_test->sta_vap_config;
-        delete step->u.sta_test->radio_oper_param;
-        delete step->u.sta_test->station_prototype;
-        delete step->u.sta_test;
-        step->is_step_initialized = false;
-        return;
-    }
-
     step->u.sta_test->station_prototype->fc_prototype_q = queue_create();
     if (step->u.sta_test->station_prototype->fc_prototype_q == nullptr) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Queue create failed for fc_prototype_q\n",
@@ -1188,9 +1271,9 @@ test_step_param_sta_management::test_step_param_sta_management()
     step->u.sta_test->wait_connection = false;
     memset(step->u.sta_test->custom_mac, 0, sizeof(mac_address_t));
     step->u.sta_test->u.sta_management.op_modes = 0;
+    step->u.sta_test->is_ip_assigned = false;
     step->u.sta_test->reconnect_interval = 0;
     step->u.sta_test->is_reconnect_enabled = false;
-    step->u.sta_test->is_decoded = false;
 }
 
 int test_step_param_sta_management::encode_external_sta_management_subdoc(std::string &cli_subdoc)
@@ -1212,6 +1295,7 @@ int test_step_param_sta_management::encode_external_sta_management_subdoc(std::s
         wlan_common_utils::get_sta_type_string(test_params->sta_type));
     cJSON_AddStringToObject(json, "StationName", test_params->sta_name);
     cJSON_AddNumberToObject(json, "StepNumber", step->step_number);
+    cJSON_AddBoolToObject(json, "Fork", step->fork);
     cJSON_AddStringToObject(json, "StationName", test_params->sta_name);
     cJSON_AddStringToObject(json, "TestCaseID", step->test_case_id);
     cJSON_AddStringToObject(json, "TestCaseName", step->test_case_name);
