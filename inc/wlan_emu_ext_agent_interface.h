@@ -99,8 +99,6 @@ public:
     queue_t *eth_client_interfaces; // eth_dev_info_t
     unsigned int total_supported_eth_clients;
     wlan_emu_ui_mgr_t* m_ui_mgr;
-    queue_t *eth_client_interfaces; // eth_dev_info_t
-    unsigned int total_supported_eth_clients;
 
     // Get the capability file to decode
     int get_external_agent_capabilities(hash_map_t *ext_agent_map);
