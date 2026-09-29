@@ -34,7 +34,10 @@ static enum_string_conv_t mfp_config[] = {
 
 static enum_string_conv_t client_model[] = {
     { sta_model_type_iphone, "Iphone" },
-    { sta_model_type_pixel,  "Pixel"  }
+    { sta_model_type_pixel,  "Pixel"  },
+    { sta_model_type_android, "Android"},
+    { sta_model_type_ios, "iOS"},
+    { sta_model_type_windows, "Windows"}
 };
 
 static enum_string_conv_t secu_mode[] = {

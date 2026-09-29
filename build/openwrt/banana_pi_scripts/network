@@ -1,0 +1,40 @@
+
+config interface 'loopback'
+        option device 'lo'
+        option proto 'static'
+        option ipaddr '127.0.0.1'
+        option netmask '255.0.0.0'
+
+config globals 'globals'
+        option ula_prefix 'fd37:41df:7ff6::/48'
+
+config device
+        option name 'br-lan'
+        option type 'bridge'
+        option igmp_snooping '1'
+        list ports 'lan0'
+        list ports 'lan1'
+        list ports 'lan2'
+
+config interface 'lan'
+        option device 'br-lan'
+        option peerdns '1'
+        option defaultroute '1'
+        option proto 'none'
+
+config interface 'wan'
+        option device 'eth1'
+        option proto 'dhcp'
+
+config interface 'wan6'
+        option device 'eth1'
+        option proto 'dhcpv6'
+
+config interface 'eth3'
+        option device 'eth3'
+        option proto 'none'
+
+config interface 'lan3'
+        option device 'lan3'
+        option proto 'none'
+

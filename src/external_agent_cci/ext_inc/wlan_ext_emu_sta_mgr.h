@@ -18,6 +18,9 @@ class wlan_ext_emu_sta_mgr_t {
     void set_dev_busy(unsigned int dev_id);
     void set_dev_free(unsigned int dev_id);
 
+    hash_map_t *m_eth_cli_map;
+    unsigned int m_eth_cli_count;
+
     inline static void create_key(sta_key_t key, unsigned int dev_id, unsigned int test_id)
     {
         snprintf(key, sizeof(sta_key_t), "%d-%d", test_id, dev_id);
@@ -56,6 +59,23 @@ public:
     queue_t *get_sta_info_map()
     {
         return m_sta_info_map;
+    }
+
+    int init_eth_interfaces();
+
+    hash_map_t *get_eth_map()
+    {
+        return m_eth_cli_map;
+    }
+
+    int get_eth_cli_info_count()
+    {
+        return m_eth_cli_count;
+    }
+
+    int set_eth_cli_info_count(int count)
+    {
+        m_eth_cli_count = count;
     }
 
     wlan_ext_emu_sta_mgr_t();

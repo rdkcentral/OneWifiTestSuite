@@ -192,7 +192,8 @@ typedef enum {
 typedef enum {
     client_connection_type_no_user_input = 0,
     client_connection_type_internal,
-    client_connection_type_external
+    client_connection_type_external,
+    client_connection_type_real,
 } wlan_emu_connection_type_t;
 
 typedef char configurator_t[32];
@@ -201,6 +202,9 @@ typedef char reference_t[8][32];
 typedef enum {
     sta_model_type_iphone,
     sta_model_type_pixel,
+    sta_model_type_android,
+    sta_model_type_ios,
+    sta_model_type_windows,
 } sta_model_type_t;
 
 typedef enum {
@@ -249,7 +253,6 @@ typedef enum {
     step_param_type_get_pattern_files,
     step_param_type_timed_wait,
     step_param_type_config_onewifi,
-    step_param_type_ext_station_management,
     step_param_type_gateway_performance,
     step_param_type_packet_generator,
     step_param_type_config_iperf_server,
@@ -276,7 +279,10 @@ typedef enum {
     tc_endpoint_type_factory_reset,
     tc_endpoint_type_reboot,
     tc_endpoint_type_pause,
-    tc_endpoint_type_resume
+    tc_endpoint_type_resume,
+    tc_endpoint_type_conn_request,
+    tc_endpoint_type_disconn_request,
+    tc_endpoint_type_iperf_request
 } tc_endpoint_type_t;
 
 typedef struct {
@@ -371,6 +377,8 @@ typedef struct {
     unsigned int current_profile_count;
     bool is_sta_management_timer;
     int op_modes;
+    char device_id[64];
+    char service_prefer[16];
 } sta_management_t;
 
 typedef struct {
@@ -508,10 +516,7 @@ typedef struct {
     sta_state_t status;
 } sta_info_t;
 
-typedef enum {
-    cmd_option_cpu,
-    cmd_option_mem
-} cmd_option_t;
+typedef enum { cmd_option_cpu, cmd_option_mem } cmd_option_t;
 
 typedef struct {
     std::string result_file_name;
@@ -560,35 +565,6 @@ typedef struct {
     } u;
 } iperf_server_t;
 
-typedef struct {
-    unsigned int interface_step_number;
-    unsigned int server_step_number;
-    char input_filename[128];
-    char interface_name[128];
-    char cmd_options[128];
-    char result_file[128];
-    char device_id[64];
-    char service_prefer[16];
-    pid_t iperf_client_pid;
-    sta_model_type_t sta_type;
-    wlan_emu_connection_type_t connection_type;
-} iperf_client_start_conf_t;
-
-typedef struct {
-    unsigned int stop_step_number;
-} iperf_client_stop_conf_t;
-
-typedef struct {
-    iperf_operation_type_t input_operation;
-    interface_type_t interface_type;
-    std::string sta_key;
-
-    union {
-        iperf_client_stop_conf_t stop_conf;
-        iperf_client_start_conf_t start_conf;
-    } u;
-} iperf_client_t;
-
 typedef enum { eth_interface_state_free = 0, eth_interface_state_in_use } eth_interface_state_t;
 
 typedef struct {
@@ -617,6 +593,35 @@ typedef struct {
     queue_t *logging_step_numbers; // step_number_entry_t
     bool is_fr_enabled;
 } device_upgrade_t;
+
+typedef struct {
+    unsigned int interface_step_number;
+    unsigned int server_step_number;
+    char input_filename[128];
+    char interface_name[128];
+    char cmd_options[128];
+    char result_file[128];
+    char device_id[64];
+    char service_prefer[16];
+    pid_t iperf_client_pid;
+    sta_model_type_t sta_type;
+    wlan_emu_connection_type_t connection_type;
+} iperf_client_start_conf_t;
+
+typedef struct {
+    unsigned int stop_step_number;
+} iperf_client_stop_conf_t;
+
+typedef struct {
+    iperf_operation_type_t input_operation;
+    interface_type_t interface_type;
+    std::string sta_key;
+
+    union {
+        iperf_client_stop_conf_t stop_conf;
+        iperf_client_start_conf_t start_conf;
+    } u;
+} iperf_client_t;
 
 #ifdef __cplusplus
 }

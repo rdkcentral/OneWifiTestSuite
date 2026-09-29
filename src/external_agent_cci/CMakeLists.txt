@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 project(external_agent_cci)
 
 # Recursively find all .cpp files in the subproject
-file(GLOB_RECURSE SUBPROJECT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+#file(GLOB_RECURSE SUBPROJECT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
+file(GLOB_RECURSE SUBPROJECT_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/wlan_ext_emu_test_step_param_iperf_server.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
 # Add library target for the subproject with discovered source files
 add_executable(${EXECUTABLE_NAME} ${SUBPROJECT_SOURCES} ${MAIN_SRC})

@@ -24,9 +24,53 @@
 #include "wlan_emu_bus.h"
 #include "wlan_emu_cjson.h"
 #include "wlan_emu_common.h"
+#ifndef BANANA_PI_PORT
 #include <rbus.h>
+#endif
 #include <sys/select.h>
 #include <unistd.h>
+
+// Macros for iperf
+#define IPERF_OPT_SCTP 1
+#define IPERF_OPT_LOGFILE 2
+#define IPERF_OPT_GET_SERVER_OUTPUT 3
+#define IPERF_OPT_UDP_COUNTERS_64BIT 4
+#define IPERF_OPT_CLIENT_PORT 5
+#define IPERF_OPT_NUMSTREAMS 6
+#define IPERF_OPT_FORCEFLUSH 7
+#define IPERF_OPT_NO_FQ_SOCKET_PACING 9 /* UNUSED */
+#define IPERF_OPT_FQ_RATE 10
+#define IPERF_OPT_DSCP 11
+#define IPERF_OPT_CLIENT_USERNAME 12
+#define IPERF_OPT_CLIENT_RSA_PUBLIC_KEY 13
+#define IPERF_OPT_SERVER_RSA_PRIVATE_KEY 14
+#define IPERF_OPT_SERVER_AUTHORIZED_USERS 15
+#define IPERF_OPT_PACING_TIMER 16
+#define IPERF_OPT_CONNECT_TIMEOUT 17
+#define IPERF_OPT_REPEATING_PAYLOAD 18
+#define IPERF_OPT_EXTRA_DATA 19
+#define IPERF_OPT_BIDIRECTIONAL 20
+#define IPERF_OPT_SERVER_BITRATE_LIMIT 21
+#define IPERF_OPT_TIMESTAMPS 22
+#define IPERF_OPT_SERVER_SKEW_THRESHOLD 23
+#define IPERF_OPT_BIND_DEV 24
+#define IPERF_OPT_IDLE_TIMEOUT 25
+#define IPERF_OPT_DONT_FRAGMENT 26
+#define IPERF_OPT_RCV_TIMEOUT 27
+#define IPERF_OPT_JSON_STREAM 28
+#define IPERF_OPT_SND_TIMEOUT 29
+#define IPERF_OPT_USE_PKCS1_PADDING 30
+#define IPERF_OPT_CNTL_KA 31
+#define IPERF_OPT_SKIP_RX_COPY 32
+
+#define IPERF_MIN_INTERVAL 0.1
+#define IPERF_MAX_INTERVAL 60.0
+#define IPERF_MAX_TIME 86400
+#define IPERF_MB (1024 * 1024)
+#define IPERF_MAX_TCP_BUFFER (512 * MB)
+#define IPERF_MAX_STREAMS 128
+#define IPERF_MAX_BURST 1000
+#define IPERF_MAX_MSS (9 * 1024)
 
 typedef char wlan_emu_pollable_name_t[512];
 
@@ -192,7 +236,6 @@ private:
     int download_file(char *input_file_name, unsigned int input_file_name_len);
     int download_step_param_config(test_step_params_t *step);
     int download_step_common_config(test_step_params_t *step);
-    int cci_post_result_to_tda(unsigned int type, char *str);
     int decode_step_get_file(cJSON *step, test_step_params_t *step_config);
     int decode_step_mgmt_frame_capture(cJSON *step, test_step_params_t *step_config);
     int decode_step_get_pattern_files(cJSON *step, test_step_params_t *step_config);
@@ -208,6 +251,7 @@ public:
     unsigned int upload_results(void);
     int upload_cci_log(char *test_case_id, char *test_case_name, FILE *fp);
     int decode_reboot_case_json();
+    int cci_post_result_to_tda(unsigned int type, char *str);
     int cci_error_code;
 
     inline void add_bus_mgr(wlan_emu_bus_t *bus_mgr)
@@ -337,9 +381,11 @@ public:
         m_webconfig_data = cci_webconfig;
     }
 
-    inline pthread_cond_t* get_heartbeat_cond_var() {
+    inline pthread_cond_t *get_heartbeat_cond_var()
+    {
         return &m_heartbeat_cond;
     }
+
     static void *heartbeat_function(void *arg);
 
     static void set_webconfig_cci_data(char *event_name, bus_data_prop_t *data, void *userData);
@@ -358,12 +404,16 @@ public:
     webconfig_error_t update_vap_security_object(cJSON *security,
         wifi_vap_security_t *security_info, int band);
     webconfig_error_t update_vap_common_object(cJSON *vap, wifi_vap_info_t *vap_info);
-    int update_vap_param_integer(cJSON *json, const char *key, cJSON **value);
-    int update_vap_param_string(cJSON *json, const char *key, cJSON **value);
-    int update_vap_param_bool(cJSON *json, const char *key, cJSON **value);
+    int update_json_param_integer(cJSON *json, const char *key, cJSON **value);
+    int update_json_param_string(cJSON *json, const char *key, cJSON **value);
+    int update_json_param_bool(cJSON *json, const char *key, cJSON **value);
     int get_radioindex_from_bssid(mac_address_t ap_bssid, unsigned int *radio_index);
     wifi_radio_operationParam_t *cci_get_radio_operation_param(unsigned int radio_index);
     void dump_json(cJSON *json_buff, const char *func, int line);
+    int decode_step_iperf_server(cJSON *step, test_step_params_t *step_config);
+    int validate_iperf_options(std::string args);
+    int decode_step_iperf_client(cJSON *step, test_step_params_t *step_config);
+    int decode_step_configure_eth_client(cJSON *step, test_step_params_t *step_config);
 
     char *get_remote_test_results_loc()
     {

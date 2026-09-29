@@ -36,8 +36,7 @@ public:
     int start();
     void stop();
 
-    //int add_sta(test_step_params_t *step);
-    int add_sta(test_step_params_t *step,const std::string &cli_subdoc);
+    int add_sta(test_step_params_t *step, const std::string &cli_subdoc);
     void remove_all_sta(unsigned int vap_id);
     int get_num_free_clients();
     void remove_sta(sta_test_t *sta_test);

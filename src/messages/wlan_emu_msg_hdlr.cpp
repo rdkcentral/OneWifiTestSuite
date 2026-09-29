@@ -238,6 +238,29 @@ void handle_agent_msg(char *f_tmp, wlan_emu_msg_data_t *f_data)
         f_data->u.agent_msg.u.buf = buf_address;
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: buf : %p\n", __func__, __LINE__,
             (unsigned char *)f_data->u.agent_msg.u.buf);
+    } else if (f_data->u.agent_msg.ops == wlan_emu_msg_agent_ops_type_notification) {
+        memcpy(&f_data->u.agent_msg.u.agent_notif.sub_ops_type, f_tmp, sizeof(int));
+        f_tmp += sizeof(int);
+
+        memcpy(&f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_state, f_tmp, sizeof(int));
+        f_tmp += sizeof(int);
+
+        memcpy(f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_mac_addr, f_tmp, ETH_ALEN);
+        f_tmp += ETH_ALEN;
+
+        memcpy(f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.bssid_mac_addr, f_tmp, ETH_ALEN);
+        f_tmp += ETH_ALEN;
+
+        char bssid_mac_str[32] = { 0 };
+        char sta_mac_str[32] = { 0 };
+
+        uint8_mac_to_string_mac(f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.sta_mac_addr,
+            sta_mac_str);
+        uint8_mac_to_string_mac(f_data->u.agent_msg.u.agent_notif.u.wifi_sta_notif.bssid_mac_addr,
+            bssid_mac_str);
+
+        wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: sta_mac_addr : %s bssid_mac_addr : %s\n",
+            __func__, __LINE__, sta_mac_str, bssid_mac_str);
     }
 }
 
@@ -320,6 +343,9 @@ void wlan_emu_msg_hdlr_t::msg_hdlr_thread_func()
         if ((msg->get_msg_type() == wlan_emu_msg_type_emu80211) &&
             (msg->get_emu80211_ops_type() == wlan_emu_emu80211_ops_type_close)) {
             delete msg;
+            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: received type close command: %s\n",
+                __func__, __LINE__, msg->get_ops_string_by_msg_type());
+            m_threadExit = true;
             break;
         }
         queue_msg(msg);
@@ -358,7 +384,7 @@ void wlan_emu_msg_hdlr_t::stop()
 {
     wlan_emu_msg_data_t spec;
 
-    m_threadExit = true;
+    // m_threadExit = true;
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: sending close command to emulator char device\n",
         __func__, __LINE__);

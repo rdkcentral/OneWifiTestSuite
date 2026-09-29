@@ -33,7 +33,7 @@ fi
 sleep 2
 cci &
 brctl delif brlan0 eth1
-udhcpc -i eth1 -x hostname:raspberrypi_ext -b &
+udhcpc -i eth1 -x hostname:ots_ext_agent -b &
 
 brctl delif brlan0 eth2
-udhcpc -i eth2 -x hostname:raspberrypi_ext -b &
+udhcpc -i eth2 -x hostname:ots_ext_agent -b &

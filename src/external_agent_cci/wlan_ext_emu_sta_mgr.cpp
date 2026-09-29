@@ -20,6 +20,8 @@ INT wifi_hal_disconnect(INT ap_index);
 INT wifi_hal_getRadioVapInfoMap(wifi_radio_index_t index, wifi_vap_info_map_t *map);
 INT wifi_hal_startScan(wifi_radio_index_t index, wifi_neighborScanMode_t scan_mode, INT dwell_time,
     UINT num, UINT *chan_list);
+INT wifi_hal_setRadioOperatingParameters(wifi_radio_index_t index,
+    wifi_radio_operationParam_t *operationParam);
 int convert_channel_to_freq(int band, unsigned char chan);
 }
 
@@ -97,8 +99,6 @@ void wlan_ext_emu_sta_mgr_t::remove_sta(sta_test_t *sta_test)
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: sta_info is NULL\n", __func__, __LINE__);
         return;
     }
-    // remove_from_bridge(sta_info->interface_name, sta_test->sta_vap_config->bridge_name);
-    // ovs_fdb_flush(sta_test->sta_vap_config->bridge_name);
 
     set_dev_free(sta->get_dev_id());
     hash_map_remove(m_sta_map, sta_test->key);
@@ -116,6 +116,11 @@ int wlan_ext_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     sta_info_t *sta_info = NULL;
     mac_update_t mac_update;
     bool is_custom_mac_enabled = false;
+
+    /*list_interfaces_in_namespace();
+    wlan_emu_print(wlan_emu_log_level_info, "%s:%d: name space : %s\n", __func__, __LINE__,
+        get_current_namespace().c_str());
+        */
 
     if ((dev_id = find_first_free_dev()) == -1) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: could not find free device\n", __func__,
@@ -136,6 +141,12 @@ int wlan_ext_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     sta_test_config->sta_vap_config->vap_index = sta_info->index;
     sta_test_config->phy_index = sta_info->phy_index;
     sta_test_config->sta_vap_config->radio_index = sta_info->rdk_radio_index;
+    // snprintf(sta_test_config->sta_interface_name, sizeof(sta_test_config->sta_interface_name),
+    // "%s", sta_info->interface_name);
+
+    sta_test_config->sta_interface_name = std::string(sta_info->interface_name);
+
+    sta_test_config->sta_interface_name = std::string(sta_info->interface_name);
 
     memcpy(sta_test_config->sta_vap_config->u.sta_info.mac, sta_info->mac, sizeof(mac_address_t));
     if (is_zero_mac(sta_test_config->custom_mac) == false) {
@@ -168,6 +179,17 @@ int wlan_ext_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     map->num_vaps = 1;
     memcpy(&map->vap_array[0], sta_test_config->sta_vap_config, sizeof(wifi_vap_info_t));
 
+    // Copy Radio Params to HAL.
+    if (wifi_hal_setRadioOperatingParameters(sta_info->rdk_radio_index,
+            sta_test_config->radio_oper_param) != RETURN_OK) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: wifi_hal_setRadioOperatingParameters failed for radio index : %d\n", __func__,
+            __LINE__, sta_info->rdk_radio_index);
+        delete (sta);
+        free(map);
+        return RETURN_ERR;
+    }
+
     if (wifi_hal_createVAP(sta_info->rdk_radio_index, map) == RETURN_OK) {
         sta->set_vap(sta_test_config->sta_vap_config);
     } else {
@@ -190,7 +212,6 @@ int wlan_ext_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
         sta_test_config->radio_oper_param->channel, bss.freq);
 
     snprintf(bss.ssid, sizeof(bss.ssid), "%s", sta_test_config->sta_vap_config->u.sta_info.ssid);
-    memcpy(bss.bssid, sta_test_config->sta_vap_config->u.sta_info.bssid, sizeof(mac_address_t));
     chan_list[0] = sta_test_config->radio_oper_param->channel;
     wifi_hal_startScan(sta_info->rdk_radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, 500, 1, chan_list);
     usleep(500000);
@@ -209,6 +230,48 @@ int wlan_ext_emu_sta_mgr_t::add_sta(sta_test_t *sta_test_config)
     set_dev_busy(dev_id);
 
     return 0;
+}
+
+int wlan_ext_emu_sta_mgr_t::init_eth_interfaces()
+{
+    eth_dev_info_t *eth_dev;
+    std::string eth_interface_name = "lan3";
+    unsigned char eth_interface_mac[ETH_ALEN] = { 0 };
+    char eth_ip_address[INET_ADDRSTRLEN] = { 0 };
+    m_eth_cli_map = hash_map_create();
+    int eth_cli_count = 1;
+
+    eth_dev = new (std::nothrow) eth_dev_info_t;
+    if (eth_dev == nullptr) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: allocation failed for %s \n", __func__,
+            __LINE__, eth_interface_name.c_str());
+        return RETURN_ERR;
+    }
+
+#if 0
+    //Use this function if we are not using the namespace
+    if (get_mac_ip_from_ifname(eth_interface_name.c_str(), eth_interface_mac, eth_ip_address) !=
+        RETURN_OK)
+#else
+    if (get_mac_ip_from_ifname_ns(eth_interface_name.c_str(), "/var/run/netns/ots",
+            eth_interface_mac, eth_ip_address) != RETURN_OK)
+#endif
+    {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Failed to get MAC/IP for %s\n", __func__,
+            __LINE__, eth_interface_name.c_str());
+        return RETURN_ERR;
+    }
+
+    memcpy(eth_dev->interface_mac, eth_interface_mac, sizeof(mac_address_t));
+    eth_dev->interface_name = eth_interface_name;
+    eth_dev->ip_address = std::string(eth_ip_address);
+    eth_dev->state = eth_interface_state_free;
+
+    hash_map_put(m_eth_cli_map, strdup(eth_dev->interface_mac), eth_dev);
+    eth_cli_count = 1;
+    set_eth_cli_info_count(eth_cli_count);
+
+    return RETURN_OK;
 }
 
 int wlan_ext_emu_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
@@ -272,17 +335,33 @@ int wlan_ext_emu_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
                 return RETURN_ERR;
             }
 
-            wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: vap_info_map->num_vaps : %d\n", __func__,
-                __LINE__, vap_info_map->num_vaps);
+            wlan_emu_print(wlan_emu_log_level_dbg,
+                "%s:%d: num_vaps : %d, vap_name : %s interface_name : %s\n", __func__,
+                __LINE__, vap_info_map->num_vaps, sta_info->vap_name, sta_info->interface_name);
 
             for (unsigned int itr = 0; itr < vap_info_map->num_vaps; itr++) {
                 if (vap_info_map->vap_array[itr].vap_index == sta_info->index) {
                     memcpy(sta_info->mac, vap_info_map->vap_array[itr].u.sta_info.mac,
                         sizeof(mac_address_t));
                     wlan_emu_print(wlan_emu_log_level_dbg,
-                        "%s:%d: itr : %d vap_index : %d mac : %s\n", __func__, __LINE__, itr,
-                        vap_info_map->vap_array[itr].vap_index, to_mac_str(sta_info->mac, mac_str));
+                        "%s:%d: itr : %d vap_index : %d mac : %s vap_name : %s interface_name : %s "
+                        "\n",
+                        __func__, __LINE__, itr, vap_info_map->vap_array[itr].vap_index,
+                        to_mac_str(sta_info->mac, mac_str), sta_info->vap_name,
+                        sta_info->interface_name);
                 }
+            }
+
+            if (is_zero_mac(sta_info->mac) == true) {
+                wlan_emu_print(wlan_emu_log_level_info,
+                    "%s:%d: zero mac for  vap_index : %d mac : %s vap_name : %s interface_name : "
+                    "%s "
+                    "\n",
+                    __func__, __LINE__, sta_info->index, to_mac_str(sta_info->mac, mac_str),
+                    sta_info->vap_name, sta_info->interface_name);
+                free(vap_info_map);
+                free(sta_info);
+                continue;
             }
 
             wlan_emu_print(wlan_emu_log_level_dbg,
@@ -290,9 +369,9 @@ int wlan_ext_emu_sta_mgr_t::init(wifi_hal_capability_t *sta_hal_cap)
                 m_sta_info_count, sta_info->index);
             m_sta_info_count++;
             queue_push(m_sta_info_map, sta_info);
+            free(vap_info_map);
         }
     }
-    free(vap_info_map);
 
     return 0;
 }

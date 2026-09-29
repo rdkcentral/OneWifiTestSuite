@@ -1,4 +1,8 @@
+#ifndef BANANA_PI_PORT
 #include "cJSON.h"
+#else
+#include <cjson/cJSON.h>
+#endif
 #include "wlan_emu_common.h"
 #include "wlan_emu_log.h"
 #include "wlan_emu_test_params.h"
