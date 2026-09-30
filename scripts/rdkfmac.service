@@ -5,8 +5,11 @@ After=wifi.service
 [Service]
 Type=forking
 RemainAfterExit=yes
-ExecStart=/usr/bin/rdkfmac_modprobe.sh start
-ExecStop=/usr/bin/rdkfmac_modprobe.sh stop
+ExecStartPre=/bin/sh -c 'printf "[%s] rdkfmac.service: preparing to start\n" "$(date -Iseconds)" >> /tmp/cci_init_script.log'
+ExecStart=/bin/sh -c 'printf "[%s] rdkfmac.service: starting rdkfmac driver\n" "$(date -Iseconds)" >> /tmp/cci_init_script.log; /usr/bin/rdkfmac_modprobe.sh start >> /tmp/cci_init_script.log 2>&1; rc=$?; printf "[%s] rdkfmac.service: start completed with status %s\n" "$(date -Iseconds)" "$rc" >> /tmp/cci_init_script.log; exit "$rc"'
+ExecStartPost=/bin/sh -c 'printf "[%s] rdkfmac.service: started successfully\n" "$(date -Iseconds)" >> /tmp/cci_init_script.log'
+ExecStop=/bin/sh -c 'printf "[%s] rdkfmac.service: stopping rdkfmac driver\n" "$(date -Iseconds)" >> /tmp/cci_init_script.log; /usr/bin/rdkfmac_modprobe.sh stop >> /tmp/cci_init_script.log 2>&1; rc=$?; printf "[%s] rdkfmac.service: stop completed with status %s\n" "$(date -Iseconds)" "$rc" >> /tmp/cci_init_script.log; exit "$rc"'
+ExecStopPost=/bin/sh -c 'printf "[%s] rdkfmac.service: stopped; service result=%s\n" "$(date -Iseconds)" "$SERVICE_RESULT" >> /tmp/cci_init_script.log'
 Restart=always
 
 [Install]

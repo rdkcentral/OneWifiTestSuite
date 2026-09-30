@@ -18,40 +18,111 @@
 #
 #
 
+CCI_LOG_FILE="/tmp/cci_init_script"
+
+log_msg() {
+    echo "[`date '+%Y-%m-%d %H:%M:%S'`] $*" >> "$CCI_LOG_FILE"
+}
+
+# run a command, log it and its output/exit status
+run_cmd() {
+    log_msg "CMD: $*"
+    out=`"$@" 2>&1`
+    rc=$?
+    if [ -n "$out" ]; then
+        log_msg "OUT: $out"
+    fi
+    log_msg "RC : $rc"
+    return $rc
+}
+
+touch "$CCI_LOG_FILE" 2>/dev/null
+log_msg "==================== script invoked: $0 $* ===================="
+
 ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
 ONEWIFI_TESTSUITE_TMPFILE="/tmp/onewifi_testsuite_configured"
 ONEWIFI_SIM_CLI_COUNT="`syscfg get onewifi_suite_sim_cli_count`"
 action=$1
 temp_max_sim_clients=3
 
+log_msg "action=$action"
+log_msg "onewifi_testsuite=[$ONEWIFI_TESTSUITE_CFG]"
+log_msg "onewifi_suite_sim_cli_count=[$ONEWIFI_SIM_CLI_COUNT]"
+log_msg "default max_sim_clients=$temp_max_sim_clients"
+
 if [ "$action" = "start" ]; then
+    log_msg "Handling 'start' action"
     if [ "$ONEWIFI_TESTSUITE_CFG" != "true" ]; then
+        log_msg "onewifi_testsuite is not 'true' (raw value=[$ONEWIFI_TESTSUITE_CFG]), exiting the script"
         echo "Exiting the script..."
         exit 0
     fi
 
     if [[ "$ONEWIFI_SIM_CLI_COUNT" =~ ^[0-9]+$ ]]; then
+        log_msg "sim client count is numeric, validating range"
         if [ "$ONEWIFI_SIM_CLI_COUNT" -ge 1 ] && [ "$ONEWIFI_SIM_CLI_COUNT" -le 300 ]; then
             temp_max_sim_clients=$ONEWIFI_SIM_CLI_COUNT
+            log_msg "using configured max_sim_clients=$temp_max_sim_clients"
+        else
+            log_msg "sim client count out of range (1-300), using default $temp_max_sim_clients"
         fi
+    else
+        log_msg "sim client count not numeric, using default $temp_max_sim_clients"
     fi
 
     echo "Starting Test Suite with max clients $temp_max_sim_clients.."
-    modprobe rdkfmac max_sim_clients=$temp_max_sim_clients
-    ifconfig nl_msg_mon0 up
-    ifconfig hwsim0 up
-    cci &
-    touch $ONEWIFI_TESTSUITE_TMPFILE
+    log_msg "Starting Test Suite with max clients $temp_max_sim_clients"
+    run_cmd modprobe rdkfmac max_sim_clients=$temp_max_sim_clients
+    run_cmd ifconfig nl_msg_mon0 up
+    run_cmd ifconfig hwsim0 up
+
+    # Verify the cci binary is resolvable in the service's PATH before launching
+    cci_path=`command -v cci 2>/dev/null`
+    if [ -z "$cci_path" ]; then
+        log_msg "ERROR: cci binary not found in PATH ($PATH)"
+    else
+        log_msg "cci resolved to $cci_path"
+    fi
+    if pgrep -x cci >/dev/null 2>&1; then
+        log_msg "WARNING: a cci process is already running (pids: `pgrep -x cci | tr '\n' ' '`)"
+    fi
+
+    log_msg "Launching cci in background"
+    cci >> "$CCI_LOG_FILE" 2>&1 &
+    cci_pid=$!
+    log_msg "cci started with pid $cci_pid"
+
+    # Confirm cci survived startup; a background launch alone does not prove it stayed up
+    sleep 1
+    if kill -0 "$cci_pid" 2>/dev/null; then
+        log_msg "cci still alive after 1s (pid $cci_pid)"
+    else
+        wait "$cci_pid" 2>/dev/null
+        log_msg "ERROR: cci EXITED early (pid $cci_pid, rc=$?)"
+    fi
+
+    run_cmd touch $ONEWIFI_TESTSUITE_TMPFILE
+    log_msg "start action completed"
 elif [ "$action" = "stop" ]; then
+    log_msg "Handling 'stop' action"
     echo "Stopping Test Suite.."
     ifconfig -a | grep wlan | cut -d ' ' -f 1 | while IFS= read -r line; do
-        ifconfig $line down
+        log_msg "Bringing down interface $line"
+        run_cmd ifconfig $line down
     done
-    ifconfig nl_msg_mon0 down
-    ifconfig hwsim0 down
-    killall cci
+    run_cmd ifconfig nl_msg_mon0 down
+    run_cmd ifconfig hwsim0 down
+    run_cmd killall cci
     if [ -e "$ONEWIFI_TESTSUITE_TMPFILE" ]; then
-        rm -rf $ONEWIFI_TESTSUITE_TMPFILE
+        log_msg "Removing $ONEWIFI_TESTSUITE_TMPFILE"
+        run_cmd rm -rf $ONEWIFI_TESTSUITE_TMPFILE
+    else
+        log_msg "$ONEWIFI_TESTSUITE_TMPFILE not present, nothing to remove"
     fi
-    rmmod rdkfmac
+    run_cmd rmmod rdkfmac
+    log_msg "stop action completed"
+else
+    log_msg "Unknown action '$action', nothing to do"
 fi
+
+log_msg "==================== script finished: $0 $* ===================="
