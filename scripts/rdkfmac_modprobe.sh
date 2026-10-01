@@ -39,19 +39,40 @@ run_cmd() {
 touch "$CCI_LOG_FILE" 2>/dev/null
 log_msg "==================== script invoked: $0 $* ===================="
 
-ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
 ONEWIFI_TESTSUITE_TMPFILE="/tmp/onewifi_testsuite_configured"
-ONEWIFI_SIM_CLI_COUNT="`syscfg get onewifi_suite_sim_cli_count`"
 action=$1
 temp_max_sim_clients=3
 
 log_msg "action=$action"
-log_msg "onewifi_testsuite=[$ONEWIFI_TESTSUITE_CFG]"
-log_msg "onewifi_suite_sim_cli_count=[$ONEWIFI_SIM_CLI_COUNT]"
-log_msg "default max_sim_clients=$temp_max_sim_clients"
+
+# syscfg can be unpopulated when this runs early at boot, before RFC applies the
+# feature flag. Wait while the value is empty (not yet ready); an explicit "false"
+# means the feature is off and we exit immediately.
+ONEWIFI_TESTSUITE_WAIT_SECS=120
+wait_for_testsuite_cfg() {
+    i=0
+    while [ "$i" -lt "$ONEWIFI_TESTSUITE_WAIT_SECS" ]; do
+        ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
+        if [ -n "$ONEWIFI_TESTSUITE_CFG" ]; then
+            return 0
+        fi
+        if [ "$i" -eq 0 ]; then
+            log_msg "onewifi_testsuite empty, waiting up to ${ONEWIFI_TESTSUITE_WAIT_SECS}s for RFC/syscfg to populate it"
+        fi
+        i=`expr "$i" + 1`
+        sleep 1
+    done
+    ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
+    return 1
+}
 
 if [ "$action" = "start" ]; then
     log_msg "Handling 'start' action"
+    wait_for_testsuite_cfg
+    ONEWIFI_SIM_CLI_COUNT="`syscfg get onewifi_suite_sim_cli_count`"
+    log_msg "onewifi_testsuite=[$ONEWIFI_TESTSUITE_CFG]"
+    log_msg "onewifi_suite_sim_cli_count=[$ONEWIFI_SIM_CLI_COUNT]"
+    log_msg "default max_sim_clients=$temp_max_sim_clients"
     if [ "$ONEWIFI_TESTSUITE_CFG" != "true" ]; then
         log_msg "onewifi_testsuite is not 'true' (raw value=[$ONEWIFI_TESTSUITE_CFG]), exiting the script"
         echo "Exiting the script..."
