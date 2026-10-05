@@ -48,12 +48,19 @@ log_msg "action=$action"
 # syscfg can be unpopulated when this runs early at boot, before RFC applies the
 # feature flag. Wait while the value is empty (not yet ready); an explicit "false"
 # means the feature is off and we exit immediately.
-ONEWIFI_TESTSUITE_WAIT_SECS=120
+ONEWIFI_TESTSUITE_WAIT_SECS=30
 wait_for_testsuite_cfg() {
     i=0
     while [ "$i" -lt "$ONEWIFI_TESTSUITE_WAIT_SECS" ]; do
         ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
+        log_msg "onewifi_testsuite currently unresolved, attempt $i"
         if [ -n "$ONEWIFI_TESTSUITE_CFG" ]; then
+            log_msg "onewifi_testsuite has value [$ONEWIFI_TESTSUITE_CFG]"
+        else
+            log_msg "onewifi_testsuite is still empty"
+        fi
+        if [ "$ONEWIFI_TESTSUITE_CFG" = "true" ] || [ "$ONEWIFI_TESTSUITE_CFG" = "false" ]; then
+            log_msg "onewifi_testsuite resolved to [$ONEWIFI_TESTSUITE_CFG] after ${i}s"
             return 0
         fi
         if [ "$i" -eq 0 ]; then
