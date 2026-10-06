@@ -1,8 +1,8 @@
 [Unit]
 Description=Install rdkfmac Driver
 # These units own the RBUS objects cci reads during init.
-After=rbus.service onewifi.service CcspLMLite.service
-Wants=rbus.service onewifi.service CcspLMLite.service
+After=rbus.service onewifi.service CcspLMLite.service time-sync.target ntpd.service
+Wants=rbus.service onewifi.service CcspLMLite.service time-sync.target ntpd.service
 StartLimitIntervalSec=0
 
 [Service]

@@ -45,61 +45,69 @@ temp_max_sim_clients=3
 
 log_msg "action=$action"
 
-# syscfg can be unpopulated when this runs early at boot, before RFC applies the
-# feature flag. Poll while the value is empty; "true"/"false" means it is resolved.
-ONEWIFI_TESTSUITE_WAIT_SECS=30
+# Bounded per-attempt waits only; systemd restarts the unit if a dependency is still missing.
+DEP_WAIT_SECS=400
+
 wait_for_testsuite_cfg() {
     i=0
-    while [ "$i" -lt "$ONEWIFI_TESTSUITE_WAIT_SECS" ]; do
+    while [ "$i" -lt "$DEP_WAIT_SECS" ]; do
         ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
         if [ "$ONEWIFI_TESTSUITE_CFG" = "true" ] || [ "$ONEWIFI_TESTSUITE_CFG" = "false" ]; then
             log_msg "onewifi_testsuite resolved to [$ONEWIFI_TESTSUITE_CFG] after ${i}s"
             return 0
         fi
-        if [ "$i" -eq 0 ]; then
-            log_msg "onewifi_testsuite empty, waiting up to ${ONEWIFI_TESTSUITE_WAIT_SECS}s for RFC/syscfg to populate it"
+        i=`expr "$i" + 1`
+        sleep 1
+    done
+    log_msg "onewifi_testsuite unresolved after ${DEP_WAIT_SECS}s"
+    return 1
+}
+
+# A successful get proves both the RBUS transport and the owning provider are up.
+wait_for_bus_object() {
+    obj=$1
+    i=0
+    while [ "$i" -lt "$DEP_WAIT_SECS" ]; do
+        if rbuscli getvalues "$obj" >/dev/null 2>&1; then
+            log_msg "bus object ready: $obj (after ${i}s)"
+            return 0
         fi
         i=`expr "$i" + 1`
         sleep 1
     done
-    log_msg "onewifi_testsuite still unresolved after ${ONEWIFI_TESTSUITE_WAIT_SECS}s"
+    log_msg "ERROR: bus object not ready: $obj"
     return 1
 }
 
 if [ "$action" = "start" ]; then
     log_msg "Handling 'start' action"
-
     wait_for_testsuite_cfg
-    log_msg "onewifi_testsuite=[$ONEWIFI_TESTSUITE_CFG]"
-
-    case "$ONEWIFI_TESTSUITE_CFG" in
-        true)  ;;
-        false) log_msg "feature disabled, exiting"; echo "Exiting the script..."; exit 0 ;;
-        # Still empty after the wait; exit non-zero so systemd retries the unit.
-        *)     log_msg "onewifi_testsuite not populated yet"; exit 1 ;;
-    esac
-
     ONEWIFI_SIM_CLI_COUNT="`syscfg get onewifi_suite_sim_cli_count`"
-    log_msg "onewifi_suite_sim_cli_count=[$ONEWIFI_SIM_CLI_COUNT]"
+    log_msg "onewifi_testsuite=[$ONEWIFI_TESTSUITE_CFG] sim_cli_count=[$ONEWIFI_SIM_CLI_COUNT]"
+
+    if [ "$ONEWIFI_TESTSUITE_CFG" != "true" ]; then
+        log_msg "onewifi_testsuite is not 'true', exiting the script"
+        echo "Exiting the script..."
+        exit 0
+    fi
+
+    wait_for_bus_object "Device.WiFi.WebConfig.Data.Init_dml" || exit 1
+    wait_for_bus_object "Device.Hosts.HostNumberOfEntries" || exit 1
 
     if [[ "$ONEWIFI_SIM_CLI_COUNT" =~ ^[0-9]+$ ]]; then
         if [ "$ONEWIFI_SIM_CLI_COUNT" -ge 1 ] && [ "$ONEWIFI_SIM_CLI_COUNT" -le 300 ]; then
             temp_max_sim_clients=$ONEWIFI_SIM_CLI_COUNT
-        else
-            log_msg "sim client count out of range (1-300), using default $temp_max_sim_clients"
         fi
-    else
-        log_msg "sim client count not numeric, using default $temp_max_sim_clients"
     fi
-    log_msg "max_sim_clients=$temp_max_sim_clients"
+    log_msg "using max_sim_clients=$temp_max_sim_clients"
 
     echo "Starting Test Suite with max clients $temp_max_sim_clients.."
     run_cmd modprobe rdkfmac max_sim_clients=$temp_max_sim_clients || exit 1
     run_cmd ifconfig nl_msg_mon0 up || exit 1
     run_cmd ifconfig hwsim0 up || exit 1
-    run_cmd touch $ONEWIFI_TESTSUITE_TMPFILE
 
-    log_msg "exec cci"
+    run_cmd touch $ONEWIFI_TESTSUITE_TMPFILE
+    log_msg "dependencies ready, exec cci"
     # exec so cci becomes the unit's main process and its exit status reaches systemd
     exec cci >> "$CCI_LOG_FILE" 2>&1
 elif [ "$action" = "stop" ]; then
