@@ -46,19 +46,12 @@ temp_max_sim_clients=3
 log_msg "action=$action"
 
 # syscfg can be unpopulated when this runs early at boot, before RFC applies the
-# feature flag. Wait while the value is empty (not yet ready); an explicit "false"
-# means the feature is off and we exit immediately.
+# feature flag. Poll while the value is empty; "true"/"false" means it is resolved.
 ONEWIFI_TESTSUITE_WAIT_SECS=30
 wait_for_testsuite_cfg() {
     i=0
     while [ "$i" -lt "$ONEWIFI_TESTSUITE_WAIT_SECS" ]; do
         ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
-        log_msg "onewifi_testsuite currently unresolved, attempt $i"
-        if [ -n "$ONEWIFI_TESTSUITE_CFG" ]; then
-            log_msg "onewifi_testsuite has value [$ONEWIFI_TESTSUITE_CFG]"
-        else
-            log_msg "onewifi_testsuite is still empty"
-        fi
         if [ "$ONEWIFI_TESTSUITE_CFG" = "true" ] || [ "$ONEWIFI_TESTSUITE_CFG" = "false" ]; then
             log_msg "onewifi_testsuite resolved to [$ONEWIFI_TESTSUITE_CFG] after ${i}s"
             return 0
@@ -69,68 +62,46 @@ wait_for_testsuite_cfg() {
         i=`expr "$i" + 1`
         sleep 1
     done
-    ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
+    log_msg "onewifi_testsuite still unresolved after ${ONEWIFI_TESTSUITE_WAIT_SECS}s"
     return 1
 }
 
 if [ "$action" = "start" ]; then
     log_msg "Handling 'start' action"
+
     wait_for_testsuite_cfg
-    ONEWIFI_SIM_CLI_COUNT="`syscfg get onewifi_suite_sim_cli_count`"
     log_msg "onewifi_testsuite=[$ONEWIFI_TESTSUITE_CFG]"
+
+    case "$ONEWIFI_TESTSUITE_CFG" in
+        true)  ;;
+        false) log_msg "feature disabled, exiting"; echo "Exiting the script..."; exit 0 ;;
+        # Still empty after the wait; exit non-zero so systemd retries the unit.
+        *)     log_msg "onewifi_testsuite not populated yet"; exit 1 ;;
+    esac
+
+    ONEWIFI_SIM_CLI_COUNT="`syscfg get onewifi_suite_sim_cli_count`"
     log_msg "onewifi_suite_sim_cli_count=[$ONEWIFI_SIM_CLI_COUNT]"
-    log_msg "default max_sim_clients=$temp_max_sim_clients"
-    if [ "$ONEWIFI_TESTSUITE_CFG" != "true" ]; then
-        log_msg "onewifi_testsuite is not 'true' (raw value=[$ONEWIFI_TESTSUITE_CFG]), exiting the script"
-        echo "Exiting the script..."
-        exit 0
-    fi
 
     if [[ "$ONEWIFI_SIM_CLI_COUNT" =~ ^[0-9]+$ ]]; then
-        log_msg "sim client count is numeric, validating range"
         if [ "$ONEWIFI_SIM_CLI_COUNT" -ge 1 ] && [ "$ONEWIFI_SIM_CLI_COUNT" -le 300 ]; then
             temp_max_sim_clients=$ONEWIFI_SIM_CLI_COUNT
-            log_msg "using configured max_sim_clients=$temp_max_sim_clients"
         else
             log_msg "sim client count out of range (1-300), using default $temp_max_sim_clients"
         fi
     else
         log_msg "sim client count not numeric, using default $temp_max_sim_clients"
     fi
+    log_msg "max_sim_clients=$temp_max_sim_clients"
 
     echo "Starting Test Suite with max clients $temp_max_sim_clients.."
-    log_msg "Starting Test Suite with max clients $temp_max_sim_clients"
-    run_cmd modprobe rdkfmac max_sim_clients=$temp_max_sim_clients
-    run_cmd ifconfig nl_msg_mon0 up
-    run_cmd ifconfig hwsim0 up
-
-    # Verify the cci binary is resolvable in the service's PATH before launching
-    cci_path=`command -v cci 2>/dev/null`
-    if [ -z "$cci_path" ]; then
-        log_msg "ERROR: cci binary not found in PATH ($PATH)"
-    else
-        log_msg "cci resolved to $cci_path"
-    fi
-    if pgrep -x cci >/dev/null 2>&1; then
-        log_msg "WARNING: a cci process is already running (pids: `pgrep -x cci | tr '\n' ' '`)"
-    fi
-
-    log_msg "Launching cci in background"
-    cci >> "$CCI_LOG_FILE" 2>&1 &
-    cci_pid=$!
-    log_msg "cci started with pid $cci_pid"
-
-    # Confirm cci survived startup; a background launch alone does not prove it stayed up
-    sleep 1
-    if kill -0 "$cci_pid" 2>/dev/null; then
-        log_msg "cci still alive after 1s (pid $cci_pid)"
-    else
-        wait "$cci_pid" 2>/dev/null
-        log_msg "ERROR: cci EXITED early (pid $cci_pid, rc=$?)"
-    fi
-
+    run_cmd modprobe rdkfmac max_sim_clients=$temp_max_sim_clients || exit 1
+    run_cmd ifconfig nl_msg_mon0 up || exit 1
+    run_cmd ifconfig hwsim0 up || exit 1
     run_cmd touch $ONEWIFI_TESTSUITE_TMPFILE
-    log_msg "start action completed"
+
+    log_msg "exec cci"
+    # exec so cci becomes the unit's main process and its exit status reaches systemd
+    exec cci >> "$CCI_LOG_FILE" 2>&1
 elif [ "$action" = "stop" ]; then
     log_msg "Handling 'stop' action"
     echo "Stopping Test Suite.."
@@ -142,7 +113,6 @@ elif [ "$action" = "stop" ]; then
     run_cmd ifconfig hwsim0 down
     run_cmd killall cci
     if [ -e "$ONEWIFI_TESTSUITE_TMPFILE" ]; then
-        log_msg "Removing $ONEWIFI_TESTSUITE_TMPFILE"
         run_cmd rm -rf $ONEWIFI_TESTSUITE_TMPFILE
     else
         log_msg "$ONEWIFI_TESTSUITE_TMPFILE not present, nothing to remove"
