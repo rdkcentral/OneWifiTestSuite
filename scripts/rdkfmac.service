@@ -1,19 +1,16 @@
 [Unit]
 Description=Install rdkfmac Driver
-# These units own the RBUS objects cci reads during init.
-After=rbus.service wifi.service CcspLMLite.service time-sync.target ntpd.service
-Wants=rbus.service wifi.service CcspLMLite.service time-sync.target ntpd.service
-StartLimitIntervalSec=0
+After=wifi.service
 
 [Service]
-Type=simple
+Type=forking
+RemainAfterExit=yes
 # Hold the start until the device has at least 5 minutes of uptime (lets NTP/providers settle).
 ExecStartPre=/bin/sh -c 'up=$(cut -d. -f1 /proc/uptime); [ "$up" -lt 300 ] && sleep $((300 - up)); exit 0'
 TimeoutStartSec=0
 ExecStart=/usr/bin/rdkfmac_modprobe.sh start
 ExecStop=/usr/bin/rdkfmac_modprobe.sh stop
-Restart=on-failure
-RestartSec=5
+Restart=always
 
 [Install]
 WantedBy=wifi-initialized.target
