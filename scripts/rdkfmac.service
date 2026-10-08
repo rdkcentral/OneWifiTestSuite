@@ -8,15 +8,13 @@ RemainAfterExit=yes
 
 ExecStartPre=/bin/sh -c '\
     if systemctl cat wifi.service >/dev/null 2>&1; then \
-        echo "wifi.service found, waiting for it to become active"; \
         while ! systemctl is-active --quiet wifi.service; do \
             sleep 5; \
         done; \
     else \
-        echo "wifi.service not found, waiting until 5 minutes uptime"; \
         up=$(cut -d. -f1 /proc/uptime); \
-        if [ "$up" -lt 300 ]; then \
-            sleep $((300 - up)); \
+        if [ "$up" -lt 200 ]; then \
+            sleep $((200 - up)); \
         fi; \
     fi'
 
