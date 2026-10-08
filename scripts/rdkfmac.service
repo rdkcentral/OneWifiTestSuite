@@ -1,8 +1,8 @@
 [Unit]
 Description=Install rdkfmac Driver
 # CcspPandMSsp (TR-181/PandM) owns onewifi_testsuite; the value is ready once it is active.
-After=wifi.service CcspPandMSsp.service rbus.service CcspLMLite.service
-Wants=CcspPandMSsp.service rbus.service CcspLMLite.service
+After=CcspPandMSsp.service rbus.service CcspLMLite.service onewifi.service
+Wants=CcspPandMSsp.service rbus.service CcspLMLite.service onewifi.service
 
 [Service]
 Type=forking
