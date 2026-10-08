@@ -1,12 +1,26 @@
 [Unit]
 Description=Install rdkfmac Driver
-# CcspPandMSsp (TR-181/PandM) owns onewifi_testsuite; the value is ready once it is active.
-After=CcspPandMSsp.service rbus.service CcspLMLite.service onewifi.service
-Wants=CcspPandMSsp.service rbus.service CcspLMLite.service onewifi.service
+After=wifi.service
 
 [Service]
 Type=forking
 RemainAfterExit=yes
+
+ExecStartPre=/bin/sh -c '\
+    if systemctl cat wifi.service >/dev/null 2>&1; then \
+        echo "wifi.service found, waiting for it to become active"; \
+        while ! systemctl is-active --quiet wifi.service; do \
+            sleep 5; \
+        done; \
+    else \
+        echo "wifi.service not found, waiting until 5 minutes uptime"; \
+        up=$(cut -d. -f1 /proc/uptime); \
+        if [ "$up" -lt 300 ]; then \
+            sleep $((300 - up)); \
+        fi; \
+    fi'
+
+TimeoutStartSec=0
 ExecStart=/usr/bin/rdkfmac_modprobe.sh start
 ExecStop=/usr/bin/rdkfmac_modprobe.sh stop
 Restart=always
