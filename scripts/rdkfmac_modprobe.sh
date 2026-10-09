@@ -18,13 +18,29 @@
 #
 #
 
-ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
+
 ONEWIFI_TESTSUITE_TMPFILE="/tmp/onewifi_testsuite_configured"
 ONEWIFI_SIM_CLI_COUNT="`syscfg get onewifi_suite_sim_cli_count`"
 action=$1
 temp_max_sim_clients=3
 
+ONEWIFI_TESTSUITE_WAIT_SECS=40
+wait_for_testsuite_cfg() {
+    i=0
+    while [ "$i" -lt "$ONEWIFI_TESTSUITE_WAIT_SECS" ]; do
+        ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
+        if [ -n "$ONEWIFI_TESTSUITE_CFG" ]; then
+            return 0
+        fi
+        i=`expr "$i" + 1`
+        sleep 1
+    done
+    ONEWIFI_TESTSUITE_CFG="`syscfg get onewifi_testsuite`"
+    return 1
+}
+
 if [ "$action" = "start" ]; then
+    wait_for_testsuite_cfg
     if [ "$ONEWIFI_TESTSUITE_CFG" != "true" ]; then
         echo "Exiting the script..."
         exit 0
