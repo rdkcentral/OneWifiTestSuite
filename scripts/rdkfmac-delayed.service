@@ -1,0 +1,16 @@
+[Unit]
+Description=Delayed rdkfmac Driver Start
+ConditionPathExists=!/lib/systemd/system/wifi.service
+After=wifi-initialized.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=0
+
+ExecStart=/bin/sh -c '\
+    up=$(cut -d. -f1 /proc/uptime); \
+    if [ "$up" -lt 200 ]; then \
+        sleep $((200 - up)); \
+    fi; \
+    exec /usr/bin/rdkfmac_modprobe.sh start'
