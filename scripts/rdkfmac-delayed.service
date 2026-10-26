@@ -1,13 +1,18 @@
 [Unit]
 Description=Delayed rdkfmac Driver Start
 ConditionPathExists=!/lib/systemd/system/wifi.service
-PartOf=rdkfmac.service
-After=wifi-initialized.target rdkfmac.service
+After=wifi-initialized.target
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
+Type=forking
+GuessMainPID=yes
+PIDFile=/run/cci.pid
+RemainAfterExit=no
 TimeoutStartSec=0
+Restart=on-failure
+RestartSec=5
+KillMode=control-group
+ExecStop=/usr/bin/rdkfmac_modprobe.sh stop
 
 ExecStart=/bin/sh -c '\
     up=$(cut -d. -f1 /proc/uptime); \
