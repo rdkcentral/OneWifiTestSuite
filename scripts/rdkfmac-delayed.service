@@ -1,7 +1,8 @@
 [Unit]
 Description=Delayed rdkfmac Driver Start
 ConditionPathExists=!/lib/systemd/system/wifi.service
-After=wifi-initialized.target
+PartOf=rdkfmac.service
+After=wifi-initialized.target rdkfmac.service
 
 [Service]
 Type=oneshot
