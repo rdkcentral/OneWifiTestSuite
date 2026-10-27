@@ -1007,9 +1007,6 @@ int test_step_param_sta_management::step_timeout()
                     (step->u.sta_test->u.sta_management.is_sta_management_timer == true)) {
                     heart_beat_data->rssi = connect_profile->rssi;
                     heart_beat_data->noise = connect_profile->noise;
-                } else {
-                    heart_beat_data->rssi = -25;
-                    heart_beat_data->noise = -85;
                 }
 
                 step->m_sim_sta_mgr->send_heart_beat(client_info->key, heart_beat_data);
@@ -1020,6 +1017,16 @@ int test_step_param_sta_management::step_timeout()
                 connect_profile->test_state = test_state_complete;
                 step->u.sta_test->u.sta_management.current_profile_count--;
                 if (step->u.sta_test->u.sta_management.current_profile_count == -1) {
+                    for (uint client_id = 0;
+                        client_id < queue_count(step->u.sta_test->connected_client_info_q);
+                        client_id++) {
+                        connected_client_info_t *client_info = (connected_client_info_t *)
+                            queue_peek(step->u.sta_test->connected_client_info_q, client_id);
+                        if (client_info == NULL) {
+                            break;
+                        }
+                        step->m_sim_sta_mgr->remove_sta(step->u.sta_test, client_info);
+                    }
                     step->test_state = wlan_emu_tests_state_cmd_results;
                     wlan_emu_print(wlan_emu_log_level_info,
                         "%s:%d: connectivity test case completed for step : %d\n", __func__,
