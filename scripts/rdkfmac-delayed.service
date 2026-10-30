@@ -6,12 +6,12 @@ After=wifi-initialized.target
 [Service]
 Type=forking
 GuessMainPID=yes
-PIDFile=/run/cci.pid
 RemainAfterExit=no
 TimeoutStartSec=0
 Restart=on-failure
 RestartSec=5
 KillMode=control-group
+
 ExecStop=/usr/bin/rdkfmac_modprobe.sh stop
 
 ExecStart=/bin/sh -c '\
