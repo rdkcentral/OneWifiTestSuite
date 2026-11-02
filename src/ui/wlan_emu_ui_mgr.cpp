@@ -413,7 +413,7 @@ int wlan_emu_ui_mgr_t::decode_step_station_management_config(cJSON *step,
                             }
                             memcpy(&tmp_station_prototype_pcap->fc_request, &frame_capture_req,
                                 sizeof(frame_capture_request_t));
-                            if (decode_param_string(frame_type, "PcapLocation", param_loc) == RETURN_ERR) {
+                            if (decode_param_string_fn(frame_type, "PcapLocation", param_loc) == RETURN_ERR) {
                                 wlan_emu_print(wlan_emu_log_level_err,
                                     "%s:%d: PcapLocation parameter is missing\n", __func__, __LINE__);
                                 free(tmp_station_prototype_pcap);
@@ -1697,7 +1697,7 @@ int wlan_emu_ui_mgr_t::decode_stats_set_common_params(cJSON *step, test_step_par
                 delete reference;
                 return RETURN_ERR;
             }
-            if (decode_param_string(stats_set_config, "InputFile", param) == RETURN_ERR) {
+            if (decode_param_string_fn(stats_set_config, "InputFile", param) == RETURN_ERR) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: InputFile parameter is missing\n",
                     __func__, __LINE__);
                 delete reference;
@@ -2761,7 +2761,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_1_config(cJSON *test_coverage_entry)
         return RETURN_ERR;
     }
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    if (decode_param_string(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
+    if (decode_param_string_fn(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
       free(config);
       config = NULL;
       return RETURN_ERR;
@@ -2960,7 +2960,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_2_config(cJSON *test_coverage_entry)
     }
 
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    if (decode_param_string(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
+    if (decode_param_string_fn(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
       free(config);
       config = NULL;
       return RETURN_ERR;
@@ -3009,7 +3009,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_3_config(cJSON *test_coverage_entry)
     }
 
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    if (decode_param_string(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
+    if (decode_param_string_fn(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
       free(config);
       config = NULL;
       return RETURN_ERR;
