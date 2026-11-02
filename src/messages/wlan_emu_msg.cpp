@@ -228,196 +228,440 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
 {
     pcap_t *handle = NULL;
     pcap_dumper_t *dump_handle = NULL;
-    struct pcap_pkthdr pkthdr;
-    struct ieee80211_mgmt *head;
-    void *buff = NULL;
-    struct timeval tv;
-    unsigned char *tmp_buff;
-    size_t cap_len = 0;
+    wlan_emu_pcap_captures *capture = NULL;
 
-    wlan_emu_msg_data_t *f_data = NULL;
-    f_data = &(this->m_msg);
+    struct pcap_pkthdr pkthdr = {};
+    struct ieee80211_mgmt *head = NULL;
+    struct timeval tv = {};
 
-    char fname[248];
-    mac_addr_str_t mac_str, c_mac_str;
-    char *to_queue;
+    unsigned char *tmp_buff = NULL;
+    unsigned char *cursor = NULL;
+
+    wlan_emu_msg_data_t *f_data = &(this->m_msg);
+
+    char fname[248] = { 0 };
     char timestamp[24] = { 0 };
+
+    mac_addr_str_t mac_str = { 0 };
+    mac_addr_str_t c_mac_str = { 0 };
+
+    wlan_emu_msg_type_t msg_type;
     unsigned int radio_index = 0;
 
-    memset(fname, 0, sizeof(fname));
-    to_queue = (char *)malloc(248);
-    if (to_queue == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: NULL Pointer\n", __func__, __LINE__);
-        return -1;
-    }
-    memset(to_queue, 0, 248);
-    // get the time.
-    gettimeofday(&tv, NULL);
+    size_t cap_len = 0;
+    size_t head_len = 0;
+    size_t tail_len = 0;
+    size_t timestamp_offset = 0;
 
-    wlan_emu_msg_type_t msg_type = get_msg_type();
+    int ret = 0;
+
+    if (step == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: step is NULL\n", __func__, __LINE__);
+        goto exit;
+    }
+
+    if (gettimeofday(&tv, NULL) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: gettimeofday failed\n", __func__, __LINE__);
+        goto exit;
+    }
+
+    msg_type = get_msg_type();
+
+    /* Calculate packet capture length. */
     if (msg_type == wlan_emu_msg_type_frm80211) {
-        cap_len = sizeof(radio_tap_header) + f_data->u.frm80211.u.frame.frame_len;
-    } else {
+        size_t frame_len = f_data->u.frm80211.u.frame.frame_len;
+
+        if (frame_len == 0 ||
+            f_data->u.frm80211.u.frame.frame == NULL ||
+            frame_len > SIZE_MAX - sizeof(radio_tap_header)) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Invalid 802.11 frame data\n",
+                __func__, __LINE__);
+            goto exit;
+        }
+
+        cap_len = sizeof(radio_tap_header) + frame_len;
+    } else if (msg_type == wlan_emu_msg_type_cfg80211) {
+        head_len = f_data->u.cfg80211.u.start_ap.head_len;
+        tail_len = f_data->u.cfg80211.u.start_ap.tail_len;
+
+        if (f_data->u.cfg80211.u.start_ap.beacon_head == NULL ||
+            (tail_len > 0 &&
+             f_data->u.cfg80211.u.start_ap.beacon_tail == NULL)) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Invalid beacon head or tail\n",
+                __func__, __LINE__);
+            goto exit;
+        }
+
+        if (head_len > SIZE_MAX - sizeof(radio_tap_header) ||
+            sizeof(traffic_indication_map) >
+                SIZE_MAX - sizeof(radio_tap_header) - head_len ||
+            tail_len > SIZE_MAX - sizeof(radio_tap_header) -
+                head_len - sizeof(traffic_indication_map)) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Beacon capture length overflow\n",
+                __func__, __LINE__);
+            goto exit;
+        }
+
         cap_len = sizeof(radio_tap_header) +
-            f_data->u.cfg80211.u.start_ap.head_len +
+            head_len +
             sizeof(traffic_indication_map) +
-            f_data->u.cfg80211.u.start_ap.tail_len;
+            tail_len;
+    } else {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Unsupported message type: %d\n",
+            __func__, __LINE__, msg_type);
+        goto exit;
     }
 
-    buff = malloc(cap_len);
-    memset(buff, 0, cap_len);
-    tmp_buff = (unsigned char *)buff;
+    if (cap_len > UINT_MAX) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Capture length exceeds PCAP limit\n",
+            __func__, __LINE__);
+        goto exit;
+    }
 
-    memcpy(buff, radio_tap_header, sizeof(radio_tap_header));
-    buff += sizeof(radio_tap_header);
+    /* Allocate packet buffer. */
+    tmp_buff = (unsigned char *)malloc(cap_len);
+    if (tmp_buff == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Error allocating memory\n",
+            __func__, __LINE__);
+        goto exit;
+    }
 
+    memset(tmp_buff, 0, cap_len);
+    cursor = tmp_buff;
+
+    memcpy(cursor, radio_tap_header, sizeof(radio_tap_header));
+    cursor += sizeof(radio_tap_header);
+
+    /* Create PCAP handle. */
     handle = pcap_open_dead(DLT_IEEE802_11_RADIO, 4000);
     if (handle == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error creating pcap file\n", __func__,
-            __LINE__);
-        return RETURN_ERR;
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Error creating pcap handle\n",
+            __func__, __LINE__);
+        goto exit;
     }
 
     if (get_current_time_string(timestamp, sizeof(timestamp)) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: get_current_time_string failed\n", __func__,
-            __LINE__);
-        return RETURN_ERR;
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: get_current_time_string failed\n",
+            __func__, __LINE__);
+        goto exit;
     }
 
+    /* Build 802.11 frame packet. */
     if (msg_type == wlan_emu_msg_type_frm80211) {
-        mac_str_without_colon(f_data->u.frm80211.u.frame.macaddr, mac_str);
-        wlan_emu_frm80211_ops_type_t ops_type = get_frm80211_ops_type();
+        mac_str_without_colon(
+            f_data->u.frm80211.u.frame.macaddr, mac_str);
 
         if (step->param_type == step_param_type_mgmt_frame_capture) {
-            if (step->u.mgmt_frame_capture == nullptr) {
-                return RETURN_ERR;
+            if (step->u.mgmt_frame_capture == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: mgmt_frame_capture is NULL\n",
+                    __func__, __LINE__);
+                goto exit;
             }
-            // in mgmt frame capture already the validation is done as part of test, so assigning
-            // the input value
+
             radio_index = step->u.mgmt_frame_capture->radio_index;
-        } else {
+        } else if (step->param_type == step_param_type_station_management) {
+            if (step->u.sta_test == NULL) {
+                wlan_emu_print(wlan_emu_log_level_err,
+                    "%s:%d: sta_test is NULL\n",
+                    __func__, __LINE__);
+                goto exit;
+            }
+
             if (step->u.sta_test->connection_type == client_connection_type_real) {
                 radio_index = get_radio_index_from_vapname(
                     step->u.sta_test->u.sta_management.ap_vap_name, step);
             } else {
-                step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.frm80211.u.frame.macaddr,
-                    &radio_index);
-            }
-        }
-
-        if (step->param_type == step_param_type_station_management) {
-            if (step->u.sta_test->capture_sta_requests == true) {
-                if (step->u.sta_test->connection_type == client_connection_type_real) {
-                    radio_index = get_radio_index_from_vapname(
-                        step->u.sta_test->u.sta_management.ap_vap_name, step);
-                } else {
-                    step->m_ui_mgr->get_radioindex_from_bssid(
-                        f_data->u.frm80211.u.frame.client_macaddr, &radio_index);
+                if (step->m_ui_mgr == NULL) {
+                    wlan_emu_print(wlan_emu_log_level_err,
+                        "%s:%d: m_ui_mgr is NULL\n",
+                        __func__, __LINE__);
+                    goto exit;
                 }
+
+                step->m_ui_mgr->get_radioindex_from_bssid(
+                    f_data->u.frm80211.u.frame.macaddr, &radio_index);
+            }
+        } else {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Unsupported step parameter type\n",
+                __func__, __LINE__);
+            goto exit;
+        }
+
+        if (step->param_type == step_param_type_station_management &&
+            step->u.sta_test->capture_sta_requests == true) {
+            if (step->u.sta_test->connection_type == client_connection_type_real) {
+                radio_index = get_radio_index_from_vapname(
+                    step->u.sta_test->u.sta_management.ap_vap_name, step);
+            } else {
+                if (step->m_ui_mgr == NULL) {
+                    wlan_emu_print(wlan_emu_log_level_err,
+                        "%s:%d: m_ui_mgr is NULL\n",
+                        __func__, __LINE__);
+                    goto exit;
+                }
+
+                step->m_ui_mgr->get_radioindex_from_bssid(
+                    f_data->u.frm80211.u.frame.client_macaddr, &radio_index);
             }
         }
 
-        mac_str_without_colon(f_data->u.frm80211.u.frame.client_macaddr, c_mac_str);
+        mac_str_without_colon(
+            f_data->u.frm80211.u.frame.client_macaddr, c_mac_str);
+
         if (get_msgname_from_msgtype() == RETURN_ERR) {
-            return RETURN_ERR;
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: get_msgname_from_msgtype failed\n",
+                __func__, __LINE__);
+            goto exit;
         }
-        snprintf(fname, sizeof(fname), "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
-            step->test_case_id, step->step_number, timestamp, mac_str, c_mac_str,
-            step->test_case_name, get_msg_name(), radio_index);
-        memcpy(buff, f_data->u.frm80211.u.frame.frame, f_data->u.frm80211.u.frame.frame_len);
-    } else if (msg_type == wlan_emu_msg_type_cfg80211) {
-        mac_str_without_colon(f_data->u.cfg80211.u.start_ap.macaddr, mac_str);
+
+        ret = snprintf(fname, sizeof(fname),
+            "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
+            step->test_case_id,
+            step->step_number,
+            timestamp,
+            mac_str,
+            c_mac_str,
+            step->test_case_name,
+            get_msg_name(),
+            radio_index);
+
+        if (ret < 0 || (size_t)ret >= sizeof(fname)) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: PCAP filename truncated\n",
+                __func__, __LINE__);
+            goto exit;
+        }
+
+        memcpy(cursor,
+            f_data->u.frm80211.u.frame.frame,
+            f_data->u.frm80211.u.frame.frame_len);
+
+        cursor += f_data->u.frm80211.u.frame.frame_len;
+    }
+
+    /* Build cfg80211 beacon packet. */
+    else if (msg_type == wlan_emu_msg_type_cfg80211) {
+        mac_str_without_colon(
+            f_data->u.cfg80211.u.start_ap.macaddr, mac_str);
+
         if (get_msgname_from_msgtype() == RETURN_ERR) {
-            return RETURN_ERR;
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: get_msgname_from_msgtype failed\n",
+                __func__, __LINE__);
+            goto exit;
         }
 
-        step->m_ui_mgr->get_radioindex_from_bssid(f_data->u.cfg80211.u.start_ap.macaddr,
-            &radio_index);
-
-        snprintf(fname, sizeof(fname), "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
-            step->test_case_id, step->step_number, timestamp, mac_str, "NA", step->test_case_name,
-            get_msg_name(), radio_index);
-
-        head = (struct ieee80211_mgmt *)f_data->u.cfg80211.u.start_ap.beacon_head;
-
-        // Filling timestamp.
-        memcpy(head->u.beacon.timestamp, &tv.tv_sec, sizeof(head->u.beacon.timestamp));
-
-        // Filling Head
-        memcpy(buff, head, f_data->u.cfg80211.u.start_ap.head_len);
-        buff += f_data->u.cfg80211.u.start_ap.head_len;
-
-        // Filling TIM.
-        memcpy(buff, traffic_indication_map, sizeof(traffic_indication_map));
-        buff += sizeof(traffic_indication_map);
-
-        // Filling Tail.
-        memcpy(buff, f_data->u.cfg80211.u.start_ap.beacon_tail,
-            f_data->u.cfg80211.u.start_ap.tail_len);
-        buff += f_data->u.cfg80211.u.start_ap.tail_len;
-
-        if (f_data->u.cfg80211.u.start_ap.beacon_head != NULL) {
-            free(f_data->u.cfg80211.u.start_ap.beacon_head);
+        if (step->m_ui_mgr == NULL) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: m_ui_mgr is NULL\n",
+                __func__, __LINE__);
+            goto exit;
         }
+
+        step->m_ui_mgr->get_radioindex_from_bssid(
+            f_data->u.cfg80211.u.start_ap.macaddr, &radio_index);
+
+        ret = snprintf(fname, sizeof(fname),
+            "/tmp/cci_res/%s_%d_%s_%s_%s_%s-%s_%d.pcap",
+            step->test_case_id,
+            step->step_number,
+            timestamp,
+            mac_str,
+            "NA",
+            step->test_case_name,
+            get_msg_name(),
+            radio_index);
+
+        if (ret < 0 || (size_t)ret >= sizeof(fname)) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: PCAP filename truncated\n",
+                __func__, __LINE__);
+            goto exit;
+        }
+
+        head = (struct ieee80211_mgmt *)
+            f_data->u.cfg80211.u.start_ap.beacon_head;
+
+        timestamp_offset =
+            (size_t)((unsigned char *)&head->u.beacon.timestamp -
+                     (unsigned char *)head);
+
+        if (head_len < timestamp_offset +
+                sizeof(head->u.beacon.timestamp)) {
+            wlan_emu_print(wlan_emu_log_level_err,
+                "%s:%d: Beacon head too short for timestamp\n",
+                __func__, __LINE__);
+            goto exit;
+        }
+
+        /* Copy beacon head and update timestamp in copied buffer. */
+        memcpy(cursor, head, head_len);
+
+        head = (struct ieee80211_mgmt *)cursor;
+
+        memcpy(head->u.beacon.timestamp,
+            &tv.tv_sec,
+            sizeof(head->u.beacon.timestamp));
+
+        cursor += head_len;
+
+        /* Copy TIM. */
+        memcpy(cursor,
+            traffic_indication_map,
+            sizeof(traffic_indication_map));
+
+        cursor += sizeof(traffic_indication_map);
+
+        /* Copy beacon tail. */
+        if (tail_len > 0) {
+            memcpy(cursor,
+                f_data->u.cfg80211.u.start_ap.beacon_tail,
+                tail_len);
+
+            cursor += tail_len;
+        }
+
+        /*
+         * Free original beacon buffers after copying.
+         * Keep these frees only if this function owns these allocations.
+         */
+        free(f_data->u.cfg80211.u.start_ap.beacon_head);
+        f_data->u.cfg80211.u.start_ap.beacon_head = NULL;
 
         if (f_data->u.cfg80211.u.start_ap.beacon_tail != NULL) {
             free(f_data->u.cfg80211.u.start_ap.beacon_tail);
+            f_data->u.cfg80211.u.start_ap.beacon_tail = NULL;
         }
     }
 
-    memcpy(to_queue, fname, 248);
+    /* Open PCAP dump file. */
     dump_handle = pcap_dump_open(handle, fname);
     if (dump_handle == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: Error creating pcap file\n", __func__,
-            __LINE__);
-        return -1;
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Error opening pcap dump file\n",
+            __func__, __LINE__);
+        goto exit;
     }
 
-    pkthdr.caplen = cap_len;
-    pkthdr.len = cap_len;
+    /* Prepare PCAP packet header. */
+    pkthdr.ts = tv;
+    pkthdr.caplen = (bpf_u_int32)cap_len;
+    pkthdr.len = (bpf_u_int32)cap_len;
 
-    wlan_emu_pcap_captures *capture = NULL;
-    capture = new wlan_emu_pcap_captures;
+    /* Allocate capture metadata. */
+    capture = new (std::nothrow) wlan_emu_pcap_captures;
     if (capture == NULL) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: unable to allocate memory for capture\n",
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: Unable to allocate memory for capture\n",
             __func__, __LINE__);
-        return RETURN_ERR;
+        goto exit;
     }
 
     if (msg_type == wlan_emu_msg_type_frm80211) {
         capture->type = msg_type;
         capture->u.frm80211_ops = get_frm80211_ops_type();
-    } else if (msg_type == wlan_emu_msg_type_cfg80211) {
+    } else {
         capture->type = msg_type;
         capture->u.cfg80211_ops = get_cfg80211_ops_type();
     }
 
-    int ret = snprintf(capture->pcap_file, sizeof(capture->pcap_file), "%s", fname);
+    ret = snprintf(capture->pcap_file,
+        sizeof(capture->pcap_file), "%s", fname);
 
-    if ((ret < 0) || (ret >= sizeof(capture->pcap_file))) {
+    if (ret < 0 || (size_t)ret >= sizeof(capture->pcap_file)) {
         wlan_emu_print(wlan_emu_log_level_err,
-            "%s:%d: snprintf failed return : %d input len : %d\n", __func__, __LINE__, ret,
-            sizeof(capture->pcap_file));
-        return RETURN_ERR;
+            "%s:%d: PCAP path truncated\n",
+            __func__, __LINE__);
+        goto exit;
     }
-    wlan_emu_print(wlan_emu_log_level_info,
-        "%s:%d: updated the file : %s type : %d at step_number : %d\n", __func__, __LINE__,
-        capture->pcap_file, capture->type, step->step_number);
 
+    wlan_emu_print(wlan_emu_log_level_info,
+        "%s:%d: Updated file : %s type : %d at step_number : %d\n",
+        __func__,
+        __LINE__,
+        capture->pcap_file,
+        capture->type,
+        step->step_number);
+
+    /* Write packet to PCAP. */
     pcap_dump((u_char *)dump_handle, &pkthdr, tmp_buff);
-    pcap_dump_flush(dump_handle);
+
+    /* Flush and close PCAP before uploading. */
+    if (pcap_dump_flush(dump_handle) != 0) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: pcap_dump_flush failed\n",
+            __func__, __LINE__);
+        goto exit;
+    }
+
     pcap_dump_close(dump_handle);
+    dump_handle = NULL;
+
     pcap_close(handle);
+    handle = NULL;
+
+    /* Upload completed PCAP file. */
+    if (step->m_ui_mgr == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: m_ui_mgr is NULL\n",
+            __func__, __LINE__);
+        goto exit;
+    }
 
     if (step->m_ui_mgr->step_upload_files(capture->pcap_file) != RETURN_OK) {
-        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: step_upload_files failed\n", __func__,
-            __LINE__);
-        delete capture;
+        wlan_emu_print(wlan_emu_log_level_err,
+            "%s:%d: step_upload_files failed\n",
+            __func__, __LINE__);
+
         step->test_state = wlan_emu_tests_state_cmd_abort;
-        return RETURN_ERR;
+        goto exit;
     }
+
+    /* Success cleanup. */
     delete capture;
+    capture = NULL;
+
+    free(tmp_buff);
+    tmp_buff = NULL;
+
     return RETURN_OK;
+
+exit:
+    /* Common failure cleanup. */
+    if (capture != NULL) {
+        delete capture;
+        capture = NULL;
+    }
+
+    if (dump_handle != NULL) {
+        pcap_dump_close(dump_handle);
+        dump_handle = NULL;
+    }
+
+    if (handle != NULL) {
+        pcap_close(handle);
+        handle = NULL;
+    }
+
+    if (tmp_buff != NULL) {
+        free(tmp_buff);
+        tmp_buff = NULL;
+    }
+
+    return RETURN_ERR;
 }
 
 int wlan_emu_msg_t::get_msgname_from_msgtype()

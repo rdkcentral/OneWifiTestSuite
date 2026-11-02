@@ -24,20 +24,34 @@
 
 int start()
 {
-    wlan_emu_t *plat;
+    wlan_emu_t *plat = NULL;
+    int ret = RETURN_ERR;
 
     plat = new wlan_emu_t();
-    if (plat->init() == RETURN_ERR) {
+
+    if (plat == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d memory allocation failed\n", __func__,
+            __LINE__);
+        goto exit;
+    }
+
+    if (plat->init() != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d init failed\n", __func__, __LINE__);
-        return RETURN_ERR;
+        goto exit;
     }
 
-    if (plat->run() == RETURN_ERR) {
+    if (plat->run() != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d run failed\n", __func__, __LINE__);
-        return RETURN_ERR;
+        goto exit;
     }
 
-    return RETURN_OK;
+    ret = RETURN_OK;
+
+exit:
+    delete plat;
+    plat = NULL;
+
+    return ret;
 }
 
 void kill_previous_instances(const char *process_name)
