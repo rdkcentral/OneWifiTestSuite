@@ -413,8 +413,7 @@ int wlan_emu_ui_mgr_t::decode_step_station_management_config(cJSON *step,
                             }
                             memcpy(&tmp_station_prototype_pcap->fc_request, &frame_capture_req,
                                 sizeof(frame_capture_request_t));
-                            decode_param_string(frame_type, "PcapLocation", param_loc);
-                            if (param_loc == NULL) {
+                            if (decode_param_string(frame_type, "PcapLocation", param_loc) == RETURN_ERR) {
                                 wlan_emu_print(wlan_emu_log_level_err,
                                     "%s:%d: PcapLocation parameter is missing\n", __func__, __LINE__);
                                 free(tmp_station_prototype_pcap);
@@ -1698,8 +1697,7 @@ int wlan_emu_ui_mgr_t::decode_stats_set_common_params(cJSON *step, test_step_par
                 delete reference;
                 return RETURN_ERR;
             }
-            decode_param_string(stats_set_config, "InputFile", param);
-            if (param == NULL) {
+            if (decode_param_string(stats_set_config, "InputFile", param) == RETURN_ERR) {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: InputFile parameter is missing\n",
                     __func__, __LINE__);
                 delete reference;
@@ -2539,7 +2537,7 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
     wlan_emu_test_case_config *configuration)
 {
     cJSON *step = NULL;
-    test_step_params_t *step_config;
+    test_step_params_t *step_config = NULL;
     unsigned int count = 0;
 
     cJSON_ArrayForEach(step, config_entry) {
@@ -2586,6 +2584,7 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
             "%s:%d: Seq Number : %d step_config->step_number : %d step param type : %d\n", __func__,
             __LINE__, step_config->step_seq_num, step_config->step_number, step_config->param_type);
         queue_push(configuration->test_steps_q, step_config);
+        step_config = NULL;
     }
     last_executed_step_num = 0;
 
@@ -2626,8 +2625,6 @@ int wlan_emu_ui_mgr_t::decode_coverage_config(cJSON *config_entry,
         cci_error_code = EWEBDECODE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_config failed\n", __func__,
             __LINE__);
-        // Note: delete the configuration and test_steps
-        queue_destroy(configuration->test_steps_q);
         delete configuration;
         return RETURN_ERR;
     } else {
@@ -2764,8 +2761,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_1_config(cJSON *test_coverage_entry)
         return RETURN_ERR;
     }
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    decode_param_string(test_coverage_entry, "TestCaseId", param);
-    if (param == NULL) {
+    if (decode_param_string(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
       free(config);
       config = NULL;
       return RETURN_ERR;
@@ -2964,8 +2960,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_2_config(cJSON *test_coverage_entry)
     }
 
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    decode_param_string(test_coverage_entry, "TestCaseId", param);
-    if (param == NULL) {
+    if (decode_param_string(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
       free(config);
       config = NULL;
       return RETURN_ERR;
@@ -3014,8 +3009,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_3_config(cJSON *test_coverage_entry)
     }
 
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    decode_param_string(test_coverage_entry, "TestCaseId", param);
-    if (param == NULL) {
+    if (decode_param_string(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
       free(config);
       config = NULL;
       return RETURN_ERR;

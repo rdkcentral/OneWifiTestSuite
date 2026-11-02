@@ -34,6 +34,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
+#include <limits.h>
 
 bool wlan_emu_msg_t::enable_beacon_dump = false;
 

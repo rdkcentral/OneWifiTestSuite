@@ -185,11 +185,11 @@ int send_raw_packet(const void *data, size_t data_len, uint32_t source_nip, int 
 
     sz = data_len;
     buf = (char *)malloc(sz);
-    memset(buf, 0, sz);
 
     if (buf == NULL)
         goto ret_close;
 
+    memset(buf, 0, sz);
     memset(&dest_sll, 0, sizeof(dest_sll));
 
     dest_sll.sll_family = AF_PACKET;
