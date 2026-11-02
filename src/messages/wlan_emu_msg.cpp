@@ -246,7 +246,7 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
     mac_addr_str_t mac_str = { 0 };
     mac_addr_str_t c_mac_str = { 0 };
 
-    wlan_emu_msg_type_t msg_type;
+    wlan_emu_msg_type_t msg_type = wlan_emu_msg_type_none;
     unsigned int radio_index = 0;
 
     size_t cap_len = 0;
@@ -642,6 +642,25 @@ int wlan_emu_msg_t::dump(test_step_params_t *step)
 
 exit:
     /* Common failure cleanup. */
+    if (msg_type == wlan_emu_msg_type_cfg80211) {
+        /*
+         * dump() owns the beacon head/tail buffers once msg_type is
+         * cfg80211; release them here too so any failure path inside
+         * the cfg80211 branch (e.g. the short-header rejection above)
+         * doesn't leak them. Already-freed pointers are NULL, so this
+         * is a no-op on the success path.
+         */
+        if (f_data->u.cfg80211.u.start_ap.beacon_head != NULL) {
+            free(f_data->u.cfg80211.u.start_ap.beacon_head);
+            f_data->u.cfg80211.u.start_ap.beacon_head = NULL;
+        }
+
+        if (f_data->u.cfg80211.u.start_ap.beacon_tail != NULL) {
+            free(f_data->u.cfg80211.u.start_ap.beacon_tail);
+            f_data->u.cfg80211.u.start_ap.beacon_tail = NULL;
+        }
+    }
+
     if (capture != NULL) {
         delete capture;
         capture = NULL;
