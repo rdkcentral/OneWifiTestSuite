@@ -48,7 +48,6 @@ typedef struct {
 // queue operations
 queue_t *queue_create(void);
 void queue_destroy(queue_t *q);
-void queue_destroy_new_allocations(queue_t *q);
 int8_t queue_push(queue_t *q, void *data);
 void *queue_pop(queue_t *q);
 void *queue_remove(queue_t *q, uint32_t n);

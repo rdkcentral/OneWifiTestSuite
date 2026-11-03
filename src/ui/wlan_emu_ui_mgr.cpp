@@ -2591,6 +2591,21 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
     return RETURN_OK;
 }
 
+static void destroy_test_steps_queue(queue_t *q)
+{
+    test_step_params_t *step = NULL;
+
+    if (q == NULL) {
+        return;
+    }
+
+    while ((step = (test_step_params_t *)queue_pop(q)) != NULL) {
+        delete step;
+    }
+
+    queue_destroy(q);
+}
+
 int wlan_emu_ui_mgr_t::decode_coverage_config(cJSON *config_entry,
     wlan_emu_test_coverage_t coverage_type, wlan_emu_test_type_t type,
     wlan_emu_test_case_config **config)
@@ -2625,7 +2640,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_config(cJSON *config_entry,
         cci_error_code = EWEBDECODE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_config failed\n", __func__,
             __LINE__);
-        queue_destroy_new_allocations(configuration->test_steps_q);
+        destroy_test_steps_queue(configuration->test_steps_q);
         delete configuration;
         configuration = NULL;
         return RETURN_ERR;
