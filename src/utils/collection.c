@@ -184,6 +184,32 @@ void queue_destroy(queue_t *q)
     q = NULL;
 }
 
+void queue_destroy_new_allocations(queue_t *q)
+{
+    element_t *e = NULL;
+    element_t *tmp = NULL;
+
+    if (q == NULL) {
+        return;
+    }
+
+    e = q->head;
+
+    while (e != NULL) {
+        tmp = e->next;
+
+        delete e->data;
+        e->data = NULL;
+
+        free(e);
+        e = tmp;
+    }
+
+    q->head = NULL;
+
+    free(q);
+}
+
 int8_t hash_map_put(hash_map_t *map, char *key, void *data)
 {
     hash_element_t *e;
