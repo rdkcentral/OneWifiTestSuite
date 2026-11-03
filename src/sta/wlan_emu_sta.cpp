@@ -66,7 +66,7 @@ int wlan_emu_sta_iphone_t::init()
 
 void wlan_emu_sta_t::send_radio_tap_header(heart_beat_data_t *heart_beat_data)
 {
-    unsigned char char_buf[256];
+    unsigned char char_buf[1024];
     unsigned int byte_count = 0;
     unsigned int count = 0;
     wlan_emu_msg_t msg;
@@ -103,7 +103,7 @@ void wlan_emu_sta_t::send_radio_tap_header(heart_beat_data_t *heart_beat_data)
 
 void wlan_emu_sta_t::send_mac_update(mac_update_t *mac_update)
 {
-    unsigned char char_buf[256];
+    unsigned char char_buf[1024];
 
     unsigned int byte_count = 0;
     unsigned int count = 0;

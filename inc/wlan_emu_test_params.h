@@ -85,6 +85,8 @@ public:
         device_upgrade_t *upgrade_or_reboot;
     } u;
 
+    virtual ~test_step_params_t() = default;
+
     virtual int step_execute() = 0;
     virtual int step_timeout() = 0;
     virtual void step_remove() = 0;
