@@ -413,7 +413,12 @@ int wlan_emu_ui_mgr_t::decode_step_station_management_config(cJSON *step,
                             }
                             memcpy(&tmp_station_prototype_pcap->fc_request, &frame_capture_req,
                                 sizeof(frame_capture_request_t));
-                            decode_param_string(frame_type, "PcapLocation", param_loc);
+                            if (decode_param_string_fn(frame_type, "PcapLocation", param_loc) == RETURN_ERR) {
+                                wlan_emu_print(wlan_emu_log_level_err,
+                                    "%s:%d: PcapLocation parameter is missing\n", __func__, __LINE__);
+                                free(tmp_station_prototype_pcap);
+                                return RETURN_ERR;
+                            }
                             snprintf(tmp_station_prototype_pcap->file_location,
                                 sizeof(tmp_station_prototype_pcap->file_location), "%s",
                                 param_loc->valuestring);
@@ -1689,9 +1694,15 @@ int wlan_emu_ui_mgr_t::decode_stats_set_common_params(cJSON *step, test_step_par
             } else {
                 wlan_emu_print(wlan_emu_log_level_err, "%s:%d: StatsDuration is not present\n",
                     __func__, __LINE__);
+                delete reference;
                 return RETURN_ERR;
             }
-            decode_param_string(stats_set_config, "InputFile", param);
+            if (decode_param_string_fn(stats_set_config, "InputFile", param) == RETURN_ERR) {
+                wlan_emu_print(wlan_emu_log_level_err, "%s:%d: InputFile parameter is missing\n",
+                    __func__, __LINE__);
+                delete reference;
+                return RETURN_ERR;
+            }
             snprintf(reference->input_file_json, sizeof(reference->input_file_json), "%s",
                 param->valuestring);
             queue_push(step_config->u.wifi_stats_set->stats_set_q, reference);
@@ -2526,7 +2537,7 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
     wlan_emu_test_case_config *configuration)
 {
     cJSON *step = NULL;
-    test_step_params_t *step_config;
+    test_step_params_t *step_config = NULL;
     unsigned int count = 0;
 
     cJSON_ArrayForEach(step, config_entry) {
@@ -2545,6 +2556,8 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
                 __func__, __LINE__);
             // Note: need to remove all the step config
             dump_json(step, __func__, __LINE__);
+            delete step_config;
+            step_config = NULL;
             return RETURN_ERR;
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_param_config success\n",
@@ -2556,6 +2569,8 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
                 __func__, __LINE__);
             // Note: need to remove all the step config
             dump_json(step, __func__, __LINE__);
+            delete step_config;
+            step_config = NULL;
             return RETURN_ERR;
         } else {
             wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_common_config success\n",
@@ -2569,10 +2584,26 @@ int wlan_emu_ui_mgr_t::decode_step_config(cJSON *config_entry,
             "%s:%d: Seq Number : %d step_config->step_number : %d step param type : %d\n", __func__,
             __LINE__, step_config->step_seq_num, step_config->step_number, step_config->param_type);
         queue_push(configuration->test_steps_q, step_config);
+        step_config = NULL;
     }
     last_executed_step_num = 0;
 
     return RETURN_OK;
+}
+
+static void destroy_test_steps_queue(queue_t *q)
+{
+    test_step_params_t *step = NULL;
+
+    if (q == NULL) {
+        return;
+    }
+
+    while ((step = (test_step_params_t *)queue_pop(q)) != NULL) {
+        delete step;
+    }
+
+    queue_destroy(q);
 }
 
 int wlan_emu_ui_mgr_t::decode_coverage_config(cJSON *config_entry,
@@ -2609,8 +2640,9 @@ int wlan_emu_ui_mgr_t::decode_coverage_config(cJSON *config_entry,
         cci_error_code = EWEBDECODE;
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d decode_step_config failed\n", __func__,
             __LINE__);
-        // Note: delete the configuration and test_steps
-
+        destroy_test_steps_queue(configuration->test_steps_q);
+        delete configuration;
+        configuration = NULL;
         return RETURN_ERR;
     } else {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d decode_step_config success\n", __func__,
@@ -2628,7 +2660,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_1_config(cJSON *test_coverage_entry)
 {
     cJSON *test = NULL, *list = NULL, *sub_list, *config_entry = NULL;
     wlan_emu_test_case_config *config = NULL;
-    cJSON *conf, *param;
+    cJSON *conf, *param = NULL;
 
     conf = cJSON_GetObjectItem(test_coverage_entry, "Configuration");
 
@@ -2746,7 +2778,11 @@ int wlan_emu_ui_mgr_t::decode_coverage_1_config(cJSON *test_coverage_entry)
         return RETURN_ERR;
     }
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    decode_param_string(test_coverage_entry, "TestCaseId", param);
+    if (decode_param_string_fn(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
+      free(config);
+      config = NULL;
+      return RETURN_ERR;
+    }
     snprintf(config->test_case_id, sizeof(config->test_case_id), "%s", param->valuestring);
 
     push_config_to_queue(config);
@@ -2758,7 +2794,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_2_config(cJSON *test_coverage_entry)
 {
     cJSON *test = NULL, *list = NULL, *config_entry = NULL;
     wlan_emu_test_case_config *config = NULL;
-    cJSON *conf, *param;
+    cJSON *conf, *param = NULL;
 
     conf = cJSON_GetObjectItem(test_coverage_entry, "ApplicationFeatures");
 
@@ -2941,7 +2977,11 @@ int wlan_emu_ui_mgr_t::decode_coverage_2_config(cJSON *test_coverage_entry)
     }
 
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    decode_param_string(test_coverage_entry, "TestCaseId", param);
+    if (decode_param_string_fn(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
+      free(config);
+      config = NULL;
+      return RETURN_ERR;
+    }
     snprintf(config->test_case_id, sizeof(config->test_case_id), "%s", param->valuestring);
     push_config_to_queue(config);
     return RETURN_OK;
@@ -2951,7 +2991,7 @@ int wlan_emu_ui_mgr_t::decode_coverage_3_config(cJSON *test_coverage_entry)
 {
     cJSON *test = NULL, *list = NULL, *config_entry = NULL;
     wlan_emu_test_case_config *config = NULL;
-    cJSON *conf, *param;
+    cJSON *conf, *param = NULL;
 
     conf = cJSON_GetObjectItem(test_coverage_entry, "PerformanceMonitor");
 
@@ -2986,7 +3026,11 @@ int wlan_emu_ui_mgr_t::decode_coverage_3_config(cJSON *test_coverage_entry)
     }
 
     memset(config->test_case_id, 0, sizeof(config->test_case_id));
-    decode_param_string(test_coverage_entry, "TestCaseId", param);
+    if (decode_param_string_fn(test_coverage_entry, "TestCaseId", param) == RETURN_ERR) {
+      free(config);
+      config = NULL;
+      return RETURN_ERR;
+    }
     snprintf(config->test_case_id, sizeof(config->test_case_id), "%s", param->valuestring);
     push_config_to_queue(config);
     return RETURN_OK;
@@ -4036,7 +4080,8 @@ int wlan_emu_ui_mgr_t::io_prep()
     for (i = 0; i < wlan_emu_sig_type_max; i++) {
         memset(&sock, 0, sizeof(struct sockaddr_un));
         sock.sun_family = AF_UNIX;
-        strncpy(sock.sun_path, (char *)m_pollables[i].name, sizeof(sock.sun_path));
+        strncpy(sock.sun_path, (char *)m_pollables[i].name, sizeof(sock.sun_path) - 1);
+        sock.sun_path[sizeof(sock.sun_path) - 1] = '\0';
         if (m_pollables[i].fd != 0) {
             wlan_emu_print(wlan_emu_log_level_dbg,
                 "%s:%d: Adding already open pollable: %s, desc: %d to descriptor\n", __func__,
@@ -4681,7 +4726,7 @@ void wlan_emu_ui_mgr_t::send_signal(wlan_emu_sig_type_t sig)
     struct sockaddr_un sock;
     memset(&sock, 0, sizeof(struct sockaddr_un));
     sock.sun_family = AF_UNIX;
-    strncpy(sock.sun_path, (char *)m_pollables[sig].name, sizeof(sock.sun_path));
+    snprintf(sock.sun_path, sizeof(sock.sun_path), "%s", (char *)m_pollables[sig].name);
 
     ssize_t bytes_sent = sendto(m_pollables[sig].fd, (unsigned char *)&wlan_emu_ui_mgr_t::m_token,
         sizeof(wlan_emu_ui_mgr_t::m_token), 0, (struct sockaddr *)&sock, sizeof(sock));
@@ -5612,6 +5657,8 @@ int wlan_emu_ui_mgr_t::bus_init()
     if (data == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d Failed to allocate memory\n", __func__,
             __LINE__);
+        delete[] str;
+        str = NULL;
         return RETURN_ERR;
     }
 
@@ -5627,6 +5674,7 @@ int wlan_emu_ui_mgr_t::bus_init()
         wlan_emu_print(wlan_emu_log_level_err, "%s %d webconfig_decode fail \n", __FUNCTION__,
             __LINE__);
         delete[] str;
+        str = NULL;
         free(data);
         return RETURN_ERR;
     }

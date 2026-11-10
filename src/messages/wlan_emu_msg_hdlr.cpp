@@ -373,6 +373,7 @@ void wlan_emu_msg_hdlr_t::msg_hdlr_thread_func()
     system("rm -rf /tmp/cci_res/*");
     close(m_fd);
     m_fd = -1;
+    free(f_tmp);
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: thread exit\n", __func__, __LINE__);
 }
