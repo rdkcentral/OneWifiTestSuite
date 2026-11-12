@@ -671,6 +671,8 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         webconfig_data->hal_cap.wifi_prop.interface_map[vap_index].interface_name);
     response = static_cast<wifi_provider_response_t *>((subdoc_data.u.decoded.collect_stats.stats));
 
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: value of if index and phy index is %d %d\n", __func__, __LINE__, interface_index, phy_index);
+
     if ((response->stat_array_size == 0) || (response->stat_pointer == NULL)) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Assoc clients stats count : %d\n", __func__,
             __LINE__, response->stat_array_size);
@@ -861,6 +863,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_dbg, "Rx Errors %llu\n", assoc_stats[i].cli_RxErrors);
     }
 
+    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: value of if index and phy index is %d %d\n", __func__, __LINE__, interface_index, phy_index);
     if (wifi_hal_emu_set_assoc_clients_stats(vap_index, emu_state, assoc_stats,
             response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
