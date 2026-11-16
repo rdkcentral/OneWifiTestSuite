@@ -2633,6 +2633,8 @@ int wlan_emu_ui_mgr_t::decode_coverage_config(cJSON *config_entry,
     if (configuration->test_steps_q == NULL) {
         wlan_emu_print(wlan_emu_log_level_err, "%s:%d: New failed for test_steps_q\n", __func__,
             __LINE__);
+        delete configuration;
+        configuration = NULL;
         return RETURN_ERR;
     }
 
