@@ -688,13 +688,8 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         return RETURN_ERR;
     }
     phy_index = map->phy_index;
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: phy index : %d\n", __func__, __LINE__, phy_index);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: interface name : %s\n", __func__, __LINE__, map->interface_name);
     interface_index = if_nametoindex(map->interface_name);
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: interface index : %d\n", __func__, __LINE__, interface_index);
     response = static_cast<wifi_provider_response_t *>((subdoc_data.u.decoded.collect_stats.stats));
-
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: value of if index and phy index is %d %d\n", __func__, __LINE__, interface_index, phy_index);
 
     if ((response->stat_array_size == 0) || (response->stat_pointer == NULL)) {
         wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Assoc clients stats count : %d\n", __func__,
@@ -886,7 +881,6 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
         wlan_emu_print(wlan_emu_log_level_dbg, "Rx Errors %llu\n", assoc_stats[i].cli_RxErrors);
     }
 
-    wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: value of if index and phy index is %d %d\n", __func__, __LINE__, interface_index, phy_index);
     if (wifi_hal_emu_set_assoc_clients_stats(vap_index, emu_state, assoc_stats,
             response->stat_array_size, phy_index, interface_index) != RETURN_OK) {
         wlan_emu_print(wlan_emu_log_level_err,
