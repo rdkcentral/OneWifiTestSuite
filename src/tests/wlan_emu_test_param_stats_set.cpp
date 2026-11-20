@@ -125,6 +125,19 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_stop()
     return RETURN_OK;
 }
 
+
+static const wifi_interface_name_idex_map_t *find_if_map(const wifi_platform_property_t *prop,
+    unsigned int vap_index)
+{
+    for (unsigned int i = 0; i < MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO; i++) {
+        if (prop->interface_map[i].interface_name[0] != '\0' &&
+            prop->interface_map[i].index == vap_index) {
+            return &prop->interface_map[i];
+        }
+    }
+    return NULL;
+}
+
 int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_stop()
 {
     test_step_params_t *step = this;
@@ -134,9 +147,17 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_stop()
 
     emu_state = false;
     int vap_index = step->u.wifi_stats_set->vap_index;
-    int phy_index = webconfig_data->hal_cap.wifi_prop.interface_map[vap_index].phy_index;
-    int interface_index = if_nametoindex(
-        webconfig_data->hal_cap.wifi_prop.interface_map[vap_index].interface_name);
+    const wifi_interface_name_idex_map_t *map = find_if_map(&webconfig_data->hal_cap.wifi_prop,
+        vap_index);
+    if (map == NULL) {
+        wlan_emu_print(wlan_emu_log_level_err, "%s:%d: no interface for vap_index %d\n", __func__,
+            __LINE__, vap_index);
+        step->m_ui_mgr->cci_error_code = ECLIENTSTATS;
+        step->test_state = wlan_emu_tests_state_cmd_abort;
+        return RETURN_ERR;
+    }
+    phy_index = map->phy_index;
+    interface_index = if_nametoindex(map->interface_name);
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop hal api for Assoc_Clients_Stats\n",
         __func__, __LINE__);
@@ -600,18 +621,6 @@ int test_step_param_set_neighbor_stats::webconfig_stats_set_execute_start()
     return RETURN_OK;
 }
 
-static const wifi_interface_name_idex_map_t *find_if_map(const wifi_platform_property_t *prop,
-    unsigned int vap_index)
-{
-    for (unsigned int i = 0; i < MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO; i++) {
-        if (prop->interface_map[i].interface_name[0] != '\0' &&
-            prop->interface_map[i].index == vap_index) {
-            return &prop->interface_map[i];
-        }
-    }
-    return NULL;
-}
-
 int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
 {
     test_step_params_t *step = this;
@@ -685,6 +694,7 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
             __LINE__, vap_index);
         step->m_ui_mgr->cci_error_code = ECLIENTSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        free(json_data);
         return RETURN_ERR;
     }
     phy_index = map->phy_index;
