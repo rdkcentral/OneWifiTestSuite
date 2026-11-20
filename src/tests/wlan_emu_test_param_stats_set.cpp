@@ -156,8 +156,8 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_stop()
         step->test_state = wlan_emu_tests_state_cmd_abort;
         return RETURN_ERR;
     }
-    phy_index = map->phy_index;
-    interface_index = if_nametoindex(map->interface_name);
+    int phy_index = map->phy_index;
+    int interface_index = if_nametoindex(map->interface_name);
 
     wlan_emu_print(wlan_emu_log_level_dbg, "%s:%d: Stop hal api for Assoc_Clients_Stats\n",
         __func__, __LINE__);
