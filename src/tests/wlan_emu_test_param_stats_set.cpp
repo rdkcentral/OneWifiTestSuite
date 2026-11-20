@@ -694,6 +694,10 @@ int test_step_param_set_assoc_clients_stats::webconfig_stats_set_execute_start()
             __LINE__, vap_index);
         step->m_ui_mgr->cci_error_code = ECLIENTSTATS;
         step->test_state = wlan_emu_tests_state_cmd_abort;
+        response = static_cast<wifi_provider_response_t *>(
+            subdoc_data.u.decoded.collect_stats.stats);
+        free(response->stat_pointer);
+        free(response);
         free(json_data);
         return RETURN_ERR;
     }
