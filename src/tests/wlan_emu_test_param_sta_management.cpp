@@ -980,6 +980,9 @@ int test_step_param_sta_management::step_timeout()
                     (step->u.sta_test->u.sta_management.is_sta_management_timer == true)) {
                     heart_beat_data->rssi = connect_profile->rssi;
                     heart_beat_data->noise = connect_profile->noise;
+                } else {
+                    heart_beat_data->rssi = -25;
+                    heart_beat_data->noise = -85;
                 }
 
                 step->m_sim_sta_mgr->send_heart_beat(client_info->key, heart_beat_data);
